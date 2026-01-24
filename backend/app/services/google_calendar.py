@@ -1,0 +1,108 @@
+import os
+from datetime import datetime, timedelta
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import Flow
+from googleapiclient.discovery import build
+from google.auth.transport.requests import Request
+import pickle
+
+class GoogleCalendarService:
+    SCOPES = ['https://www.googleapis.com/auth/calendar']
+    TOKEN_FILE = 'token.pickle'
+
+    def __init__(self):
+        self.creds = None
+        self.service = None
+        self._load_credentials()
+
+    def _load_credentials(self):
+        """Load saved credentials if they exist"""
+        if os.path.exists(self.TOKEN_FILE):
+            with open(self.TOKEN_FILE, 'rb') as token:
+                self.creds = pickle.load(token)
+
+        # Refresh expired credentials
+        if self.creds and self.creds.expired and self.creds.refresh_token:
+            self.creds.refresh(Request())
+            self._save_credentials()
+
+        if self.creds and self.creds.valid:
+            self.service = build('calendar', 'v3', credentials=self.creds)
+
+    def _save_credentials(self):
+        """Save credentials to file"""
+        with open(self.TOKEN_FILE, 'wb') as token:
+            pickle.dump(self.creds, token)
+
+    def get_auth_url(self):
+        """Get Google OAuth authorization URL"""
+        flow = Flow.from_client_config(
+            {
+                "web": {
+                    "client_id": os.getenv("GOOGLE_CLIENT_ID"),
+                    "client_secret": os.getenv("GOOGLE_CLIENT_SECRET"),
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "redirect_uris": [os.getenv("GOOGLE_REDIRECT_URI")]
+                }
+            },
+            scopes=self.SCOPES
+        )
+        flow.redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
+
+        auth_url, _ = flow.authorization_url(prompt='consent')
+        return auth_url
+
+    def authenticate(self, code: str):
+        """Complete OAuth flow with authorization code"""
+        flow = Flow.from_client_config(
+            {
+                "web": {
+                    "client_id": os.getenv("GOOGLE_CLIENT_ID"),
+                    "client_secret": os.getenv("GOOGLE_CLIENT_SECRET"),
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "redirect_uris": [os.getenv("GOOGLE_REDIRECT_URI")]
+                }
+            },
+            scopes=self.SCOPES
+        )
+        flow.redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
+
+        flow.fetch_token(code=code)
+        self.creds = flow.credentials
+        self._save_credentials()
+        self.service = build('calendar', 'v3', credentials=self.creds)
+
+    def is_authenticated(self):
+        """Check if user is authenticated"""
+        return self.creds is not None and self.creds.valid
+
+    def create_event(self, task_name: str, duration_seconds: float, start_time: str = None):
+        """Create a calendar event"""
+        if not self.is_authenticated():
+            raise Exception("Not authenticated with Google Calendar")
+
+        # Parse start time or use current time
+        if start_time:
+            start = datetime.fromisoformat(start_time)
+        else:
+            start = datetime.now()
+
+        # Calculate end time based on duration
+        end = start + timedelta(seconds=duration_seconds)
+
+        event = {
+            'summary': task_name,
+            'start': {
+                'dateTime': start.isoformat(),
+                'timeZone': 'UTC',
+            },
+            'end': {
+                'dateTime': end.isoformat(),
+                'timeZone': 'UTC',
+            },
+        }
+
+        created_event = self.service.events().insert(calendarId='primary', body=event).execute()
+        return created_event
