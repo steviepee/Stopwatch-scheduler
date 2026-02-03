@@ -44,3 +44,41 @@ class TaskWithLogs(Task):
 
     class Config:
         from_attributes = True
+
+# StopwatchSession Schemas
+class StopwatchSessionBase(BaseModel):
+    name: str
+    duration: float
+    task_id: Optional[int] = None
+    notes: Optional[str] = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+
+class StopwatchSessionCreate(StopwatchSessionBase):
+    pass
+
+class StopwatchSessionUpdate(BaseModel):
+    name: Optional[str] = None
+    duration: Optional[float] = None
+    task_id: Optional[int] = None
+    notes: Optional[str] = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    is_on_calendar: Optional[bool] = None
+    calendar_event_id: Optional[str] = None
+
+class StopwatchSession(StopwatchSessionBase):
+    id: int
+    calendar_event_id: Optional[str] = None
+    is_on_calendar: bool
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class StopwatchSessionWithTask(StopwatchSession):
+    task: Optional[Task] = None
+
+    class Config:
+        from_attributes = True

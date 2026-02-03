@@ -4,7 +4,7 @@ import os
 from dotenv import load_dotenv
 
 from app.database import engine, Base
-from app.routers import tasks, time_logs, calendar_auth
+from app.routers import tasks, time_logs, calendar_auth, sessions
 
 load_dotenv()
 
@@ -28,6 +28,7 @@ app.add_middleware(
 app.include_router(tasks.router, prefix="/api/tasks", tags=["tasks"])
 app.include_router(time_logs.router, prefix="/api/time-logs", tags=["time-logs"])
 app.include_router(calendar_auth.router, prefix="/api/auth", tags=["auth"])
+app.include_router(sessions.router, prefix="/api/sessions", tags=["sessions"])
 
 @app.get("/")
 def read_root():

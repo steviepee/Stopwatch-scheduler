@@ -22,27 +22,33 @@ export default function TaskList({ tasks, onDeleteTask, onSelectTask }: TaskList
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6">
-      <h2 className="text-2xl font-bold mb-4">Tasks</h2>
+    <div className="glass-card rounded-2xl p-6">
+      <h2 className="text-2xl font-bold mb-6 text-white drop-shadow-lg">Tasks</h2>
 
       {tasks.length === 0 ? (
-        <p className="text-gray-500 text-center py-8">
+        <p className="text-white/70 text-center py-8">
           No tasks yet. Create your first task to get started!
         </p>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
           {tasks.map((task) => (
             <div
               key={task.id}
-              className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition cursor-pointer"
+              className="glass-inner rounded-xl p-4 hover:bg-white/20 transition-all duration-300 cursor-pointer"
               onClick={() => onSelectTask(task)}
             >
               <div className="flex justify-between items-start">
                 <div className="flex-1">
-                  <h3 className="font-semibold text-lg">{task.name}</h3>
-                  <div className="text-sm text-gray-600 mt-1">
-                    <p>Average Duration: {formatDuration(task.average_duration)}</p>
-                    <p>Recordings: {task.total_recordings}</p>
+                  <h3 className="font-semibold text-lg text-white">{task.name}</h3>
+                  <div className="text-sm text-white/70 mt-1 space-y-1">
+                    <p className="flex items-center gap-2">
+                      <span className="text-white/50">Average:</span>
+                      <span className="font-mono">{formatDuration(task.average_duration)}</span>
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <span className="text-white/50">Recordings:</span>
+                      {task.total_recordings}
+                    </p>
                   </div>
                 </div>
                 <button
@@ -50,7 +56,7 @@ export default function TaskList({ tasks, onDeleteTask, onSelectTask }: TaskList
                     e.stopPropagation();
                     onDeleteTask(task.id);
                   }}
-                  className="text-red-500 hover:text-red-700 font-semibold px-3 py-1"
+                  className="text-red-400 hover:text-red-300 font-semibold px-3 py-1 transition-colors"
                 >
                   Delete
                 </button>

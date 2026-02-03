@@ -16,23 +16,30 @@ export default function TaskForm({ onCreateTask }: TaskFormProps) {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6">
-      <h2 className="text-2xl font-bold mb-4">Create New Task</h2>
-      <form onSubmit={handleSubmit} className="flex gap-3">
+    <div className="glass-card rounded-2xl p-8 max-w-md mx-auto h-fit">
+      <h2 className="text-2xl font-bold mb-6 text-white drop-shadow-lg text-center">Create New Task</h2>
+      <form onSubmit={handleSubmit} className="space-y-4">
         <input
           type="text"
           value={taskName}
           onChange={(e) => setTaskName(e.target.value)}
           placeholder="Enter task name..."
-          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="glass-input w-full px-4 py-3 rounded-xl"
         />
         <button
           type="submit"
-          className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg transition"
+          disabled={!taskName.trim()}
+          className="glass-button-primary w-full font-semibold py-3 px-6 rounded-xl transition-all disabled:opacity-50"
         >
           Add Task
         </button>
       </form>
+
+      <div className="mt-6 pt-6 border-t border-white/10">
+        <p className="text-white/60 text-sm text-center">
+          Tasks help you categorize your time recordings and calculate averages over multiple sessions.
+        </p>
+      </div>
     </div>
   );
 }
