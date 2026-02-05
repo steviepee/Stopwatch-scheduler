@@ -13,7 +13,7 @@ const api = axios.create({
 // Task APIs
 export const taskAPI = {
   getAll: async (): Promise<Task[]> => {
-    const response = await api.get('/tasks');
+    const response = await api.get('/tasks/');
     return response.data;
   },
 
@@ -23,7 +23,7 @@ export const taskAPI = {
   },
 
   create: async (task: TaskCreate): Promise<Task> => {
-    const response = await api.post('/tasks', task);
+    const response = await api.post('/tasks/', task);
     return response.data;
   },
 
@@ -36,12 +36,12 @@ export const taskAPI = {
 export const timeLogAPI = {
   getAll: async (taskId?: number): Promise<TimeLog[]> => {
     const params = taskId ? { task_id: taskId } : {};
-    const response = await api.get('/time-logs', { params });
+    const response = await api.get('/time-logs/', { params });
     return response.data;
   },
 
   create: async (timeLog: TimeLogCreate): Promise<TimeLog> => {
-    const response = await api.post('/time-logs', timeLog);
+    const response = await api.post('/time-logs/', timeLog);
     return response.data;
   },
 
@@ -80,7 +80,7 @@ export const sessionAPI = {
     const params: Record<string, unknown> = {};
     if (taskId !== undefined) params.task_id = taskId;
     if (onCalendar !== undefined) params.on_calendar = onCalendar;
-    const response = await api.get('/sessions', { params });
+    const response = await api.get('/sessions/', { params });
     return response.data;
   },
 
@@ -90,7 +90,7 @@ export const sessionAPI = {
   },
 
   create: async (session: StopwatchSessionCreate): Promise<StopwatchSession> => {
-    const response = await api.post('/sessions', session);
+    const response = await api.post('/sessions/', session);
     return response.data;
   },
 
