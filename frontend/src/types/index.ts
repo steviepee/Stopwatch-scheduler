@@ -39,6 +39,8 @@ export interface StopwatchSession {
   is_on_calendar: boolean;
   start_time?: string;
   end_time?: string;
+  scheduled_start?: string;
+  scheduled_end?: string;
   created_at: string;
   updated_at: string;
 }
@@ -50,6 +52,8 @@ export interface StopwatchSessionCreate {
   notes?: string;
   start_time?: string;
   end_time?: string;
+  scheduled_start?: string;
+  scheduled_end?: string;
 }
 
 export interface StopwatchSessionUpdate {
@@ -59,8 +63,15 @@ export interface StopwatchSessionUpdate {
   notes?: string;
   start_time?: string;
   end_time?: string;
+  scheduled_start?: string;
+  scheduled_end?: string;
   is_on_calendar?: boolean;
   calendar_event_id?: string;
+}
+
+export interface StopwatchSessionSchedule {
+  scheduled_start: string;
+  scheduled_end?: string;
 }
 
 export interface StopwatchSessionWithTask extends StopwatchSession {

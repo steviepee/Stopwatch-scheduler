@@ -1,0 +1,113 @@
+import { useState } from 'react';
+import { formatDayLong } from '../../utils/calendarUtils';
+
+interface CreateEventModalProps {
+  initialDate: Date;
+  initialTime: string; // "HH:MM" format
+  onClose: () => void;
+  onSubmit: (data: { name: string; date: Date; startTime: string; durationMinutes: number }) => void;
+}
+
+export function CreateEventModal({ initialDate, initialTime, onClose, onSubmit }: CreateEventModalProps) {
+  const [name, setName] = useState('');
+  const [startTime, setStartTime] = useState(initialTime);
+  const [durationMinutes, setDurationMinutes] = useState(30);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+
+    onSubmit({
+      name: name.trim(),
+      date: initialDate,
+      startTime,
+      durationMinutes,
+    });
+  };
+
+  const durationOptions = [
+    { value: 15, label: '15 minutes' },
+    { value: 30, label: '30 minutes' },
+    { value: 45, label: '45 minutes' },
+    { value: 60, label: '1 hour' },
+    { value: 90, label: '1.5 hours' },
+    { value: 120, label: '2 hours' },
+    { value: 180, label: '3 hours' },
+    { value: 240, label: '4 hours' },
+  ];
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>New Event</h3>
+          <button className="modal-close" onClick={onClose}>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+            </svg>
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <div className="modal-body">
+            <div className="form-group">
+              <label htmlFor="event-name">Event name</label>
+              <input
+                id="event-name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Meeting, Appointment, etc."
+                autoFocus
+                className="glass-input"
+              />
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="event-date">Date</label>
+                <div className="date-display">{formatDayLong(initialDate)}</div>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="event-time">Start time</label>
+                <input
+                  id="event-time"
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="glass-input"
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="event-duration">Duration</label>
+              <select
+                id="event-duration"
+                value={durationMinutes}
+                onChange={(e) => setDurationMinutes(Number(e.target.value))}
+                className="glass-input"
+              >
+                {durationOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="modal-footer">
+            <button type="button" className="glass-button" onClick={onClose}>
+              Cancel
+            </button>
+            <button type="submit" className="glass-button-primary" disabled={!name.trim()}>
+              Create Event
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}

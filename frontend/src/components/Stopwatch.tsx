@@ -6,9 +6,10 @@ interface StopwatchProps {
   tasks: Task[];
   onSaveTime: (taskId: number, duration: number, notes?: string) => void;
   onSaveSession: (session: StopwatchSessionCreate) => void;
+  onModalChange?: (isOpen: boolean) => void;
 }
 
-export default function Stopwatch({ tasks, onSaveTime, onSaveSession }: StopwatchProps) {
+export default function Stopwatch({ tasks, onSaveTime, onSaveSession, onModalChange }: StopwatchProps) {
   const { time, isRunning, start, pause, reset, formatTime } = useStopwatch();
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [notes, setNotes] = useState('');
@@ -28,6 +29,7 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession }: Stopwatc
     pause();
     if (time > 0) {
       setShowSaveModal(true);
+      onModalChange?.(true);
     }
   };
 
@@ -60,6 +62,7 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession }: Stopwatc
 
   const handleReset = () => {
     setShowSaveModal(false);
+    onModalChange?.(false);
     reset();
     setNotes('');
     setSelectedTaskId(null);
@@ -69,6 +72,7 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession }: Stopwatc
 
   const handleCancel = () => {
     setShowSaveModal(false);
+    onModalChange?.(false);
   };
 
   return (
@@ -110,9 +114,14 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession }: Stopwatc
 
       {/* Save Modal */}
       {showSaveModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="glass-card rounded-2xl p-6 max-w-md w-full">
-            <h3 className="text-xl font-bold mb-4 text-white">Save Recording</h3>
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-50">
+          <div className="bg-gradient-to-br from-slate-200/95 to-slate-400/95 border border-white/40 shadow-2xl rounded-2xl p-6 max-w-md w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-slate-800">Save Recording</h3>
+              <span className="font-mono text-lg text-slate-600">
+                {timeDisplay.hours}:{timeDisplay.minutes}:{timeDisplay.seconds}
+              </span>
+            </div>
 
             {/* Save Type Toggle */}
             <div className="flex gap-2 mb-4">
@@ -120,8 +129,8 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession }: Stopwatc
                 onClick={() => setSaveType('session')}
                 className={`flex-1 py-2 px-4 rounded-xl font-medium transition-all ${
                   saveType === 'session'
-                    ? 'glass-button-primary'
-                    : 'glass-button'
+                    ? 'bg-slate-700 text-white shadow-md'
+                    : 'bg-white/50 text-slate-700 hover:bg-white/70'
                 }`}
               >
                 Save as Session
@@ -130,8 +139,8 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession }: Stopwatc
                 onClick={() => setSaveType('timelog')}
                 className={`flex-1 py-2 px-4 rounded-xl font-medium transition-all ${
                   saveType === 'timelog'
-                    ? 'glass-button-primary'
-                    : 'glass-button'
+                    ? 'bg-slate-700 text-white shadow-md'
+                    : 'bg-white/50 text-slate-700 hover:bg-white/70'
                 }`}
               >
                 Add to Task
@@ -141,26 +150,26 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession }: Stopwatc
             {saveType === 'session' ? (
               <>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-white/90 mb-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
                     Session Name *
                   </label>
                   <input
                     type="text"
                     value={sessionName}
                     onChange={(e) => setSessionName(e.target.value)}
-                    className="glass-input w-full px-4 py-3 rounded-xl"
+                    className="bg-white/60 border border-slate-300 text-slate-800 placeholder-slate-500 w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-400"
                     placeholder="Name this session..."
                   />
                 </div>
 
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-white/90 mb-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
                     Link to Task (optional)
                   </label>
                   <select
                     value={selectedTaskId || ''}
                     onChange={(e) => setSelectedTaskId(e.target.value ? Number(e.target.value) : null)}
-                    className="glass-input w-full px-4 py-3 rounded-xl"
+                    className="bg-white/60 border border-slate-300 text-slate-800 placeholder-slate-500 w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-400"
                   >
                     <option value="">No task linked</option>
                     {tasks.map((task) => (
@@ -173,13 +182,13 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession }: Stopwatc
               </>
             ) : (
               <div className="mb-4">
-                <label className="block text-sm font-medium text-white/90 mb-2">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
                   Select Task *
                 </label>
                 <select
                   value={selectedTaskId || ''}
                   onChange={(e) => setSelectedTaskId(Number(e.target.value))}
-                  className="glass-input w-full px-4 py-3 rounded-xl"
+                  className="bg-white/60 border border-slate-300 text-slate-800 placeholder-slate-500 w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-400"
                 >
                   <option value="">Choose a task...</option>
                   {tasks.map((task) => (
@@ -192,13 +201,13 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession }: Stopwatc
             )}
 
             <div className="mb-4">
-              <label className="block text-sm font-medium text-white/90 mb-2">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
                 Notes (optional)
               </label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className="glass-input w-full px-4 py-3 rounded-xl resize-none"
+                className="bg-white/60 border border-slate-300 text-slate-800 placeholder-slate-500 w-full px-4 py-3 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-slate-400"
                 rows={3}
                 placeholder="Add any notes about this recording..."
               />
@@ -209,7 +218,7 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession }: Stopwatc
                 <button
                   onClick={handleSaveSession}
                   disabled={!sessionName.trim()}
-                  className="flex-1 glass-button-primary disabled:opacity-50 font-semibold py-3 px-4 rounded-xl transition-all"
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 disabled:hover:bg-emerald-600 font-semibold py-3 px-4 rounded-xl transition-all shadow-md"
                 >
                   Save Session
                 </button>
@@ -217,14 +226,14 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession }: Stopwatc
                 <button
                   onClick={handleSaveTimeLog}
                   disabled={!selectedTaskId}
-                  className="flex-1 glass-button-primary disabled:opacity-50 font-semibold py-3 px-4 rounded-xl transition-all"
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 disabled:hover:bg-emerald-600 font-semibold py-3 px-4 rounded-xl transition-all shadow-md"
                 >
                   Save to Task
                 </button>
               )}
               <button
                 onClick={handleCancel}
-                className="flex-1 glass-button font-semibold py-3 px-4 rounded-xl transition-all"
+                className="flex-1 bg-slate-500 hover:bg-slate-600 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-md"
               >
                 Cancel
               </button>

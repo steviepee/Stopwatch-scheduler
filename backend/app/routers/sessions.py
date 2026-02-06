@@ -14,6 +14,7 @@ calendar_service = GoogleCalendarService()
 def get_sessions(
     task_id: Optional[int] = None,
     on_calendar: Optional[bool] = None,
+    scheduled: Optional[bool] = None,
     db: Session = Depends(get_db)
 ):
     """Get all stopwatch sessions with optional filters"""
@@ -23,6 +24,11 @@ def get_sessions(
         query = query.filter(StopwatchSession.task_id == task_id)
     if on_calendar is not None:
         query = query.filter(StopwatchSession.is_on_calendar == on_calendar)
+    if scheduled is not None:
+        if scheduled:
+            query = query.filter(StopwatchSession.scheduled_start.isnot(None))
+        else:
+            query = query.filter(StopwatchSession.scheduled_start.is_(None))
 
     sessions = query.order_by(StopwatchSession.created_at.desc()).all()
     return sessions
@@ -95,8 +101,8 @@ def add_session_to_calendar(session_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Not authenticated with Google Calendar")
 
     try:
-        # Use session start_time if available, otherwise use created_at
-        start_time = db_session.start_time or db_session.created_at
+        # Use scheduled_start (from calendar), then start_time, then created_at
+        start_time = db_session.scheduled_start or db_session.start_time or db_session.created_at
 
         event = calendar_service.create_event(
             task_name=db_session.name,
@@ -112,6 +118,42 @@ def add_session_to_calendar(session_id: int, db: Session = Depends(get_db)):
         return db_session
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.put("/{session_id}/schedule", response_model=schemas.StopwatchSession)
+def schedule_session(
+    session_id: int,
+    schedule: schemas.StopwatchSessionSchedule,
+    db: Session = Depends(get_db)
+):
+    """Schedule a session on the custom calendar"""
+    db_session = db.query(StopwatchSession).filter(StopwatchSession.id == session_id).first()
+    if not db_session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    db_session.scheduled_start = schedule.scheduled_start
+    # If no scheduled_end provided, calculate from duration
+    if schedule.scheduled_end:
+        db_session.scheduled_end = schedule.scheduled_end
+    else:
+        from datetime import timedelta
+        db_session.scheduled_end = schedule.scheduled_start + timedelta(seconds=db_session.duration)
+
+    db.commit()
+    db.refresh(db_session)
+    return db_session
+
+@router.put("/{session_id}/unschedule", response_model=schemas.StopwatchSession)
+def unschedule_session(session_id: int, db: Session = Depends(get_db)):
+    """Remove a session from the custom calendar"""
+    db_session = db.query(StopwatchSession).filter(StopwatchSession.id == session_id).first()
+    if not db_session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    db_session.scheduled_start = None
+    db_session.scheduled_end = None
+    db.commit()
+    db.refresh(db_session)
+    return db_session
 
 @router.delete("/{session_id}/calendar")
 def remove_session_from_calendar(session_id: int, db: Session = Depends(get_db)):

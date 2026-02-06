@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Task, TaskCreate, TimeLogCreate, TimeLog, StopwatchSession, StopwatchSessionCreate, StopwatchSessionUpdate, StopwatchSessionWithTask } from '../types';
+import { Task, TaskCreate, TimeLogCreate, TimeLog, StopwatchSession, StopwatchSessionCreate, StopwatchSessionUpdate, StopwatchSessionWithTask, StopwatchSessionSchedule } from '../types';
 
 const API_BASE_URL = '/api';
 
@@ -76,11 +76,22 @@ export const googleCalendarAPI = {
 
 // Stopwatch Session APIs
 export const sessionAPI = {
-  getAll: async (taskId?: number, onCalendar?: boolean): Promise<StopwatchSession[]> => {
+  getAll: async (taskId?: number, onCalendar?: boolean, scheduled?: boolean): Promise<StopwatchSession[]> => {
     const params: Record<string, unknown> = {};
     if (taskId !== undefined) params.task_id = taskId;
     if (onCalendar !== undefined) params.on_calendar = onCalendar;
+    if (scheduled !== undefined) params.scheduled = scheduled;
     const response = await api.get('/sessions/', { params });
+    return response.data;
+  },
+
+  getScheduled: async (): Promise<StopwatchSession[]> => {
+    const response = await api.get('/sessions/', { params: { scheduled: true } });
+    return response.data;
+  },
+
+  getUnscheduled: async (): Promise<StopwatchSession[]> => {
+    const response = await api.get('/sessions/', { params: { scheduled: false } });
     return response.data;
   },
 
@@ -110,6 +121,16 @@ export const sessionAPI = {
 
   removeFromCalendar: async (id: number): Promise<void> => {
     await api.delete(`/sessions/${id}/calendar`);
+  },
+
+  schedule: async (id: number, schedule: StopwatchSessionSchedule): Promise<StopwatchSession> => {
+    const response = await api.put(`/sessions/${id}/schedule`, schedule);
+    return response.data;
+  },
+
+  unschedule: async (id: number): Promise<StopwatchSession> => {
+    const response = await api.put(`/sessions/${id}/unschedule`);
+    return response.data;
   },
 };
 

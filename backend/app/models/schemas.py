@@ -53,6 +53,8 @@ class StopwatchSessionBase(BaseModel):
     notes: Optional[str] = None
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
+    scheduled_start: Optional[datetime] = None
+    scheduled_end: Optional[datetime] = None
 
 class StopwatchSessionCreate(StopwatchSessionBase):
     pass
@@ -64,6 +66,8 @@ class StopwatchSessionUpdate(BaseModel):
     notes: Optional[str] = None
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
+    scheduled_start: Optional[datetime] = None
+    scheduled_end: Optional[datetime] = None
     is_on_calendar: Optional[bool] = None
     calendar_event_id: Optional[str] = None
 
@@ -76,6 +80,10 @@ class StopwatchSession(StopwatchSessionBase):
 
     class Config:
         from_attributes = True
+
+class StopwatchSessionSchedule(BaseModel):
+    scheduled_start: datetime
+    scheduled_end: Optional[datetime] = None
 
 class StopwatchSessionWithTask(StopwatchSession):
     task: Optional[Task] = None
