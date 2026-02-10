@@ -76,11 +76,11 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession, onModalCha
   };
 
   return (
-    <div className="glass-card rounded-2xl p-8 max-w-md mx-auto">
+    <div className="glass-card rounded-2xl p-8 max-w-md mx-auto transition-all duration-300 ease-out hover:scale-105 hover:shadow-[0_12px_40px_rgba(0,0,0,0.4)] hover:bg-white/5 hover:backdrop-blur-sm">
       <h2 className="text-2xl font-bold text-center mb-6 text-white drop-shadow-lg">Stopwatch</h2>
 
       {/* Timer Display */}
-      <div className="glass-inner rounded-xl p-6 mb-6">
+      <div className="glass-inner rounded-xl p-6 mb-6 transition-all duration-300 ease-out hover:scale-105 hover:shadow-[0_12px_40px_rgba(0,0,0,0.4)] hover:bg-white/5 hover:backdrop-blur-sm">
         <div className="text-5xl font-mono text-center text-white drop-shadow-lg">
           {timeDisplay.hours}:{timeDisplay.minutes}:{timeDisplay.seconds}
           <span className="text-3xl text-white/70">.{timeDisplay.milliseconds}</span>
@@ -92,21 +92,21 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession, onModalCha
         {!isRunning ? (
           <button
             onClick={handleStart}
-            className="flex-1 glass-button-green font-semibold py-3 px-6 rounded-xl transition-all duration-300"
+            className="flex-1 glass-button-green font-semibold py-3 px-6 rounded-xl transition-all duration-300 ease-out hover:scale-105 hover:shadow-[0_12px_40px_rgba(0,0,0,0.4)] hover:bg-white/5 hover:backdrop-blur-sm"
           >
             Start
           </button>
         ) : (
           <button
             onClick={handleStop}
-            className="flex-1 glass-button-red font-semibold py-3 px-6 rounded-xl transition-all duration-300"
+            className="flex-1 glass-button-red font-semibold py-3 px-6 rounded-xl transition-all duration-300 ease-out hover:scale-105 hover:shadow-[0_12px_40px_rgba(0,0,0,0.4)] hover:bg-white/5 hover:backdrop-blur-sm"
           >
             Stop
           </button>
         )}
         <button
           onClick={handleReset}
-          className="flex-1 glass-button font-semibold py-3 px-6 rounded-xl transition-all duration-300"
+          className="flex-1 glass-button font-semibold py-3 px-6 rounded-xl transition-all duration-300 ease-out hover:scale-105 hover:shadow-[0_12px_40px_rgba(0,0,0,0.4)] hover:bg-white/5 hover:backdrop-blur-sm"
         >
           Reset
         </button>
@@ -115,7 +115,7 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession, onModalCha
       {/* Save Modal */}
       {showSaveModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-50">
-          <div className="bg-gradient-to-br from-slate-200/95 to-slate-400/95 border border-white/40 shadow-2xl rounded-2xl p-6 max-w-md w-full">
+          <div className="bg-gradient-to-br from-slate-200/70 to-slate-400/5 border border-white/40 shadow-2xl rounded-2xl p-6 max-w-md w-full">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold text-slate-800">Save Recording</h3>
               <span className="font-mono text-lg text-slate-600">

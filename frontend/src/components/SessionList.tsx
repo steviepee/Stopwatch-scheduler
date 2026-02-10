@@ -101,13 +101,13 @@ export default function SessionList({
   };
 
   return (
-    <div className="glass-card rounded-2xl p-6">
+    <div className="glass-card rounded-2xl p-6 transition-all duration-300 ease-out hover:scale-105 hover:shadow-[0_12px_40px_rgba(0,0,0,0.4)] hover:bg-white/5 hover:backdrop-blur-sm">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-white drop-shadow-lg">Sessions</h2>
         {!isCalendarAuthenticated && (
           <button
             onClick={handleConnectCalendar}
-            className="glass-button text-sm py-2 px-4 rounded-xl flex items-center gap-2"
+            className="glass-button text-sm py-2 px-4 rounded-xl flex items-center gap-2 transition-all duration-300 ease-out hover:scale-105 hover:shadow-[0_12px_40px_rgba(0,0,0,0.4)] hover:bg-white/5 hover:backdrop-blur-sm"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
               <path
@@ -141,7 +141,7 @@ export default function SessionList({
           {sessions.map((session) => (
             <div
               key={session.id}
-              className="glass-inner rounded-xl p-4 hover:bg-white/20 transition-all duration-300"
+              className="glass-inner rounded-xl p-4 transition-all duration-300 ease-out hover:scale-105 hover:shadow-[0_12px_40px_rgba(0,0,0,0.4)] hover:bg-white/5 hover:backdrop-blur-sm"
             >
               <div className="flex justify-between items-start gap-4">
                 <div className="flex-1 min-w-0">
@@ -211,7 +211,7 @@ export default function SessionList({
                       <button
                         onClick={() => handleCalendarAction(session)}
                         disabled={loadingCalendar === session.id}
-                        className={`text-sm px-3 py-1 rounded-lg transition-all ${
+                        className={`text-sm px-3 py-1 rounded-lg transition-all duration-300 ease-out hover:scale-105 hover:shadow-[0_12px_40px_rgba(0,0,0,0.4)] hover:bg-white/5 hover:backdrop-blur-sm ${
                           session.is_on_calendar
                             ? 'glass-button-red'
                             : 'glass-button-primary'
@@ -231,7 +231,7 @@ export default function SessionList({
                     {/* Delete Button */}
                     <button
                       onClick={() => onDeleteSession(session.id)}
-                      className="text-red-400 hover:text-red-300 text-sm px-2 py-1"
+                      className="text-red-400 hover:text-red-300 text-sm px-2 py-1 transition-all duration-300 ease-out hover:scale-105 hover:shadow-[0_12px_40px_rgba(0,0,0,0.4)]"
                     >
                       Delete
                     </button>

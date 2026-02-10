@@ -22,7 +22,7 @@ export default function TaskList({ tasks, onDeleteTask, onSelectTask }: TaskList
   };
 
   return (
-    <div className="glass-card rounded-2xl p-6">
+    <div className="glass-card rounded-2xl p-6 transition-all duration-300 ease-out hover:scale-105 hover:shadow-[0_12px_40px_rgba(0,0,0,0.4)] hover:bg-white/5 hover:backdrop-blur-sm">
       <h2 className="text-2xl font-bold mb-6 text-white drop-shadow-lg">Tasks</h2>
 
       {tasks.length === 0 ? (
@@ -34,7 +34,7 @@ export default function TaskList({ tasks, onDeleteTask, onSelectTask }: TaskList
           {tasks.map((task) => (
             <div
               key={task.id}
-              className="glass-inner rounded-xl p-4 hover:bg-white/20 transition-all duration-300 cursor-pointer"
+              className="glass-inner rounded-xl p-4 transition-all duration-300 ease-out cursor-pointer hover:scale-105 hover:shadow-[0_12px_40px_rgba(0,0,0,0.4)] hover:bg-white/5 hover:backdrop-blur-sm"
               onClick={() => onSelectTask(task)}
             >
               <div className="flex justify-between items-start">
@@ -56,7 +56,7 @@ export default function TaskList({ tasks, onDeleteTask, onSelectTask }: TaskList
                     e.stopPropagation();
                     onDeleteTask(task.id);
                   }}
-                  className="text-red-400 hover:text-red-300 font-semibold px-3 py-1 transition-colors"
+                  className="text-red-400 hover:text-red-300 font-semibold px-3 py-1 transition-all duration-300 ease-out hover:scale-105 hover:shadow-[0_12px_40px_rgba(0,0,0,0.4)]"
                 >
                   Delete
                 </button>

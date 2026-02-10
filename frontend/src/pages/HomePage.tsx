@@ -187,7 +187,7 @@ export default function HomePage() {
           <div className="flex gap-2 mb-6">
             <button
               onClick={() => setActiveTab('calendar')}
-              className={`py-3 px-6 rounded-xl font-semibold transition-all ${
+              className={`py-3 px-6 rounded-xl font-semibold transition-all duration-300 ease-out hover:scale-105 hover:shadow-[0_12px_40px_rgba(0,0,0,0.4)] hover:bg-white/5 hover:backdrop-blur-sm ${
                 activeTab === 'calendar'
                   ? 'glass-button-primary'
                   : 'glass-button'
@@ -197,7 +197,7 @@ export default function HomePage() {
             </button>
             <button
               onClick={() => setActiveTab('sessions')}
-              className={`py-3 px-6 rounded-xl font-semibold transition-all ${
+              className={`py-3 px-6 rounded-xl font-semibold transition-all duration-300 ease-out hover:scale-105 hover:shadow-[0_12px_40px_rgba(0,0,0,0.4)] hover:bg-white/5 hover:backdrop-blur-sm ${
                 activeTab === 'sessions'
                   ? 'glass-button-primary'
                   : 'glass-button'
@@ -207,7 +207,7 @@ export default function HomePage() {
             </button>
             <button
               onClick={() => setActiveTab('tasks')}
-              className={`py-3 px-6 rounded-xl font-semibold transition-all ${
+              className={`py-3 px-6 rounded-xl font-semibold transition-all duration-300 ease-out hover:scale-105 hover:shadow-[0_12px_40px_rgba(0,0,0,0.4)] hover:bg-white/5 hover:backdrop-blur-sm ${
                 activeTab === 'tasks'
                   ? 'glass-button-primary'
                   : 'glass-button'
