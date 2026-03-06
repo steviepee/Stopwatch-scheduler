@@ -39,6 +39,14 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Verification:** `cd backend && source venv/bin/activate && python -m pytest tests/ -v` — 21 passed
 - **Gotchas:** Must patch `app.services.google_calendar.GoogleCalendarService._load_credentials` before importing app (calendar_service instantiated at module level). httpx must be pinned to <0.28 — starlette 0.35.1 TestClient is incompatible with httpx 0.28+ (passes `app=` kwarg that httpx 0.28 no longer accepts).
 
+## 6. Add frontend component tests
+- **Date:** 2026-03-06
+- **Status:** DONE
+- **Summary:** Installed vitest, @testing-library/react, @testing-library/jest-dom, @testing-library/user-event, jsdom. Configured vitest in vite.config.ts (globals: true, environment: jsdom). Added 15 tests across 3 files: Stopwatch (5 tests with real hook + vi.useFakeTimers + act), SessionList (5 tests including search filter), CalendarView (5 tests with @dnd-kit mocked). All pass. Added vitest/globals + @testing-library/jest-dom to tsconfig types.
+- **Files changed:** frontend/vite.config.ts, frontend/tsconfig.json, frontend/src/test-setup.ts, frontend/src/__tests__/Stopwatch.test.tsx, frontend/src/__tests__/SessionList.test.tsx, frontend/src/__tests__/CalendarView.test.tsx, frontend/package.json
+- **Verification:** `cd frontend && npx vitest run` — 15 passed; `npx tsc --noEmit` — passed
+- **Gotchas:** Must mock @dnd-kit/core and @dnd-kit/utilities for CalendarView — needs both CSS.Transform.toString and CSS.Translate.toString. The Stopwatch hook uses setInterval; must wrap clicks in act() and use vi.useFakeTimers() + vi.advanceTimersByTime(). Multiple elements can share text "Save Recording" — use getAllByText not getByText.
+
 ## 4. Generate PNG icons from SVG
 - **Date:** 2026-03-06
 - **Status:** DONE

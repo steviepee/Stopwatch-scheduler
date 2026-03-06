@@ -59,14 +59,14 @@ Mark tasks DONE when complete. Add failure notes if a task fails.
   - [x] All tests pass
 
 ### 6. Add frontend component tests
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Add Vitest + React Testing Library tests for key frontend components.
 - **Acceptance Criteria:**
-  - [ ] Testing dependencies installed (vitest, @testing-library/react)
-  - [ ] Tests for Stopwatch component (start, stop, reset, save)
-  - [ ] Tests for SessionList component (render, edit, delete)
-  - [ ] Tests for CalendarView component (render, navigation)
-  - [ ] All tests pass
+  - [x] Testing dependencies installed (vitest, @testing-library/react)
+  - [x] Tests for Stopwatch component (start, stop, reset, save)
+  - [x] Tests for SessionList component (render, edit, delete)
+  - [x] Tests for CalendarView component (render, navigation)
+  - [x] All tests pass
 
 ---
 
