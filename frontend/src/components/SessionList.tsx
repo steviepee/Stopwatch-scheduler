@@ -121,6 +121,35 @@ export default function SessionList({
     }
   };
 
+  const dateStamp = () => new Date().toISOString().split('T')[0];
+
+  const exportCSV = () => {
+    const headers = ['id', 'name', 'duration_seconds', 'task_id', 'notes', 'is_on_calendar', 'created_at'];
+    const rows = sessions.map(s => [
+      s.id,
+      `"${s.name.replace(/"/g, '""')}"`,
+      s.duration,
+      s.task_id ?? '',
+      `"${(s.notes ?? '').replace(/"/g, '""')}"`,
+      s.is_on_calendar,
+      s.created_at,
+    ].join(','));
+    const csv = [headers.join(','), ...rows].join('\n');
+    download(`sessions_${dateStamp()}.csv`, csv, 'text/csv');
+  };
+
+  const exportJSON = () => {
+    download(`sessions_${dateStamp()}.json`, JSON.stringify(sessions, null, 2), 'application/json');
+  };
+
+  const download = (filename: string, content: string, type: string) => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([content], { type }));
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
   return (
     <div className="glass-card rounded-2xl p-6 transition-all duration-300 ease-out hover:scale-105 hover:shadow-[0_12px_40px_rgba(0,0,0,0.4)] hover:bg-white/5 hover:backdrop-blur-sm">
       <div className="flex justify-between items-center mb-6">
@@ -151,6 +180,14 @@ export default function SessionList({
             Connect Calendar
           </button>
         )}
+        <div className="flex gap-2">
+          <button onClick={exportCSV} className="glass-button text-xs py-1 px-3 rounded-lg">
+            CSV
+          </button>
+          <button onClick={exportJSON} className="glass-button text-xs py-1 px-3 rounded-lg">
+            JSON
+          </button>
+        </div>
       </div>
 
       {/* Filters */}

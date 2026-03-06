@@ -14,3 +14,11 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Files changed:** frontend/src/components/SessionList.tsx, frontend/src/components/ScheduleBuilder.tsx, frontend/src/components/ScheduleTimeline.tsx
 - **Verification:** `cd frontend && npx tsc --noEmit` — passed cleanly
 - **Gotchas:** calendarImportAPI.getEvents returns `{ summary, start, end }` (Google Calendar shape) but ScheduleBuilder's existingEvents state used `{ name, start, end }` — normalize on import.
+
+## 2. Add data export feature
+- **Date:** 2026-03-06
+- **Status:** DONE
+- **Summary:** Added CSV and JSON export buttons to both SessionList (Recordings tab) and TaskList (Activities tab). Uses Blob + URL.createObjectURL for client-side download with date-stamped filenames.
+- **Files changed:** frontend/src/components/SessionList.tsx, frontend/src/components/TaskList.tsx
+- **Verification:** `cd frontend && npx tsc --noEmit` — passed cleanly
+- **Gotchas:** None

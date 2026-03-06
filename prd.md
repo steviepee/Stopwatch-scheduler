@@ -20,13 +20,13 @@ Mark tasks DONE when complete. Add failure notes if a task fails.
   - [x] No full page reload on filter change
 
 ### 2. Add data export feature
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Allow users to export their sessions and tasks as CSV or JSON files.
 - **Acceptance Criteria:**
-  - [ ] Export button in Sessions tab exports all sessions as CSV
-  - [ ] Export button in Tasks tab exports all tasks with averages as CSV
-  - [ ] JSON export option available for both
-  - [ ] File downloads with descriptive filename (e.g., `sessions_2026-02-08.csv`)
+  - [x] Export button in Sessions tab exports all sessions as CSV
+  - [x] Export button in Tasks tab exports all tasks with averages as CSV
+  - [x] JSON export option available for both
+  - [x] File downloads with descriptive filename (e.g., `sessions_2026-02-08.csv`)
 
 ### 3. Add time log history/detail view
 - **Status:** PENDING
