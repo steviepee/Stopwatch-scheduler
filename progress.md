@@ -31,6 +31,14 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Verification:** `cd frontend && npx tsc --noEmit` — passed cleanly
 - **Gotchas:** taskAPI.getById returns Task but backend schema returns TaskWithLogs — used `as unknown as TaskWithLogs` cast since the API type already covers the additional field.
 
+## 5. Add unit tests for backend API
+- **Date:** 2026-03-06
+- **Status:** DONE
+- **Summary:** Created backend/tests/ with conftest.py (SQLite in-memory DB, mocked GoogleCalendarService), test_tasks.py (7 tests), test_sessions.py (8 tests), test_time_logs.py (6 tests). All 21 tests pass. Added pytest, httpx, pytest-asyncio to requirements.txt.
+- **Files changed:** backend/tests/__init__.py, backend/tests/conftest.py, backend/tests/test_tasks.py, backend/tests/test_sessions.py, backend/tests/test_time_logs.py, backend/requirements.txt
+- **Verification:** `cd backend && source venv/bin/activate && python -m pytest tests/ -v` — 21 passed
+- **Gotchas:** Must patch `app.services.google_calendar.GoogleCalendarService._load_credentials` before importing app (calendar_service instantiated at module level). httpx must be pinned to <0.28 — starlette 0.35.1 TestClient is incompatible with httpx 0.28+ (passes `app=` kwarg that httpx 0.28 no longer accepts).
+
 ## 4. Generate PNG icons from SVG
 - **Date:** 2026-03-06
 - **Status:** DONE

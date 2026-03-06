@@ -48,15 +48,15 @@ Mark tasks DONE when complete. Add failure notes if a task fails.
   - [x] Icons display correctly in PWA install prompt
 
 ### 5. Add unit tests for backend API
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Add pytest tests covering the core CRUD endpoints for tasks, sessions, and time logs.
 - **Acceptance Criteria:**
-  - [ ] Test file(s) in `backend/tests/`
-  - [ ] Tests for task CRUD (create, read, update, delete)
-  - [ ] Tests for session CRUD
-  - [ ] Tests for time log CRUD
-  - [ ] Tests for session scheduling endpoints
-  - [ ] All tests pass
+  - [x] Test file(s) in `backend/tests/`
+  - [x] Tests for task CRUD (create, read, update, delete)
+  - [x] Tests for session CRUD
+  - [x] Tests for time log CRUD
+  - [x] Tests for session scheduling endpoints
+  - [x] All tests pass
 
 ### 6. Add frontend component tests
 - **Status:** PENDING
