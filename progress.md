@@ -30,3 +30,11 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Files changed:** frontend/src/components/TaskDetailModal.tsx, frontend/src/pages/HomePage.tsx
 - **Verification:** `cd frontend && npx tsc --noEmit` — passed cleanly
 - **Gotchas:** taskAPI.getById returns Task but backend schema returns TaskWithLogs — used `as unknown as TaskWithLogs` cast since the API type already covers the additional field.
+
+## 4. Generate PNG icons from SVG
+- **Date:** 2026-03-06
+- **Status:** DONE
+- **Summary:** Installed `sharp` npm package and ran inline node script to generate PNG icons at 72, 96, 128, 144, 152, 192, 384, 512px from public/icon.svg. manifest.json already referenced all sizes.
+- **Files changed:** frontend/public/icon-{72,96,128,144,152,192,384,512}.png, frontend/package.json (sharp dev dep)
+- **Verification:** All 8 PNG files present and non-empty in public/
+- **Gotchas:** ImageMagick not available in this environment. Must use `sharp` npm package. install with `npm install sharp --save-dev` then run inline node script.

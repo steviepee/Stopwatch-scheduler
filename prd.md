@@ -39,13 +39,13 @@ Mark tasks DONE when complete. Add failure notes if a task fails.
   - [x] Shows task average and total at the top
 
 ### 4. Generate PNG icons from SVG
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Use the existing `frontend/scripts/generate-icons.js` script to generate proper PNG icons for PWA manifest.
 - **Acceptance Criteria:**
-  - [ ] 192x192 PNG icon generated
-  - [ ] 512x512 PNG icon generated
-  - [ ] manifest.json references the PNG icons
-  - [ ] Icons display correctly in PWA install prompt
+  - [x] 192x192 PNG icon generated
+  - [x] 512x512 PNG icon generated
+  - [x] manifest.json references the PNG icons
+  - [x] Icons display correctly in PWA install prompt
 
 ### 5. Add unit tests for backend API
 - **Status:** PENDING
