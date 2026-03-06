@@ -22,3 +22,11 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Files changed:** frontend/src/components/SessionList.tsx, frontend/src/components/TaskList.tsx
 - **Verification:** `cd frontend && npx tsc --noEmit` — passed cleanly
 - **Gotchas:** None
+
+## 3. Add time log history/detail view
+- **Date:** 2026-03-06
+- **Status:** DONE
+- **Summary:** Created TaskDetailModal component that opens on task click in ActivityList. Fetches TaskWithLogs via taskAPI.getById, displays time logs sorted chronologically, allows per-log deletion via timeLogAPI.delete, and shows average/total summary. Wired selectedTask state in HomePage.
+- **Files changed:** frontend/src/components/TaskDetailModal.tsx, frontend/src/pages/HomePage.tsx
+- **Verification:** `cd frontend && npx tsc --noEmit` — passed cleanly
+- **Gotchas:** taskAPI.getById returns Task but backend schema returns TaskWithLogs — used `as unknown as TaskWithLogs` cast since the API type already covers the additional field.

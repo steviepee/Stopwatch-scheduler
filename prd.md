@@ -29,14 +29,14 @@ Mark tasks DONE when complete. Add failure notes if a task fails.
   - [x] File downloads with descriptive filename (e.g., `sessions_2026-02-08.csv`)
 
 ### 3. Add time log history/detail view
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Create a detail view for individual tasks showing all time log entries with timestamps, durations, and notes.
 - **Acceptance Criteria:**
-  - [ ] Clicking a task opens a detail/history view
-  - [ ] Shows all time logs in chronological order
-  - [ ] Each entry shows duration, notes, and created_at
-  - [ ] Can delete individual time logs from this view
-  - [ ] Shows task average and total at the top
+  - [x] Clicking a task opens a detail/history view
+  - [x] Shows all time logs in chronological order
+  - [x] Each entry shows duration, notes, and created_at
+  - [x] Can delete individual time logs from this view
+  - [x] Shows task average and total at the top
 
 ### 4. Generate PNG icons from SVG
 - **Status:** PENDING
