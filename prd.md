@@ -10,14 +10,14 @@ Mark tasks DONE when complete. Add failure notes if a task fails.
 ## Tasks
 
 ### 1. Add session search and filtering
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Add search bar and filter controls to the Sessions tab. Users should be able to filter sessions by name (text search), date range, and whether they're on the calendar.
 - **Acceptance Criteria:**
-  - [ ] Search input filters sessions by name (case-insensitive)
-  - [ ] Date range picker filters by created_at
-  - [ ] Toggle filter for calendar status (all / on calendar / not on calendar)
-  - [ ] Filters combine (AND logic)
-  - [ ] No full page reload on filter change
+  - [x] Search input filters sessions by name (case-insensitive)
+  - [x] Date range picker filters by created_at
+  - [x] Toggle filter for calendar status (all / on calendar / not on calendar)
+  - [x] Filters combine (AND logic)
+  - [x] No full page reload on filter change
 
 ### 2. Add data export feature
 - **Status:** PENDING

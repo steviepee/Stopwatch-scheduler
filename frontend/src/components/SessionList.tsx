@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { StopwatchSession } from '../types';
 import { googleCalendarAPI } from '../services/api';
+
+type CalendarFilter = 'all' | 'on' | 'off';
 
 interface SessionListProps {
   sessions: StopwatchSession[];
@@ -21,6 +23,25 @@ export default function SessionList({
   const [editName, setEditName] = useState('');
   const [isCalendarAuthenticated, setIsCalendarAuthenticated] = useState(false);
   const [loadingCalendar, setLoadingCalendar] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [calendarFilter, setCalendarFilter] = useState<CalendarFilter>('all');
+
+  const filteredSessions = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    const from = dateFrom ? new Date(dateFrom) : null;
+    const to = dateTo ? new Date(dateTo + 'T23:59:59') : null;
+    return sessions.filter(s => {
+      if (q && !s.name.toLowerCase().includes(q)) return false;
+      const created = new Date(s.created_at);
+      if (from && created < from) return false;
+      if (to && created > to) return false;
+      if (calendarFilter === 'on' && !s.is_on_calendar) return false;
+      if (calendarFilter === 'off' && s.is_on_calendar) return false;
+      return true;
+    });
+  }, [sessions, searchQuery, dateFrom, dateTo, calendarFilter]);
 
   useEffect(() => {
     checkCalendarAuth();
@@ -103,7 +124,7 @@ export default function SessionList({
   return (
     <div className="glass-card rounded-2xl p-6 transition-all duration-300 ease-out hover:scale-105 hover:shadow-[0_12px_40px_rgba(0,0,0,0.4)] hover:bg-white/5 hover:backdrop-blur-sm">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-white drop-shadow-lg">Sessions</h2>
+        <h2 className="text-2xl font-bold text-white drop-shadow-lg">Recordings</h2>
         {!isCalendarAuthenticated && (
           <button
             onClick={handleConnectCalendar}
@@ -132,13 +153,61 @@ export default function SessionList({
         )}
       </div>
 
+      {/* Filters */}
+      <div className="mb-4 space-y-3">
+        <input
+          type="text"
+          placeholder="Search by name..."
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          className="glass-input w-full px-3 py-2 rounded-lg text-sm"
+        />
+        <div className="flex flex-wrap gap-2 items-center">
+          <div className="flex gap-2 items-center flex-1 min-w-0">
+            <label className="text-white/60 text-xs whitespace-nowrap">From</label>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={e => setDateFrom(e.target.value)}
+              className="glass-input flex-1 px-2 py-1 rounded-lg text-sm"
+            />
+          </div>
+          <div className="flex gap-2 items-center flex-1 min-w-0">
+            <label className="text-white/60 text-xs whitespace-nowrap">To</label>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={e => setDateTo(e.target.value)}
+              className="glass-input flex-1 px-2 py-1 rounded-lg text-sm"
+            />
+          </div>
+          <div className="flex rounded-lg overflow-hidden border border-white/20 text-xs">
+            {(['all', 'on', 'off'] as CalendarFilter[]).map(f => (
+              <button
+                key={f}
+                onClick={() => setCalendarFilter(f)}
+                className={`px-3 py-1 transition-colors ${
+                  calendarFilter === f
+                    ? 'bg-white/20 text-white font-semibold'
+                    : 'text-white/60 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                {f === 'all' ? 'All' : f === 'on' ? 'On Calendar' : 'Not on Calendar'}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {sessions.length === 0 ? (
         <p className="text-white/70 text-center py-8">
           No sessions yet. Start the stopwatch to create your first session!
         </p>
+      ) : filteredSessions.length === 0 ? (
+        <p className="text-white/70 text-center py-8">No recordings match your filters.</p>
       ) : (
         <div className="space-y-3 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
-          {sessions.map((session) => (
+          {filteredSessions.map((session) => (
             <div
               key={session.id}
               className="glass-inner rounded-xl p-4 transition-all duration-300 ease-out hover:scale-105 hover:shadow-[0_12px_40px_rgba(0,0,0,0.4)] hover:bg-white/5 hover:backdrop-blur-sm"
