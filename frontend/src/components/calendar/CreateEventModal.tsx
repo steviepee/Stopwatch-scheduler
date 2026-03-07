@@ -1,28 +1,51 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { formatDayLong } from '../../utils/calendarUtils';
+import { Task, TaskStats, UserOptions, DEFAULT_USER_OPTIONS } from '../../types';
+import { taskAPI } from '../../services/api';
 
 interface CreateEventModalProps {
   initialDate: Date;
   initialTime: string; // "HH:MM" format
   onClose: () => void;
   onSubmit: (data: { name: string; date: Date; startTime: string; durationMinutes: number }) => void;
+  tasks?: Task[];
+  options?: UserOptions;
 }
 
-export function CreateEventModal({ initialDate, initialTime, onClose, onSubmit }: CreateEventModalProps) {
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  return `${Math.floor(seconds / 60)}m`;
+}
+
+export function CreateEventModal({ initialDate, initialTime, onClose, onSubmit, tasks = [], options }: CreateEventModalProps) {
+  const opts = options ?? DEFAULT_USER_OPTIONS;
   const [name, setName] = useState('');
   const [startTime, setStartTime] = useState(initialTime);
   const [durationMinutes, setDurationMinutes] = useState(30);
+  const [stats, setStats] = useState<TaskStats | null>(null);
+
+  useEffect(() => {
+    if (!name.trim()) { setStats(null); return; }
+    const exact = tasks.find(t => t.name.toLowerCase() === name.toLowerCase());
+    if (exact) {
+      taskAPI.getStats(exact.id).then(s => {
+        setStats(s);
+        // Auto-fill duration from best available metric
+        let secs: number | null = null;
+        if (opts.showPrevious && s.previous != null) secs = s.previous;
+        else if (opts.showMedian && s.median != null) secs = s.median;
+        else if (opts.showAverage) secs = s.average;
+        if (secs) setDurationMinutes(Math.round(secs / 60));
+      }).catch(() => setStats(null));
+    } else {
+      setStats(null);
+    }
+  }, [name]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-
-    onSubmit({
-      name: name.trim(),
-      date: initialDate,
-      startTime,
-      durationMinutes,
-    });
+    onSubmit({ name: name.trim(), date: initialDate, startTime, durationMinutes });
   };
 
   const durationOptions = [
@@ -35,6 +58,8 @@ export function CreateEventModal({ initialDate, initialTime, onClose, onSubmit }
     { value: 180, label: '3 hours' },
     { value: 240, label: '4 hours' },
   ];
+
+  const anyMetric = opts.showAverage || opts.showMedian || opts.showPrevious;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -60,7 +85,25 @@ export function CreateEventModal({ initialDate, initialTime, onClose, onSubmit }
                 placeholder="Meeting, Appointment, etc."
                 autoFocus
                 className="glass-input"
+                list="activity-suggestions"
               />
+              <datalist id="activity-suggestions">
+                {tasks.map(t => <option key={t.id} value={t.name} />)}
+              </datalist>
+              {/* Duration hints */}
+              {stats && anyMetric && (
+                <div className="flex gap-3 mt-1 text-xs" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                  {opts.showAverage && (
+                    <span>Avg: <strong style={{ color: 'rgba(255,255,255,0.8)' }}>{formatDuration(stats.average)}</strong></span>
+                  )}
+                  {opts.showMedian && stats.median != null && (
+                    <span>Median: <strong style={{ color: 'rgba(255,255,255,0.8)' }}>{formatDuration(stats.median)}</strong></span>
+                  )}
+                  {opts.showPrevious && stats.previous != null && (
+                    <span>Last: <strong style={{ color: 'rgba(255,255,255,0.8)' }}>{formatDuration(stats.previous)}</strong></span>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="form-row">

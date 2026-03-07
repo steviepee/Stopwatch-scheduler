@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { DndContext, DragEndEvent, DragOverlay, pointerWithin } from '@dnd-kit/core';
-import { StopwatchSession } from '../../types';
+import { StopwatchSession, Task, UserOptions } from '../../types';
 import { sessionAPI } from '../../services/api';
 import { CalendarGrid } from './CalendarGrid';
 import { SessionBank } from './SessionBank';
@@ -12,6 +12,8 @@ interface CalendarViewProps {
   unscheduledSessions: StopwatchSession[];
   onSessionUpdate: (session: StopwatchSession) => void;
   onSessionCreate: (session: StopwatchSession) => void;
+  tasks?: Task[];
+  options?: UserOptions;
 }
 
 const START_HOUR = 6;
@@ -29,6 +31,8 @@ export function CalendarView({
   unscheduledSessions,
   onSessionUpdate,
   onSessionCreate,
+  tasks,
+  options,
 }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'week' | 'day'>('week');
@@ -252,6 +256,8 @@ export function CalendarView({
           initialTime={createEventData.time}
           onClose={() => setCreateEventData(null)}
           onSubmit={handleCreateEvent}
+          tasks={tasks}
+          options={options}
         />
       )}
     </DndContext>

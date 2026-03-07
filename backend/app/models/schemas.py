@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 # Task Schemas
 class TaskBase(BaseModel):
@@ -90,3 +90,74 @@ class StopwatchSessionWithTask(StopwatchSession):
 
     class Config:
         from_attributes = True
+
+
+# TaskStats schema
+class TaskStats(BaseModel):
+    average: float
+    median: Optional[float] = None
+    previous: Optional[float] = None
+
+
+# ScheduleItem schemas
+class ScheduleItemBase(BaseModel):
+    task_id: Optional[int] = None
+    custom_name: Optional[str] = None
+    estimated_duration: float
+    position: int = 0
+    scheduled_time: Optional[datetime] = None
+
+class ScheduleItemCreate(ScheduleItemBase):
+    pass
+
+class ScheduleItemUpdate(BaseModel):
+    task_id: Optional[int] = None
+    custom_name: Optional[str] = None
+    estimated_duration: Optional[float] = None
+    position: Optional[int] = None
+    scheduled_time: Optional[datetime] = None
+
+class ScheduleItem(ScheduleItemBase):
+    id: int
+    schedule_id: int
+    task: Optional[Task] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Schedule schemas
+class ScheduleBase(BaseModel):
+    name: str
+    schedule_type: str = "day"
+    target_date: Optional[datetime] = None
+    notes: Optional[str] = None
+    is_regimen: bool = False
+
+class ScheduleCreate(ScheduleBase):
+    items: List[ScheduleItemCreate] = []
+
+class ScheduleUpdate(BaseModel):
+    name: Optional[str] = None
+    schedule_type: Optional[str] = None
+    target_date: Optional[datetime] = None
+    rating: Optional[int] = None
+    notes: Optional[str] = None
+    is_regimen: Optional[bool] = None
+
+class Schedule(ScheduleBase):
+    id: int
+    rating: Optional[int] = None
+    items: List[ScheduleItem] = []
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# For applying a regimen to a date
+class ApplyRegimen(BaseModel):
+    target_date: datetime
+    name: Optional[str] = None

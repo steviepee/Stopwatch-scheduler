@@ -5,6 +5,7 @@ from typing import List
 from app.database import get_db
 from app.models import task as task_model
 from app.models import schemas
+from app.models.time_log import TimeLog
 
 router = APIRouter()
 
@@ -60,3 +61,36 @@ def delete_task(task_id: int, db: Session = Depends(get_db)):
     db.delete(db_task)
     db.commit()
     return {"message": "Task deleted successfully"}
+
+
+@router.get("/{task_id}/stats", response_model=schemas.TaskStats)
+def get_task_stats(task_id: int, db: Session = Depends(get_db)):
+    """Get average, median, and previous duration for a task."""
+    task = db.query(task_model.Task).filter(task_model.Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    logs = (
+        db.query(TimeLog)
+        .filter(TimeLog.task_id == task_id)
+        .order_by(TimeLog.created_at.desc())
+        .all()
+    )
+
+    if not logs:
+        return schemas.TaskStats(average=0.0, median=None, previous=None)
+
+    previous = logs[0].duration
+
+    durations = sorted(l.duration for l in logs)
+    n = len(durations)
+    if n % 2 == 1:
+        median = durations[n // 2]
+    else:
+        median = (durations[n // 2 - 1] + durations[n // 2]) / 2
+
+    return schemas.TaskStats(
+        average=task.average_duration,
+        median=median,
+        previous=previous,
+    )

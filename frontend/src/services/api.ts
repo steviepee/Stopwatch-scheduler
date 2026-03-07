@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Task, TaskCreate, TimeLogCreate, TimeLog, StopwatchSession, StopwatchSessionCreate, StopwatchSessionUpdate, StopwatchSessionWithTask, StopwatchSessionSchedule } from '../types';
+import { Task, TaskCreate, TaskStats, TimeLogCreate, TimeLog, StopwatchSession, StopwatchSessionCreate, StopwatchSessionUpdate, StopwatchSessionWithTask, StopwatchSessionSchedule, Schedule, ScheduleCreate, ScheduleUpdate, ScheduleItem, ScheduleItemCreate, ScheduleItemUpdate, ApplyRegimen } from '../types';
 
 const API_BASE_URL = '/api';
 
@@ -29,6 +29,11 @@ export const taskAPI = {
 
   delete: async (id: number): Promise<void> => {
     await api.delete(`/tasks/${id}`);
+  },
+
+  getStats: async (id: number): Promise<TaskStats> => {
+    const response = await api.get(`/tasks/${id}/stats`);
+    return response.data;
   },
 };
 
@@ -130,6 +135,67 @@ export const sessionAPI = {
 
   unschedule: async (id: number): Promise<StopwatchSession> => {
     const response = await api.put(`/sessions/${id}/unschedule`);
+    return response.data;
+  },
+};
+
+// Schedule APIs
+export const scheduleAPI = {
+  getAll: async (isRegimen?: boolean): Promise<Schedule[]> => {
+    const params: Record<string, unknown> = {};
+    if (isRegimen !== undefined) params.is_regimen = isRegimen;
+    const response = await api.get('/schedules/', { params });
+    return response.data;
+  },
+
+  getById: async (id: number): Promise<Schedule> => {
+    const response = await api.get(`/schedules/${id}`);
+    return response.data;
+  },
+
+  create: async (schedule: ScheduleCreate): Promise<Schedule> => {
+    const response = await api.post('/schedules/', schedule);
+    return response.data;
+  },
+
+  update: async (id: number, schedule: ScheduleUpdate): Promise<Schedule> => {
+    const response = await api.put(`/schedules/${id}`, schedule);
+    return response.data;
+  },
+
+  delete: async (id: number): Promise<void> => {
+    await api.delete(`/schedules/${id}`);
+  },
+
+  rate: async (id: number, rating: number): Promise<Schedule> => {
+    const response = await api.patch(`/schedules/${id}/rate`, null, { params: { rating } });
+    return response.data;
+  },
+
+  applyRegimen: async (id: number, body: ApplyRegimen): Promise<Schedule> => {
+    const response = await api.post(`/schedules/${id}/apply`, body);
+    return response.data;
+  },
+
+  addItem: async (scheduleId: number, item: ScheduleItemCreate): Promise<ScheduleItem> => {
+    const response = await api.post(`/schedules/${scheduleId}/items`, item);
+    return response.data;
+  },
+
+  updateItem: async (scheduleId: number, itemId: number, item: ScheduleItemUpdate): Promise<ScheduleItem> => {
+    const response = await api.put(`/schedules/${scheduleId}/items/${itemId}`, item);
+    return response.data;
+  },
+
+  deleteItem: async (scheduleId: number, itemId: number): Promise<void> => {
+    await api.delete(`/schedules/${scheduleId}/items/${itemId}`);
+  },
+};
+
+// Google Calendar import
+export const calendarImportAPI = {
+  getEvents: async (date: string): Promise<{ summary: string; start: string; end: string }[]> => {
+    const response = await api.get('/auth/calendar/events', { params: { date } });
     return response.data;
   },
 };

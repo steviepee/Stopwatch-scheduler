@@ -22,6 +22,7 @@ DRY_RUN=false
 PROMPT_FILE="PROMPT.md"
 PRD_FILE="prd.md"
 PROGRESS_FILE="progress.md"
+MODEL="claude-sonnet-4-6"
 
 # --- Parse args ---
 while [[ $# -gt 0 ]]; do
@@ -30,17 +31,22 @@ while [[ $# -gt 0 ]]; do
       MAX_ITERATIONS="$2"
       shift 2
       ;;
+    --model)
+      MODEL="$2"
+      shift 2
+      ;;
     --dry-run)
       DRY_RUN=true
       shift
       ;;
     -h|--help)
-      echo "Usage: ./ralph.sh [--max N] [--dry-run] [-h|--help]"
+      echo "Usage: ./ralph.sh [--max N] [--model MODEL] [--dry-run] [-h|--help]"
       echo ""
       echo "Options:"
-      echo "  --max N     Maximum iterations (default: 30)"
-      echo "  --dry-run   Show status without running"
-      echo "  -h, --help  Show this help"
+      echo "  --max N       Maximum iterations (default: 30)"
+      echo "  --model MODEL Claude model ID (default: claude-sonnet-4-6)"
+      echo "  --dry-run     Show status without running"
+      echo "  -h, --help    Show this help"
       exit 0
       ;;
     *)
@@ -91,6 +97,7 @@ echo "  Pending:  $(pending_count)"
 echo "  Done:     $(done_count)"
 echo "  Blocked:  $(blocked_count)"
 echo "  Max iter: $MAX_ITERATIONS"
+echo "  Model:    $MODEL"
 echo "========================================="
 echo ""
 
@@ -133,7 +140,7 @@ while [[ $iteration -lt $MAX_ITERATIONS ]]; do
   # Spawn a fresh Claude Code session with the prompt
   # --print mode sends the prompt and gets a response without interactive mode
   # The prompt file tells Claude to read CLAUDE.md, prd.md, and progress.md
-  claude --print "$(cat "$PROMPT_FILE")" || {
+  claude --model "$MODEL" --print "$(cat "$PROMPT_FILE")" || {
     echo ""
     echo "[WARN] Claude session exited with non-zero status at $(timestamp)"
     echo "       Continuing to next iteration..."

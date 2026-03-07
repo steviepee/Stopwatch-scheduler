@@ -4,7 +4,8 @@ import os
 from dotenv import load_dotenv
 
 from app.database import engine, Base
-from app.routers import tasks, time_logs, calendar_auth, sessions
+from app.routers import tasks, time_logs, calendar_auth, sessions, schedules
+import app.models.schedule  # ensure tables are registered with Base
 
 load_dotenv()
 
@@ -29,6 +30,7 @@ app.include_router(tasks.router, prefix="/api/tasks", tags=["tasks"])
 app.include_router(time_logs.router, prefix="/api/time-logs", tags=["time-logs"])
 app.include_router(calendar_auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(sessions.router, prefix="/api/sessions", tags=["sessions"])
+app.include_router(schedules.router, prefix="/api/schedules", tags=["schedules"])
 
 @app.get("/")
 def read_root():

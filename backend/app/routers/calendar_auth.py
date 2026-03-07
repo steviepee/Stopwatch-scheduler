@@ -42,3 +42,15 @@ def auth_status():
     """Check if user is authenticated with Google Calendar"""
     is_authenticated = calendar_service.is_authenticated()
     return {"authenticated": is_authenticated}
+
+
+@router.get("/calendar/events")
+def get_calendar_events(date: str):
+    """Fetch Google Calendar events for a given date (YYYY-MM-DD)."""
+    if not calendar_service.is_authenticated():
+        raise HTTPException(status_code=401, detail="Not authenticated with Google Calendar")
+    try:
+        events = calendar_service.get_events_for_date(date)
+        return events
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

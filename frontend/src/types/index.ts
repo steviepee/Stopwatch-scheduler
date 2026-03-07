@@ -77,3 +77,88 @@ export interface StopwatchSessionSchedule {
 export interface StopwatchSessionWithTask extends StopwatchSession {
   task?: Task;
 }
+
+export interface TaskStats {
+  average: number;
+  median: number | null;
+  previous: number | null;
+}
+
+export interface ScheduleItem {
+  id: number;
+  schedule_id: number;
+  task_id?: number;
+  custom_name?: string;
+  estimated_duration: number;
+  position: number;
+  scheduled_time?: string;
+  task?: Task;
+  created_at: string;
+}
+
+export interface ScheduleItemCreate {
+  task_id?: number;
+  custom_name?: string;
+  estimated_duration: number;
+  position?: number;
+  scheduled_time?: string;
+}
+
+export interface ScheduleItemUpdate {
+  task_id?: number;
+  custom_name?: string;
+  estimated_duration?: number;
+  position?: number;
+  scheduled_time?: string;
+}
+
+export interface Schedule {
+  id: number;
+  name: string;
+  schedule_type: 'day' | 'week' | 'month';
+  target_date?: string;
+  rating?: number;
+  notes?: string;
+  is_regimen: boolean;
+  items: ScheduleItem[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ScheduleCreate {
+  name: string;
+  schedule_type?: 'day' | 'week' | 'month';
+  target_date?: string;
+  notes?: string;
+  is_regimen?: boolean;
+  items?: ScheduleItemCreate[];
+}
+
+export interface ScheduleUpdate {
+  name?: string;
+  schedule_type?: 'day' | 'week' | 'month';
+  target_date?: string;
+  rating?: number;
+  notes?: string;
+  is_regimen?: boolean;
+}
+
+export interface ApplyRegimen {
+  target_date: string;
+  name?: string;
+}
+
+// User preferences stored in localStorage
+export interface UserOptions {
+  showAverage: boolean;
+  showMedian: boolean;
+  showPrevious: boolean;
+  backgroundImage: string | null;
+}
+
+export const DEFAULT_USER_OPTIONS: UserOptions = {
+  showAverage: true,
+  showMedian: true,
+  showPrevious: true,
+  backgroundImage: null,
+};

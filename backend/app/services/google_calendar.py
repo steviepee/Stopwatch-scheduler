@@ -78,6 +78,35 @@ class GoogleCalendarService:
         """Check if user is authenticated"""
         return self.creds is not None and self.creds.valid
 
+    def get_events_for_date(self, date_str: str) -> list:
+        """Fetch all events from the primary calendar for a given date (YYYY-MM-DD)."""
+        if not self.is_authenticated():
+            raise Exception("Not authenticated with Google Calendar")
+
+        from datetime import timezone
+        day = datetime.strptime(date_str, "%Y-%m-%d")
+        time_min = day.replace(hour=0, minute=0, second=0, microsecond=0).isoformat() + "Z"
+        time_max = day.replace(hour=23, minute=59, second=59, microsecond=0).isoformat() + "Z"
+
+        result = self.service.events().list(
+            calendarId="primary",
+            timeMin=time_min,
+            timeMax=time_max,
+            singleEvents=True,
+            orderBy="startTime",
+        ).execute()
+
+        events = []
+        for item in result.get("items", []):
+            start = item.get("start", {})
+            end = item.get("end", {})
+            events.append({
+                "summary": item.get("summary", ""),
+                "start": start.get("dateTime") or start.get("date"),
+                "end": end.get("dateTime") or end.get("date"),
+            })
+        return events
+
     def create_event(self, task_name: str, duration_seconds: float, start_time: str = None):
         """Create a calendar event"""
         if not self.is_authenticated():

@@ -133,7 +133,7 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession, onModalCha
                     : 'bg-white/50 text-slate-700 hover:bg-white/70'
                 }`}
               >
-                Save as Session
+                Save as Recording
               </button>
               <button
                 onClick={() => setSaveType('timelog')}
@@ -143,7 +143,7 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession, onModalCha
                     : 'bg-white/50 text-slate-700 hover:bg-white/70'
                 }`}
               >
-                Add to Task
+                Add to Activity
               </button>
             </div>
 
@@ -151,27 +151,27 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession, onModalCha
               <>
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Session Name *
+                    Recording Name *
                   </label>
                   <input
                     type="text"
                     value={sessionName}
                     onChange={(e) => setSessionName(e.target.value)}
                     className="bg-white/60 border border-slate-300 text-slate-800 placeholder-slate-500 w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-400"
-                    placeholder="Name this session..."
+                    placeholder="Name this recording..."
                   />
                 </div>
 
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Link to Task (optional)
+                    Link to Activity (optional)
                   </label>
                   <select
                     value={selectedTaskId || ''}
                     onChange={(e) => setSelectedTaskId(e.target.value ? Number(e.target.value) : null)}
                     className="bg-white/60 border border-slate-300 text-slate-800 placeholder-slate-500 w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-400"
                   >
-                    <option value="">No task linked</option>
+                    <option value="">No activity linked</option>
                     {tasks.map((task) => (
                       <option key={task.id} value={task.id}>
                         {task.name}
@@ -183,14 +183,14 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession, onModalCha
             ) : (
               <div className="mb-4">
                 <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Select Task *
+                  Select Activity *
                 </label>
                 <select
                   value={selectedTaskId || ''}
                   onChange={(e) => setSelectedTaskId(Number(e.target.value))}
                   className="bg-white/60 border border-slate-300 text-slate-800 placeholder-slate-500 w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-400"
                 >
-                  <option value="">Choose a task...</option>
+                  <option value="">Choose an activity...</option>
                   {tasks.map((task) => (
                     <option key={task.id} value={task.id}>
                       {task.name}
@@ -220,7 +220,7 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession, onModalCha
                   disabled={!sessionName.trim()}
                   className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 disabled:hover:bg-emerald-600 font-semibold py-3 px-4 rounded-xl transition-all shadow-md"
                 >
-                  Save Session
+                  Save Recording
                 </button>
               ) : (
                 <button
@@ -228,7 +228,7 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession, onModalCha
                   disabled={!selectedTaskId}
                   className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 disabled:hover:bg-emerald-600 font-semibold py-3 px-4 rounded-xl transition-all shadow-md"
                 >
-                  Save to Task
+                  Save to Activity
                 </button>
               )}
               <button
