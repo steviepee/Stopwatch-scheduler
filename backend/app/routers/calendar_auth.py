@@ -45,12 +45,12 @@ def auth_status():
 
 
 @router.get("/calendar/events")
-def get_calendar_events(date: str):
-    """Fetch Google Calendar events for a given date (YYYY-MM-DD)."""
+def get_calendar_events(date: str, tz_offset: int = 0):
+    """Fetch Google Calendar events for a given date (YYYY-MM-DD) in the caller's local day."""
     if not calendar_service.is_authenticated():
         raise HTTPException(status_code=401, detail="Not authenticated with Google Calendar")
     try:
-        events = calendar_service.get_events_for_date(date)
+        events = calendar_service.get_events_for_date(date, tz_offset)
         return events
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

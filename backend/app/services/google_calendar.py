@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
@@ -78,15 +78,21 @@ class GoogleCalendarService:
         """Check if user is authenticated"""
         return self.creds is not None and self.creds.valid
 
-    def get_events_for_date(self, date_str: str) -> list:
-        """Fetch all events from the primary calendar for a given date (YYYY-MM-DD)."""
+    def get_events_for_date(self, date_str: str, tz_offset: int = 0) -> list:
+        """Fetch all events from the primary calendar for a given date (YYYY-MM-DD).
+
+        tz_offset is the caller's UTC offset in minutes as returned by JS
+        getTimezoneOffset() (UTC - local), so the date is interpreted as the
+        caller's local day.
+        """
         if not self.is_authenticated():
             raise Exception("Not authenticated with Google Calendar")
 
-        from datetime import timezone
         day = datetime.strptime(date_str, "%Y-%m-%d")
-        time_min = day.replace(hour=0, minute=0, second=0, microsecond=0).isoformat() + "Z"
-        time_max = day.replace(hour=23, minute=59, second=59, microsecond=0).isoformat() + "Z"
+        start_utc = day + timedelta(minutes=tz_offset)
+        end_utc = start_utc + timedelta(days=1)
+        time_min = start_utc.isoformat() + "Z"
+        time_max = end_utc.isoformat() + "Z"
 
         result = self.service.events().list(
             calendarId="primary",
@@ -112,11 +118,13 @@ class GoogleCalendarService:
         if not self.is_authenticated():
             raise Exception("Not authenticated with Google Calendar")
 
-        # Parse start time or use current time
+        # Parse start time (naive UTC isoformat) or use current UTC time
         if start_time:
-            start = datetime.fromisoformat(start_time)
+            start = datetime.fromisoformat(start_time.replace("Z", "+00:00"))
+            if start.tzinfo is not None:
+                start = start.astimezone(timezone.utc).replace(tzinfo=None)
         else:
-            start = datetime.now()
+            start = datetime.now(timezone.utc).replace(tzinfo=None)
 
         # Calculate end time based on duration
         end = start + timedelta(seconds=duration_seconds)

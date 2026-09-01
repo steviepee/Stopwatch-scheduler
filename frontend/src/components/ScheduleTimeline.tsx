@@ -34,7 +34,7 @@ function formatDuration(seconds: number): string {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
-function buildTimeline(activities: ActivityEntry[], start: Date): TimelineItem[] {
+export function buildTimeline(activities: ActivityEntry[], start: Date): TimelineItem[] {
   const timeline: TimelineItem[] = [];
   let cursor = new Date(start);
   for (const a of activities) {
@@ -46,7 +46,7 @@ function buildTimeline(activities: ActivityEntry[], start: Date): TimelineItem[]
   return timeline;
 }
 
-function bestFitOrder(
+export function bestFitOrder(
   activities: ActivityEntry[],
   existingEvents: { name: string; start: string; end: string }[],
   dayStart: Date,

@@ -41,3 +41,10 @@ Thumbs.db
 # Google Calendar credentials
 token.json
 credentials.json
+
+# Google OAuth token cache
+token.pickle
+
+# Test artifacts
+test.db
+.pytest_cache/

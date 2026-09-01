@@ -1,6 +1,28 @@
-from pydantic import BaseModel
-from datetime import datetime
-from typing import Optional, List
+from pydantic import BaseModel, AfterValidator, PlainSerializer
+from datetime import datetime, timezone
+from typing import Optional, List, Annotated
+
+
+def _to_utc_naive(v: datetime) -> datetime:
+    """Normalize incoming datetimes to naive UTC for storage."""
+    if v.tzinfo is not None:
+        v = v.astimezone(timezone.utc).replace(tzinfo=None)
+    return v
+
+
+def _serialize_utc(v: datetime) -> str:
+    """Emit stored naive-UTC datetimes with an explicit Z offset."""
+    if v.tzinfo is not None:
+        v = v.astimezone(timezone.utc).replace(tzinfo=None)
+    return v.isoformat() + "Z"
+
+
+# All API datetimes: accepted in any offset, stored as UTC, returned with Z
+UTCDateTime = Annotated[
+    datetime,
+    AfterValidator(_to_utc_naive),
+    PlainSerializer(_serialize_utc, return_type=str, when_used="json"),
+]
 
 # Task Schemas
 class TaskBase(BaseModel):
@@ -16,8 +38,8 @@ class Task(TaskBase):
     id: int
     average_duration: float
     total_recordings: int
-    created_at: datetime
-    updated_at: datetime
+    created_at: UTCDateTime
+    updated_at: UTCDateTime
 
     class Config:
         from_attributes = True
@@ -33,7 +55,7 @@ class TimeLogCreate(TimeLogBase):
 
 class TimeLog(TimeLogBase):
     id: int
-    created_at: datetime
+    created_at: UTCDateTime
 
     class Config:
         from_attributes = True
@@ -51,10 +73,10 @@ class StopwatchSessionBase(BaseModel):
     duration: float
     task_id: Optional[int] = None
     notes: Optional[str] = None
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
-    scheduled_start: Optional[datetime] = None
-    scheduled_end: Optional[datetime] = None
+    start_time: Optional[UTCDateTime] = None
+    end_time: Optional[UTCDateTime] = None
+    scheduled_start: Optional[UTCDateTime] = None
+    scheduled_end: Optional[UTCDateTime] = None
 
 class StopwatchSessionCreate(StopwatchSessionBase):
     pass
@@ -64,10 +86,10 @@ class StopwatchSessionUpdate(BaseModel):
     duration: Optional[float] = None
     task_id: Optional[int] = None
     notes: Optional[str] = None
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
-    scheduled_start: Optional[datetime] = None
-    scheduled_end: Optional[datetime] = None
+    start_time: Optional[UTCDateTime] = None
+    end_time: Optional[UTCDateTime] = None
+    scheduled_start: Optional[UTCDateTime] = None
+    scheduled_end: Optional[UTCDateTime] = None
     is_on_calendar: Optional[bool] = None
     calendar_event_id: Optional[str] = None
 
@@ -75,15 +97,15 @@ class StopwatchSession(StopwatchSessionBase):
     id: int
     calendar_event_id: Optional[str] = None
     is_on_calendar: bool
-    created_at: datetime
-    updated_at: datetime
+    created_at: UTCDateTime
+    updated_at: UTCDateTime
 
     class Config:
         from_attributes = True
 
 class StopwatchSessionSchedule(BaseModel):
-    scheduled_start: datetime
-    scheduled_end: Optional[datetime] = None
+    scheduled_start: UTCDateTime
+    scheduled_end: Optional[UTCDateTime] = None
 
 class StopwatchSessionWithTask(StopwatchSession):
     task: Optional[Task] = None
@@ -105,7 +127,7 @@ class ScheduleItemBase(BaseModel):
     custom_name: Optional[str] = None
     estimated_duration: float
     position: int = 0
-    scheduled_time: Optional[datetime] = None
+    scheduled_time: Optional[UTCDateTime] = None
 
 class ScheduleItemCreate(ScheduleItemBase):
     pass
@@ -115,13 +137,13 @@ class ScheduleItemUpdate(BaseModel):
     custom_name: Optional[str] = None
     estimated_duration: Optional[float] = None
     position: Optional[int] = None
-    scheduled_time: Optional[datetime] = None
+    scheduled_time: Optional[UTCDateTime] = None
 
 class ScheduleItem(ScheduleItemBase):
     id: int
     schedule_id: int
     task: Optional[Task] = None
-    created_at: datetime
+    created_at: UTCDateTime
 
     class Config:
         from_attributes = True
@@ -131,7 +153,7 @@ class ScheduleItem(ScheduleItemBase):
 class ScheduleBase(BaseModel):
     name: str
     schedule_type: str = "day"
-    target_date: Optional[datetime] = None
+    target_date: Optional[UTCDateTime] = None
     notes: Optional[str] = None
     is_regimen: bool = False
 
@@ -141,7 +163,7 @@ class ScheduleCreate(ScheduleBase):
 class ScheduleUpdate(BaseModel):
     name: Optional[str] = None
     schedule_type: Optional[str] = None
-    target_date: Optional[datetime] = None
+    target_date: Optional[UTCDateTime] = None
     rating: Optional[int] = None
     notes: Optional[str] = None
     is_regimen: Optional[bool] = None
@@ -150,8 +172,8 @@ class Schedule(ScheduleBase):
     id: int
     rating: Optional[int] = None
     items: List[ScheduleItem] = []
-    created_at: datetime
-    updated_at: datetime
+    created_at: UTCDateTime
+    updated_at: UTCDateTime
 
     class Config:
         from_attributes = True
@@ -159,5 +181,5 @@ class Schedule(ScheduleBase):
 
 # For applying a regimen to a date
 class ApplyRegimen(BaseModel):
-    target_date: datetime
+    target_date: UTCDateTime
     name: Optional[str] = None

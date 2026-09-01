@@ -1,6 +1,6 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Boolean, func
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
-from app.database import Base
+from app.database import Base, utcnow
 
 class StopwatchSession(Base):
     __tablename__ = "stopwatch_sessions"
@@ -16,8 +16,8 @@ class StopwatchSession(Base):
     end_time = Column(DateTime, nullable=True)  # When the session ended (actual)
     scheduled_start = Column(DateTime, nullable=True)  # When scheduled on calendar (planned)
     scheduled_end = Column(DateTime, nullable=True)  # When scheduled to end (planned)
-    created_at = Column(DateTime, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
     # Relationship to task (optional)
     task = relationship("Task", backref="stopwatch_sessions")

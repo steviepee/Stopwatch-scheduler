@@ -27,3 +27,9 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def utcnow():
+    """Naive UTC now — all DB datetimes are stored as UTC."""
+    from datetime import datetime, timezone
+    return datetime.now(timezone.utc).replace(tzinfo=None)

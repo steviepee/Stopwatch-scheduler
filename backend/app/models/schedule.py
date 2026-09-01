@@ -1,6 +1,6 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Boolean, Text, func
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Boolean, Text
 from sqlalchemy.orm import relationship
-from app.database import Base
+from app.database import Base, utcnow
 
 
 class Schedule(Base):
@@ -13,8 +13,8 @@ class Schedule(Base):
     rating = Column(Integer, nullable=True)  # 1-5
     notes = Column(Text, nullable=True)
     is_regimen = Column(Boolean, default=False)
-    created_at = Column(DateTime, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
     items = relationship("ScheduleItem", back_populates="schedule", cascade="all, delete-orphan", order_by="ScheduleItem.position")
 
@@ -29,7 +29,7 @@ class ScheduleItem(Base):
     estimated_duration = Column(Float, nullable=False)  # seconds
     position = Column(Integer, default=0)
     scheduled_time = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, server_default=func.now())
+    created_at = Column(DateTime, default=utcnow)
 
     schedule = relationship("Schedule", back_populates="items")
     task = relationship("Task")
