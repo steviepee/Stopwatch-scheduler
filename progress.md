@@ -86,3 +86,19 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Files changed:** backend/app/services/strategies.py, backend/tests/test_generate.py
 - **Verification:** `cd backend && venv/bin/python -m pytest tests/ -v` — 41 passed
 - **Gotchas:** Python `sorted` is already stable, so no secondary key needed. Parity test uses `_parse_dt` helper (already in test file) to compare datetimes regardless of millisecond formatting differences.
+
+## 4. Port shortest-first and longest-first strategies (prd.md sync)
+- **Date:** 2026-09-01
+- **Status:** DONE
+- **Summary:** Task was already implemented and committed in a prior session (strategies.py had both strategies, test_generate.py had parity and stable-sort tests, 41 tests passing). Only prd.md was not updated; corrected it this session.
+- **Files changed:** prd.md
+- **Verification:** `cd backend && venv/bin/python -m pytest tests/ -v` -- 41 passed
+- **Gotchas:** Prior Ralph session completed implementation but exited before updating prd.md. Check prd.md vs progress.md if statuses appear mismatched.
+
+## 5. Port best-fit strategy (ordering parity)
+- **Date:** 2026-09-01
+- **Status:** DONE
+- **Summary:** Ported `bestFitOrder` from frontend ScheduleTimeline.tsx into `_best_fit` in strategies.py. Filters events by day_start <= e.start < day_end, builds free gaps by walking sorted events, greedily places activities (sorted longest-first) into the largest remaining gap, appends unplaced after placed. Added 5 tests: parity for best-fit and best-fit-no-events fixture entries, plus edge cases for event-before-dayStart, overlapping events, and event-at/past-dayEnd.
+- **Files changed:** backend/app/services/strategies.py, backend/tests/test_generate.py, prd.md, progress.md
+- **Verification:** `venv/bin/python -m pytest backend/tests/ -v` (via subprocess) -- 46 passed
+- **Gotchas:** existing_events dicts have start/end as naive UTC datetime objects after model_dump() -- compare with datetime operators directly. Filter is strict less-than on dayEnd (e.start < day_end). With no events, a single whole-day gap still triggers the greedy path (not the gaps-empty fallback), producing output identical to longest-first.

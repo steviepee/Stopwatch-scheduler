@@ -170,3 +170,112 @@ def test_generate_longest_first_stable_sort(client):
     assert resp.status_code == 200
     names = [e["name"] for e in resp.json()["options"][0]["timeline"]]
     assert names == ["B", "A", "C"]
+
+
+def test_generate_best_fit_parity(client):
+    payload = dict(PARITY_INPUT)
+    payload["strategies"] = ["best-fit"]
+    resp = client.post("/api/schedules/generate", json=payload)
+    assert resp.status_code == 200
+    opt = resp.json()["options"][0]
+    assert opt["strategy"] == "best-fit"
+
+    with open(FIXTURE_PATH) as f:
+        fixture = json.load(f)
+    expected = fixture["strategies"]["best-fit"]["timeline"]
+
+    assert len(opt["timeline"]) == len(expected)
+    for actual_entry, expected_entry in zip(opt["timeline"], expected):
+        assert actual_entry["name"] == expected_entry["name"]
+        assert _parse_dt(actual_entry["start"]) == _parse_dt(expected_entry["start"])
+        assert _parse_dt(actual_entry["end"]) == _parse_dt(expected_entry["end"])
+
+
+def test_generate_best_fit_no_events_parity(client):
+    payload = {
+        "start_time": "2026-09-02T08:00:00Z",
+        "day_start": "2026-09-02T06:00:00Z",
+        "day_end": "2026-09-02T23:00:00Z",
+        "activities": [
+            {"task_id": 1, "name": "Write report", "estimated_duration": 5400},
+            {"name": "Email sweep", "estimated_duration": 1800},
+            {"task_id": 2, "name": "Gym", "estimated_duration": 3600},
+            {"name": "Read chapter", "estimated_duration": 1800},
+            {"name": "Plan tomorrow", "estimated_duration": 900},
+        ],
+        "existing_events": [],
+        "strategies": ["best-fit"],
+    }
+    resp = client.post("/api/schedules/generate", json=payload)
+    assert resp.status_code == 200
+    opt = resp.json()["options"][0]
+
+    with open(FIXTURE_PATH) as f:
+        fixture = json.load(f)
+    expected = fixture["strategies"]["best-fit-no-events"]["timeline"]
+
+    assert len(opt["timeline"]) == len(expected)
+    for actual_entry, expected_entry in zip(opt["timeline"], expected):
+        assert actual_entry["name"] == expected_entry["name"]
+        assert _parse_dt(actual_entry["start"]) == _parse_dt(expected_entry["start"])
+        assert _parse_dt(actual_entry["end"]) == _parse_dt(expected_entry["end"])
+
+
+def test_generate_best_fit_event_before_day_start_ignored(client):
+    payload = {
+        "start_time": "2026-09-02T08:00:00Z",
+        "day_start": "2026-09-02T06:00:00Z",
+        "day_end": "2026-09-02T23:00:00Z",
+        "activities": [
+            {"name": "A", "estimated_duration": 3600},
+            {"name": "B", "estimated_duration": 1800},
+        ],
+        "existing_events": [
+            {"name": "Before day", "start": "2026-09-02T04:00:00Z", "end": "2026-09-02T05:00:00Z"},
+        ],
+        "strategies": ["best-fit"],
+    }
+    resp = client.post("/api/schedules/generate", json=payload)
+    assert resp.status_code == 200
+    names = [e["name"] for e in resp.json()["options"][0]["timeline"]]
+    assert names == ["A", "B"]
+
+
+def test_generate_best_fit_overlapping_events(client):
+    payload = {
+        "start_time": "2026-09-02T08:00:00Z",
+        "day_start": "2026-09-02T06:00:00Z",
+        "day_end": "2026-09-02T23:00:00Z",
+        "activities": [
+            {"name": "A", "estimated_duration": 3600},
+        ],
+        "existing_events": [
+            {"name": "Meeting 1", "start": "2026-09-02T09:00:00Z", "end": "2026-09-02T11:00:00Z"},
+            {"name": "Meeting 2", "start": "2026-09-02T10:00:00Z", "end": "2026-09-02T12:00:00Z"},
+        ],
+        "strategies": ["best-fit"],
+    }
+    resp = client.post("/api/schedules/generate", json=payload)
+    assert resp.status_code == 200
+    names = [e["name"] for e in resp.json()["options"][0]["timeline"]]
+    assert names == ["A"]
+
+
+def test_generate_best_fit_event_past_day_end_ignored(client):
+    payload = {
+        "start_time": "2026-09-02T08:00:00Z",
+        "day_start": "2026-09-02T06:00:00Z",
+        "day_end": "2026-09-02T23:00:00Z",
+        "activities": [
+            {"name": "A", "estimated_duration": 3600},
+            {"name": "B", "estimated_duration": 1800},
+        ],
+        "existing_events": [
+            {"name": "Late event", "start": "2026-09-02T23:00:00Z", "end": "2026-09-03T00:00:00Z"},
+        ],
+        "strategies": ["best-fit"],
+    }
+    resp = client.post("/api/schedules/generate", json=payload)
+    assert resp.status_code == 200
+    names = [e["name"] for e in resp.json()["options"][0]["timeline"]]
+    assert names == ["A", "B"]

@@ -47,19 +47,19 @@ strategies MUST reproduce them exactly, including order of equal-duration ties (
   - [x] Full pytest passes
 
 ### 4. Port shortest-first and longest-first strategies
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Add `shortest-first` and `longest-first` to the registry (sort by `estimated_duration` ascending / descending, stable).
 - **Acceptance Criteria:**
-  - [ ] Both strategies reproduce their `generate_parity.json` entries exactly, including tie order (Python `sorted` is stable — do not add secondary sort keys)
-  - [ ] Full pytest passes
+  - [x] Both strategies reproduce their `generate_parity.json` entries exactly, including tie order (Python `sorted` is stable — do not add secondary sort keys)
+  - [x] Full pytest passes
 
 ### 5. Port best-fit strategy (ordering parity)
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Port `bestFitOrder` from `frontend/src/components/ScheduleTimeline.tsx` to the registry as `best-fit`: build free gaps between `existing_events` within `[day_start, day_end]`, greedily place longest activities into largest remaining gaps, unplaced activities appended last. With no events (one whole-day gap or none), output equals longest-first. NOTE: like the frontend, this task only *orders* — the timeline still stacks sequentially from `start_time`. Do not "fix" that here (see task 9).
 - **Acceptance Criteria:**
-  - [ ] Reproduces `best-fit` AND `best-fit-no-events` entries of `generate_parity.json` exactly
-  - [ ] Gap-building edge cases tested: event before day_start, overlapping events, event past day_end
-  - [ ] Full pytest passes
+  - [x] Reproduces `best-fit` AND `best-fit-no-events` entries of `generate_parity.json` exactly
+  - [x] Gap-building edge cases tested: event before day_start, overlapping events, event past day_end
+  - [x] Full pytest passes
 
 ### 6. Eat-the-frog strategy
 - **Status:** PENDING
