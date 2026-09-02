@@ -29,6 +29,7 @@ class ScheduleItem(Base):
     estimated_duration = Column(Float, nullable=False)  # seconds
     position = Column(Integer, default=0)
     scheduled_time = Column(DateTime, nullable=True)
+    is_frog = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, default=utcnow)
 
     schedule = relationship("Schedule", back_populates="items")

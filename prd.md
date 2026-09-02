@@ -24,13 +24,13 @@ strategies MUST reproduce them exactly, including order of equal-duration ties (
   - [x] `cd backend && source venv/bin/activate && python -m pytest tests/` passes
 
 ### 2. Add frog flag to schedule items
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Add `is_frog` Boolean column (default False) to `schedule_items` and expose it through the API. The frog is the user's hardest task of the day.
 - **Acceptance Criteria:**
-  - [ ] `ScheduleItem` ORM model has `is_frog` (Boolean, nullable=False, default False)
-  - [ ] `ScheduleItemBase` / `ScheduleItemUpdate` schemas carry it; responses return it
-  - [ ] Item create/update endpoints under `/api/schedules/{id}/items` round-trip it
-  - [ ] New tests cover round-trip and default; full pytest passes
+  - [x] `ScheduleItem` ORM model has `is_frog` (Boolean, nullable=False, default False)
+  - [x] `ScheduleItemBase` / `ScheduleItemUpdate` schemas carry it; responses return it
+  - [x] Item create/update endpoints under `/api/schedules/{id}/items` round-trip it
+  - [x] New tests cover round-trip and default; full pytest passes
 
 ### 3. Strategy engine scaffold + POST /api/schedules/generate
 - **Status:** PENDING

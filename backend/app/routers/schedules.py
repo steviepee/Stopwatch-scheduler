@@ -48,6 +48,7 @@ def create_schedule(schedule: schemas.ScheduleCreate, db: Session = Depends(get_
             estimated_duration=item.estimated_duration,
             position=item.position if item.position else i,
             scheduled_time=item.scheduled_time,
+            is_frog=item.is_frog,
         )
         db.add(db_item)
 
@@ -117,6 +118,7 @@ def add_item(
         estimated_duration=item.estimated_duration,
         position=item.position,
         scheduled_time=item.scheduled_time,
+        is_frog=item.is_frog,
     )
     db.add(db_item)
     db.commit()
@@ -193,6 +195,7 @@ def apply_regimen(
             custom_name=item.custom_name,
             estimated_duration=item.estimated_duration,
             position=item.position,
+            is_frog=item.is_frog,
         )
         db.add(db_item)
 

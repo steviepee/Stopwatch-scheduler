@@ -133,6 +133,7 @@ class ScheduleItemBase(BaseModel):
     estimated_duration: float
     position: int = 0
     scheduled_time: Optional[UTCDateTime] = None
+    is_frog: bool = False
 
 class ScheduleItemCreate(ScheduleItemBase):
     pass
@@ -143,6 +144,7 @@ class ScheduleItemUpdate(BaseModel):
     estimated_duration: Optional[float] = None
     position: Optional[int] = None
     scheduled_time: Optional[UTCDateTime] = None
+    is_frog: Optional[bool] = None
 
 class ScheduleItem(ScheduleItemBase):
     id: int
