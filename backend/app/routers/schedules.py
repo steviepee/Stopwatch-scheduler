@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from datetime import datetime
 
 from app.database import get_db
 from app.models.schedule import Schedule, ScheduleItem
 from app.models import schemas
+from app.services.strategies import STRATEGY_REGISTRY, _build_timeline
 
 router = APIRouter()
 
@@ -202,3 +204,37 @@ def apply_regimen(
     db.commit()
     db.refresh(new_schedule)
     return new_schedule
+
+
+@router.post("/generate", response_model=schemas.GenerateResponse)
+def generate_schedules(body: schemas.GenerateRequest):
+    requested = body.strategies if body.strategies is not None else list(STRATEGY_REGISTRY.keys())
+    unknown = [s for s in requested if s not in STRATEGY_REGISTRY]
+    if unknown:
+        raise HTTPException(status_code=422, detail=f"Unknown strategies: {unknown}")
+
+    activities = [a.model_dump() for a in body.activities]
+    existing_events = [e.model_dump() for e in body.existing_events]
+    start_time = body.start_time
+
+    options = []
+    for name in requested:
+        fn = STRATEGY_REGISTRY[name]
+        result = fn(
+            activities=activities,
+            start_time=start_time,
+            day_start=body.day_start,
+            day_end=body.day_end,
+            existing_events=existing_events,
+        )
+        timeline = _build_timeline(result["ordered"], start_time)
+        options.append(schemas.StrategyOption(
+            strategy=name,
+            label=result["label"],
+            description=result["description"],
+            timeline=[schemas.TimelineEntry(**e) for e in timeline],
+            flagged=[schemas.FlaggedEntry(**f) for f in result["flagged"]],
+            excluded=[schemas.FlaggedEntry(**e) for e in result["excluded"]],
+        ))
+
+    return schemas.GenerateResponse(options=options)

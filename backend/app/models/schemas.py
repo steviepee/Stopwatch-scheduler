@@ -190,3 +190,52 @@ class Schedule(ScheduleBase):
 class ApplyRegimen(BaseModel):
     target_date: UTCDateTime
     name: Optional[str] = None
+
+
+class GenerateActivity(BaseModel):
+    task_id: Optional[int] = None
+    name: str
+    estimated_duration: float
+    is_urgent: bool = False
+    is_important: bool = False
+    is_frog: bool = False
+
+
+class GenerateEvent(BaseModel):
+    name: str
+    start: UTCDateTime
+    end: UTCDateTime
+
+
+class GenerateRequest(BaseModel):
+    start_time: UTCDateTime
+    day_start: UTCDateTime
+    day_end: UTCDateTime
+    activities: List[GenerateActivity]
+    existing_events: List[GenerateEvent] = []
+    strategies: Optional[List[str]] = None
+
+
+class TimelineEntry(BaseModel):
+    task_id: Optional[int] = None
+    name: str
+    start: UTCDateTime
+    end: UTCDateTime
+
+
+class FlaggedEntry(BaseModel):
+    name: str
+    reason: str
+
+
+class StrategyOption(BaseModel):
+    strategy: str
+    label: str
+    description: str
+    timeline: List[TimelineEntry]
+    flagged: List[FlaggedEntry] = []
+    excluded: List[FlaggedEntry] = []
+
+
+class GenerateResponse(BaseModel):
+    options: List[StrategyOption]

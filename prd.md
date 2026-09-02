@@ -33,7 +33,7 @@ strategies MUST reproduce them exactly, including order of equal-duration ties (
   - [x] New tests cover round-trip and default; full pytest passes
 
 ### 3. Strategy engine scaffold + POST /api/schedules/generate
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Create `backend/app/services/strategies.py` with a strategy registry (dict of name → function) and a new `POST /api/schedules/generate` endpoint in the schedules router. Implement only the `your-order` strategy in this task.
 - **Contract:**
   - Request: `{ "start_time": UTCDateTime, "day_start": UTCDateTime, "day_end": UTCDateTime, "activities": [{ "task_id": int|null, "name": str, "estimated_duration": float, "is_urgent": bool=false, "is_important": bool=false, "is_frog": bool=false }], "existing_events": [{ "name": str, "start": UTCDateTime, "end": UTCDateTime }] = [], "strategies": [str]|null }`
@@ -41,10 +41,10 @@ strategies MUST reproduce them exactly, including order of equal-duration ties (
   - `strategies: null` runs every registered strategy; unknown strategy name → 422.
   - Timeline construction: activities laid sequentially from `start_time`, each `end = start + estimated_duration` (mirrors `buildTimeline` in `frontend/src/components/ScheduleTimeline.tsx`).
 - **Acceptance Criteria:**
-  - [ ] Registry pattern: adding a future strategy requires only a new entry in `strategies.py`, no router changes
-  - [ ] `your-order` reproduces the `your-order` entry of `generate_parity.json` when fed the fixture input
-  - [ ] Contract tests: response shape, unknown strategy 422, empty activities → empty timelines
-  - [ ] Full pytest passes
+  - [x] Registry pattern: adding a future strategy requires only a new entry in `strategies.py`, no router changes
+  - [x] `your-order` reproduces the `your-order` entry of `generate_parity.json` when fed the fixture input
+  - [x] Contract tests: response shape, unknown strategy 422, empty activities → empty timelines
+  - [x] Full pytest passes
 
 ### 4. Port shortest-first and longest-first strategies
 - **Status:** PENDING
