@@ -29,15 +29,20 @@ class TaskBase(BaseModel):
     name: str
 
 class TaskCreate(TaskBase):
-    pass
+    is_urgent: bool = False
+    is_important: bool = False
 
 class TaskUpdate(BaseModel):
     name: Optional[str] = None
+    is_urgent: Optional[bool] = None
+    is_important: Optional[bool] = None
 
 class Task(TaskBase):
     id: int
     average_duration: float
     total_recordings: int
+    is_urgent: bool
+    is_important: bool
     created_at: UTCDateTime
     updated_at: UTCDateTime
 

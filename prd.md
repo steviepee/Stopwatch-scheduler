@@ -14,14 +14,14 @@ strategies MUST reproduce them exactly, including order of equal-duration ties (
 ## Tasks
 
 ### 1. Add Eisenhower priority fields to tasks
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Add `is_urgent` and `is_important` Boolean columns (default False) to the `tasks` table and expose them through the API.
 - **Acceptance Criteria:**
-  - [ ] `Task` ORM model has `is_urgent` and `is_important` (Boolean, nullable=False, default False)
-  - [ ] `TaskCreate` accepts both optionally (default False); `TaskUpdate` accepts both optionally; `Task` response schema returns both
-  - [ ] `PUT /api/tasks/{id}` updates them
-  - [ ] Existing tests still pass; new tests cover create-with-flags, update-flags, and defaults
-  - [ ] `cd backend && source venv/bin/activate && python -m pytest tests/` passes
+  - [x] `Task` ORM model has `is_urgent` and `is_important` (Boolean, nullable=False, default False)
+  - [x] `TaskCreate` accepts both optionally (default False); `TaskUpdate` accepts both optionally; `Task` response schema returns both
+  - [x] `PUT /api/tasks/{id}` updates them
+  - [x] Existing tests still pass; new tests cover create-with-flags, update-flags, and defaults
+  - [x] `cd backend && source venv/bin/activate && python -m pytest tests/` passes
 
 ### 2. Add frog flag to schedule items
 - **Status:** PENDING

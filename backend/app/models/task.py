@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime
+from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean
 from sqlalchemy.orm import relationship
 from app.database import Base, utcnow
 
@@ -9,6 +9,8 @@ class Task(Base):
     name = Column(String(255), unique=True, index=True, nullable=False)
     average_duration = Column(Float, default=0.0)  # in seconds
     total_recordings = Column(Integer, default=0)
+    is_urgent = Column(Boolean, nullable=False, default=False)
+    is_important = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, default=utcnow)
     updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 

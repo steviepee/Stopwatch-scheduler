@@ -31,7 +31,7 @@ def create_task(task: schemas.TaskCreate, db: Session = Depends(get_db)):
     if existing_task:
         raise HTTPException(status_code=400, detail="Task with this name already exists")
 
-    db_task = task_model.Task(name=task.name)
+    db_task = task_model.Task(name=task.name, is_urgent=task.is_urgent, is_important=task.is_important)
     db.add(db_task)
     db.commit()
     db.refresh(db_task)
@@ -46,6 +46,10 @@ def update_task(task_id: int, task: schemas.TaskUpdate, db: Session = Depends(ge
 
     if task.name:
         db_task.name = task.name
+    if task.is_urgent is not None:
+        db_task.is_urgent = task.is_urgent
+    if task.is_important is not None:
+        db_task.is_important = task.is_important
 
     db.commit()
     db.refresh(db_task)

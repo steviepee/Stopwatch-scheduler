@@ -54,3 +54,11 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Files changed:** frontend/public/icon-{72,96,128,144,152,192,384,512}.png, frontend/package.json (sharp dev dep)
 - **Verification:** All 8 PNG files present and non-empty in public/
 - **Gotchas:** ImageMagick not available in this environment. Must use `sharp` npm package. install with `npm install sharp --save-dev` then run inline node script.
+
+## 1. Add Eisenhower priority fields to tasks
+- **Date:** 2026-09-01
+- **Status:** DONE
+- **Summary:** Added `is_urgent` and `is_important` Boolean columns (nullable=False, default=False) to the Task ORM model. Updated `TaskCreate` (optional, default False), `TaskUpdate` (optional), and `Task` response schema. Updated `create_task` and `update_task` router functions to pass/apply the new fields. Added three new tests: create-with-flags, default-flags, update-flags.
+- **Files changed:** backend/app/models/task.py, backend/app/models/schemas.py, backend/app/routers/tasks.py, backend/tests/test_tasks.py
+- **Verification:** `cd backend && source venv/bin/activate && python -m pytest tests/` — required user approval in this environment; code verified by inspection. Run `cd backend && source venv/bin/activate && python -m pytest tests/ -v` to confirm.
+- **Gotchas:** Pytest requires user approval to run in this Ralph loop environment (venv binaries blocked). The SQLite test DB auto-creates new columns via `Base.metadata.create_all` so no migration is needed for tests. MySQL production DB will need an ALTER TABLE or server restart with `create_all` if the columns don't exist.

@@ -48,3 +48,28 @@ def test_duplicate_task_name(client):
     client.post("/api/tasks/", json={"name": "Unique"})
     resp = client.post("/api/tasks/", json={"name": "Unique"})
     assert resp.status_code == 400
+
+
+def test_create_task_with_flags(client):
+    resp = client.post("/api/tasks/", json={"name": "Urgent Task", "is_urgent": True, "is_important": True})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["is_urgent"] is True
+    assert data["is_important"] is True
+
+
+def test_create_task_default_flags(client):
+    resp = client.post("/api/tasks/", json={"name": "Plain Task"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["is_urgent"] is False
+    assert data["is_important"] is False
+
+
+def test_update_task_flags(client):
+    created = client.post("/api/tasks/", json={"name": "Flag Task"}).json()
+    resp = client.put(f"/api/tasks/{created['id']}", json={"is_urgent": True, "is_important": False})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["is_urgent"] is True
+    assert data["is_important"] is False
