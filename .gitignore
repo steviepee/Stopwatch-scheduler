@@ -1,0 +1,6 @@
+# Test artifacts
+test.db
+*.db
+
+# Google OAuth token cache
+token.pickle
