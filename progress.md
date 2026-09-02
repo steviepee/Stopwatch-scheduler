@@ -78,3 +78,11 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Files changed:** backend/app/services/strategies.py, backend/app/models/schemas.py, backend/app/routers/schedules.py, backend/tests/test_generate.py
 - **Verification:** `cd backend && venv/bin/python -m pytest tests/ -v` — 37 passed
 - **Gotchas:** UTCDateTime `_serialize_utc` emits no milliseconds (e.g. `2026-09-02T08:00:00Z`), while fixture has `.000Z`; parity test must parse both formats to compare datetime values, not raw strings. The generate endpoint does not depend on the DB so the handler takes no `db` parameter. `body.start_time` is a naive UTC datetime after `_to_utc_naive` processing; `timedelta` arithmetic works fine on naive datetimes.
+
+## 4. Port shortest-first and longest-first strategies
+- **Date:** 2026-09-01
+- **Status:** DONE
+- **Summary:** Added `_shortest_first` (stable ascending sort by estimated_duration) and `_longest_first` (stable descending sort) to STRATEGY_REGISTRY in strategies.py. Added 4 new tests: parity tests for both strategies against generate_parity.json fixtures, plus explicit stable-sort tests with equal-duration ties. All 41 tests pass.
+- **Files changed:** backend/app/services/strategies.py, backend/tests/test_generate.py
+- **Verification:** `cd backend && venv/bin/python -m pytest tests/ -v` — 41 passed
+- **Gotchas:** Python `sorted` is already stable, so no secondary key needed. Parity test uses `_parse_dt` helper (already in test file) to compare datetimes regardless of millisecond formatting differences.

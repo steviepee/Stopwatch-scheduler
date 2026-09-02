@@ -29,6 +29,30 @@ def _your_order(activities, **kwargs):
     }
 
 
+def _shortest_first(activities, **kwargs):
+    ordered = sorted(activities, key=lambda a: a["estimated_duration"])
+    return {
+        "label": "Shortest First",
+        "description": "Shortest activities first to build momentum.",
+        "ordered": ordered,
+        "flagged": [],
+        "excluded": [],
+    }
+
+
+def _longest_first(activities, **kwargs):
+    ordered = sorted(activities, key=lambda a: a["estimated_duration"], reverse=True)
+    return {
+        "label": "Longest First",
+        "description": "Longest activities first while energy is highest.",
+        "ordered": ordered,
+        "flagged": [],
+        "excluded": [],
+    }
+
+
 STRATEGY_REGISTRY = {
     "your-order": _your_order,
+    "shortest-first": _shortest_first,
+    "longest-first": _longest_first,
 }

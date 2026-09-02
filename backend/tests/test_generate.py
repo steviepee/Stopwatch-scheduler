@@ -96,3 +96,77 @@ def test_generate_null_strategies_runs_all(client):
     assert resp.status_code == 200
     strategies_returned = {o["strategy"] for o in resp.json()["options"]}
     assert "your-order" in strategies_returned
+
+
+def test_generate_shortest_first_parity(client):
+    payload = dict(PARITY_INPUT)
+    payload["strategies"] = ["shortest-first"]
+    resp = client.post("/api/schedules/generate", json=payload)
+    assert resp.status_code == 200
+    opt = resp.json()["options"][0]
+    assert opt["strategy"] == "shortest-first"
+
+    with open(FIXTURE_PATH) as f:
+        fixture = json.load(f)
+    expected = fixture["strategies"]["shortest-first"]["timeline"]
+
+    assert len(opt["timeline"]) == len(expected)
+    for actual_entry, expected_entry in zip(opt["timeline"], expected):
+        assert actual_entry["name"] == expected_entry["name"]
+        assert _parse_dt(actual_entry["start"]) == _parse_dt(expected_entry["start"])
+        assert _parse_dt(actual_entry["end"]) == _parse_dt(expected_entry["end"])
+
+
+def test_generate_longest_first_parity(client):
+    payload = dict(PARITY_INPUT)
+    payload["strategies"] = ["longest-first"]
+    resp = client.post("/api/schedules/generate", json=payload)
+    assert resp.status_code == 200
+    opt = resp.json()["options"][0]
+    assert opt["strategy"] == "longest-first"
+
+    with open(FIXTURE_PATH) as f:
+        fixture = json.load(f)
+    expected = fixture["strategies"]["longest-first"]["timeline"]
+
+    assert len(opt["timeline"]) == len(expected)
+    for actual_entry, expected_entry in zip(opt["timeline"], expected):
+        assert actual_entry["name"] == expected_entry["name"]
+        assert _parse_dt(actual_entry["start"]) == _parse_dt(expected_entry["start"])
+        assert _parse_dt(actual_entry["end"]) == _parse_dt(expected_entry["end"])
+
+
+def test_generate_shortest_first_stable_sort(client):
+    payload = {
+        "start_time": "2026-09-02T08:00:00Z",
+        "day_start": "2026-09-02T06:00:00Z",
+        "day_end": "2026-09-02T23:00:00Z",
+        "activities": [
+            {"name": "A", "estimated_duration": 1800},
+            {"name": "B", "estimated_duration": 900},
+            {"name": "C", "estimated_duration": 1800},
+        ],
+        "strategies": ["shortest-first"],
+    }
+    resp = client.post("/api/schedules/generate", json=payload)
+    assert resp.status_code == 200
+    names = [e["name"] for e in resp.json()["options"][0]["timeline"]]
+    assert names == ["B", "A", "C"]
+
+
+def test_generate_longest_first_stable_sort(client):
+    payload = {
+        "start_time": "2026-09-02T08:00:00Z",
+        "day_start": "2026-09-02T06:00:00Z",
+        "day_end": "2026-09-02T23:00:00Z",
+        "activities": [
+            {"name": "A", "estimated_duration": 1800},
+            {"name": "B", "estimated_duration": 3600},
+            {"name": "C", "estimated_duration": 1800},
+        ],
+        "strategies": ["longest-first"],
+    }
+    resp = client.post("/api/schedules/generate", json=payload)
+    assert resp.status_code == 200
+    names = [e["name"] for e in resp.json()["options"][0]["timeline"]]
+    assert names == ["B", "A", "C"]
