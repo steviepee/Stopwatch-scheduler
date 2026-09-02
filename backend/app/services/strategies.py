@@ -124,10 +124,29 @@ def _eat_the_frog(activities, **kwargs):
         "excluded": [],
     }
 
+
+
+def _eisenhower(activities, **kwargs):
+    q1 = [a for a in activities if a.get("is_urgent") and a.get("is_important")]
+    q2 = [a for a in activities if not a.get("is_urgent") and a.get("is_important")]
+    q3 = [a for a in activities if a.get("is_urgent") and not a.get("is_important")]
+    q4 = [a for a in activities if not a.get("is_urgent") and not a.get("is_important")]
+    ordered = q1 + q2 + q3
+    flagged = [{"name": a["name"], "reason": "consider-delegating"} for a in q3]
+    excluded = [{"name": a["name"], "reason": "not-urgent-not-important"} for a in q4]
+    return {
+        "label": "Eisenhower",
+        "description": "Q1 (urgent+important) first, Q2 (important) next, Q3 (urgent) last; Q4 dropped.",
+        "ordered": ordered,
+        "flagged": flagged,
+        "excluded": excluded,
+    }
+
 STRATEGY_REGISTRY = {
     "your-order": _your_order,
     "shortest-first": _shortest_first,
     "longest-first": _longest_first,
     "best-fit": _best_fit,
     "eat-the-frog": _eat_the_frog,
+    "eisenhower": _eisenhower,
 }

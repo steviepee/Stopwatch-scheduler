@@ -110,3 +110,11 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Files changed:** backend/app/services/strategies.py, backend/tests/test_generate.py
 - **Verification:** venv/bin/python -m pytest backend/tests/ -v -- 49 passed
 - **Gotchas:** Use identity check (a is not frog) when filtering remaining activities to correctly handle duplicate names.
+
+## 7. Eisenhower strategy
+- **Date:** 2026-09-02
+- **Status:** DONE
+- **Summary:** Added _eisenhower strategy to strategies.py: Q1 (urgent+important) → Q2 (important only) → Q3 (urgent only); Q4 excluded. Q3 items flagged with reason "consider-delegating"; Q4 listed in excluded with reason "not-urgent-not-important". Updated generate_schedules endpoint to add db dependency and resolve is_urgent/is_important from DB Task when activity has task_id and flags are false. Added 4 tests: all-quadrants ordering, stable-within-quadrant, only-Q4 empty timeline, task_id flag defaulting.
+- **Files changed:** backend/app/services/strategies.py, backend/app/routers/schedules.py, backend/tests/test_generate.py
+- **Verification:** venv/bin/python -m pytest backend/tests/ -v -- 53 passed
+- **Gotchas:** generate_schedules previously had no db param; adding Depends(get_db) required importing Task model. Task flag defaulting only overrides when the activity flag is False (not when explicitly set True by caller).

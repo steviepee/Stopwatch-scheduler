@@ -70,12 +70,12 @@ strategies MUST reproduce them exactly, including order of equal-duration ties (
   - [x] Full pytest passes
 
 ### 7. Eisenhower strategy
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Add `eisenhower`, ordering by quadrant: Q1 (urgent+important) first, then Q2 (important only), then Q3 (urgent only). Within a quadrant, keep given order. Q3 activities are also listed in `flagged` with reason `consider-delegating`. Q4 (neither) are left out of the timeline and listed in `excluded` with reason `not-urgent-not-important`.
 - **Acceptance Criteria:**
-  - [ ] Unit tests cover all four quadrants, flagged/excluded population, and stable order within quadrants
-  - [ ] Activities with a `task_id` default their flags from the task's `is_urgent`/`is_important` when the request leaves them false
-  - [ ] Full pytest passes
+  - [x] Unit tests cover all four quadrants, flagged/excluded population, and stable order within quadrants
+  - [x] Activities with a `task_id` default their flags from the task's `is_urgent`/`is_important` when the request leaves them false
+  - [x] Full pytest passes
 
 ### 8. Peak-hours insights endpoint
 - **Status:** PENDING

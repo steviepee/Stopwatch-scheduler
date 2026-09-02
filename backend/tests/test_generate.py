@@ -338,3 +338,91 @@ def test_eat_the_frog_multiple_frogs_first_wins(client):
     assert resp.status_code == 200
     names = [e["name"] for e in resp.json()["options"][0]["timeline"]]
     assert names == ["B", "A", "C", "D", "E"]
+
+
+def test_eisenhower_all_quadrants(client):
+    payload = {
+        "start_time": "2026-09-02T08:00:00Z",
+        "day_start": "2026-09-02T06:00:00Z",
+        "day_end": "2026-09-02T23:00:00Z",
+        "activities": [
+            {"name": "Q1a", "estimated_duration": 3600, "is_urgent": True, "is_important": True},
+            {"name": "Q2a", "estimated_duration": 1800, "is_urgent": False, "is_important": True},
+            {"name": "Q3a", "estimated_duration": 900, "is_urgent": True, "is_important": False},
+            {"name": "Q4a", "estimated_duration": 600, "is_urgent": False, "is_important": False},
+            {"name": "Q1b", "estimated_duration": 1200, "is_urgent": True, "is_important": True},
+        ],
+        "strategies": ["eisenhower"],
+    }
+    resp = client.post("/api/schedules/generate", json=payload)
+    assert resp.status_code == 200
+    opt = resp.json()["options"][0]
+    names = [e["name"] for e in opt["timeline"]]
+    assert names == ["Q1a", "Q1b", "Q2a", "Q3a"]
+    flagged_names = [f["name"] for f in opt["flagged"]]
+    assert flagged_names == ["Q3a"]
+    assert opt["flagged"][0]["reason"] == "consider-delegating"
+    excluded_names = [e["name"] for e in opt["excluded"]]
+    assert excluded_names == ["Q4a"]
+    assert opt["excluded"][0]["reason"] == "not-urgent-not-important"
+
+
+def test_eisenhower_stable_within_quadrant(client):
+    payload = {
+        "start_time": "2026-09-02T08:00:00Z",
+        "day_start": "2026-09-02T06:00:00Z",
+        "day_end": "2026-09-02T23:00:00Z",
+        "activities": [
+            {"name": "B", "estimated_duration": 1800, "is_urgent": True, "is_important": True},
+            {"name": "A", "estimated_duration": 3600, "is_urgent": True, "is_important": True},
+            {"name": "C", "estimated_duration": 900, "is_urgent": True, "is_important": True},
+        ],
+        "strategies": ["eisenhower"],
+    }
+    resp = client.post("/api/schedules/generate", json=payload)
+    assert resp.status_code == 200
+    names = [e["name"] for e in resp.json()["options"][0]["timeline"]]
+    assert names == ["B", "A", "C"]
+
+
+def test_eisenhower_only_q4_empty_timeline(client):
+    payload = {
+        "start_time": "2026-09-02T08:00:00Z",
+        "day_start": "2026-09-02T06:00:00Z",
+        "day_end": "2026-09-02T23:00:00Z",
+        "activities": [
+            {"name": "X", "estimated_duration": 1800},
+            {"name": "Y", "estimated_duration": 900},
+        ],
+        "strategies": ["eisenhower"],
+    }
+    resp = client.post("/api/schedules/generate", json=payload)
+    assert resp.status_code == 200
+    opt = resp.json()["options"][0]
+    assert opt["timeline"] == []
+    excluded_names = [e["name"] for e in opt["excluded"]]
+    assert "X" in excluded_names and "Y" in excluded_names
+
+
+def test_eisenhower_task_id_defaults_flags(client):
+    task_resp = client.post("/api/tasks/", json={"name": "Urgent Important Task", "is_urgent": True, "is_important": True})
+    assert task_resp.status_code == 200
+    task_id = task_resp.json()["id"]
+
+    payload = {
+        "start_time": "2026-09-02T08:00:00Z",
+        "day_start": "2026-09-02T06:00:00Z",
+        "day_end": "2026-09-02T23:00:00Z",
+        "activities": [
+            {"task_id": task_id, "name": "Urgent Important Task", "estimated_duration": 3600},
+            {"name": "Other", "estimated_duration": 1800},
+        ],
+        "strategies": ["eisenhower"],
+    }
+    resp = client.post("/api/schedules/generate", json=payload)
+    assert resp.status_code == 200
+    opt = resp.json()["options"][0]
+    names = [e["name"] for e in opt["timeline"]]
+    assert names[0] == "Urgent Important Task"
+    excluded_names = [e["name"] for e in opt["excluded"]]
+    assert "Other" in excluded_names

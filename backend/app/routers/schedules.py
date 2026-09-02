@@ -5,6 +5,7 @@ from datetime import datetime
 
 from app.database import get_db
 from app.models.schedule import Schedule, ScheduleItem
+from app.models.task import Task
 from app.models import schemas
 from app.services.strategies import STRATEGY_REGISTRY, _build_timeline
 
@@ -207,13 +208,23 @@ def apply_regimen(
 
 
 @router.post("/generate", response_model=schemas.GenerateResponse)
-def generate_schedules(body: schemas.GenerateRequest):
+def generate_schedules(body: schemas.GenerateRequest, db: Session = Depends(get_db)):
     requested = body.strategies if body.strategies is not None else list(STRATEGY_REGISTRY.keys())
     unknown = [s for s in requested if s not in STRATEGY_REGISTRY]
     if unknown:
         raise HTTPException(status_code=422, detail=f"Unknown strategies: {unknown}")
 
     activities = [a.model_dump() for a in body.activities]
+    task_ids = [a["task_id"] for a in activities if a["task_id"] is not None]
+    if task_ids:
+        tasks_by_id = {t.id: t for t in db.query(Task).filter(Task.id.in_(task_ids)).all()}
+        for a in activities:
+            if a["task_id"] is not None and a["task_id"] in tasks_by_id:
+                task = tasks_by_id[a["task_id"]]
+                if not a["is_urgent"]:
+                    a["is_urgent"] = task.is_urgent
+                if not a["is_important"]:
+                    a["is_important"] = task.is_important
     existing_events = [e.model_dump() for e in body.existing_events]
     start_time = body.start_time
 
