@@ -1,0 +1,13 @@
+# Test artifacts
+test.db
+*.db
+
+# Google OAuth token cache
+token.pickle
+
+# Credentials (never commit)
+.env
+.env.local
+credentials.json
+client_secret*.json
+token.json
