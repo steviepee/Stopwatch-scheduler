@@ -78,13 +78,13 @@ strategies MUST reproduce them exactly, including order of equal-duration ties (
   - [x] Full pytest passes
 
 ### 8. Peak-hours insights endpoint
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** New router `backend/app/routers/insights.py` with `GET /api/insights/peak-hours?tz_offset=0` (tz_offset in minutes, JS `getTimezoneOffset` convention). For every stopwatch session and time log, distribute its duration across the local hours it spans: interval is `[start_time, start_time + duration]` when `start_time` exists, else `[created_at - duration, created_at]`. Convert to local via `local = utc - tz_offset minutes`.
 - **Acceptance Criteria:**
-  - [ ] Response: `{ "hours": [{ "hour": 0-23, "seconds": float, "count": int }] * 24, "peak_hour": int|null, "total_seconds": float }` (`peak_hour` null when no data)
-  - [ ] Router registered in `main.py` under `/api/insights`
-  - [ ] Tests seed sessions spanning hour boundaries and assert the split, tz_offset shifting, and the empty-DB case
-  - [ ] Full pytest passes
+  - [x] Response: `{ "hours": [{ "hour": 0-23, "seconds": float, "count": int }] * 24, "peak_hour": int|null, "total_seconds": float }` (`peak_hour` null when no data)
+  - [x] Router registered in `main.py` under `/api/insights`
+  - [x] Tests seed sessions spanning hour boundaries and assert the split, tz_offset shifting, and the empty-DB case
+  - [x] Full pytest passes
 
 ### 9. Best-fit-slots strategy (gap-aware timeline)
 - **Status:** PENDING

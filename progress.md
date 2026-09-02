@@ -118,3 +118,11 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Files changed:** backend/app/services/strategies.py, backend/app/routers/schedules.py, backend/tests/test_generate.py
 - **Verification:** venv/bin/python -m pytest backend/tests/ -v -- 53 passed
 - **Gotchas:** generate_schedules previously had no db param; adding Depends(get_db) required importing Task model. Task flag defaulting only overrides when the activity flag is False (not when explicitly set True by caller).
+
+## 8. Peak-hours insights endpoint
+- **Date:** 2026-09-02
+- **Status:** DONE
+- **Summary:** Created backend/app/routers/insights.py with GET /api/insights/peak-hours?tz_offset=0. Distributes each session/timelog duration across local hours using a cursor-based walk through hour boundaries. Sessions use [start_time, start_time+duration] when start_time exists, else [created_at-duration, created_at]; timelogs always use [created_at-duration, created_at]. Registered router in main.py. Added db fixture to conftest.py and 6 tests covering empty-DB, hour-boundary split, tz_offset shift, no-start_time fallback, timelog distribution, and peak_hour selection.
+- **Files changed:** backend/app/routers/insights.py, backend/app/main.py, backend/tests/conftest.py, backend/tests/test_insights.py
+- **Verification:** venv/bin/python -m pytest backend/tests/ -q -- 59 passed
+- **Gotchas:** The db fixture in conftest must use the same TestingSessionLocal (and thus same SQLite engine) as the client fixture so seeded data is visible to the endpoint. When testing ties in peak_hour, max(range(24)) returns the lowest tied hour -- make test sessions unambiguous to avoid false tie failures.

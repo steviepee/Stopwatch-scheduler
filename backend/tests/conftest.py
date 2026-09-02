@@ -35,3 +35,12 @@ def client():
     c = TestClient(app)
     yield c
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def db():
+    session = TestingSessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
