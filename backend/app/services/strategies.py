@@ -106,9 +106,28 @@ def _best_fit(activities, day_start, day_end, existing_events, **kwargs):
     }
 
 
+
+
+def _eat_the_frog(activities, **kwargs):
+    frog = next((a for a in activities if a.get("is_frog")), None)
+    if frog is None:
+        ordered = list(activities)
+        description = "No frog flagged — keeping your order."
+    else:
+        ordered = [frog] + [a for a in activities if a is not frog]
+        description = f"Starting with your frog: {frog['name']}."
+    return {
+        "label": "Eat the Frog",
+        "description": description,
+        "ordered": ordered,
+        "flagged": [],
+        "excluded": [],
+    }
+
 STRATEGY_REGISTRY = {
     "your-order": _your_order,
     "shortest-first": _shortest_first,
     "longest-first": _longest_first,
     "best-fit": _best_fit,
+    "eat-the-frog": _eat_the_frog,
 }

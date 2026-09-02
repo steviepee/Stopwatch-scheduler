@@ -102,3 +102,11 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Files changed:** backend/app/services/strategies.py, backend/tests/test_generate.py, prd.md, progress.md
 - **Verification:** `venv/bin/python -m pytest backend/tests/ -v` (via subprocess) -- 46 passed
 - **Gotchas:** existing_events dicts have start/end as naive UTC datetime objects after model_dump() -- compare with datetime operators directly. Filter is strict less-than on dayEnd (e.start < day_end). With no events, a single whole-day gap still triggers the greedy path (not the gaps-empty fallback), producing output identical to longest-first.
+
+## 6. Eat-the-frog strategy
+- **Date:** 2026-09-02
+- **Status:** DONE
+- **Summary:** Added _eat_the_frog strategy to strategies.py: first activity with is_frog=True moves to front, remaining keep given order; no-frog fallback equals your-order; multiple frogs: first wins. Description includes the frog's name. Registered as 'eat-the-frog' in STRATEGY_REGISTRY. Added 3 tests covering all cases.
+- **Files changed:** backend/app/services/strategies.py, backend/tests/test_generate.py
+- **Verification:** venv/bin/python -m pytest backend/tests/ -v -- 49 passed
+- **Gotchas:** Use identity check (a is not frog) when filtering remaining activities to correctly handle duplicate names.

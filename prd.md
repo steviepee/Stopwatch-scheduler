@@ -62,12 +62,12 @@ strategies MUST reproduce them exactly, including order of equal-duration ties (
   - [x] Full pytest passes
 
 ### 6. Eat-the-frog strategy
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Add `eat-the-frog`: the activity with `is_frog=true` goes first; remaining activities keep their given order. If no activity is flagged, fall back to the given order unchanged (identical to your-order). If multiple are flagged, the first flagged one wins; others keep their relative positions.
 - **Acceptance Criteria:**
-  - [ ] Unit tests: frog moved to front; no-frog fallback; multiple-frog behavior
-  - [ ] `description` in the response mentions the frog by name when one exists
-  - [ ] Full pytest passes
+  - [x] Unit tests: frog moved to front; no-frog fallback; multiple-frog behavior
+  - [x] `description` in the response mentions the frog by name when one exists
+  - [x] Full pytest passes
 
 ### 7. Eisenhower strategy
 - **Status:** PENDING

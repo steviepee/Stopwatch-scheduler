@@ -279,3 +279,62 @@ def test_generate_best_fit_event_past_day_end_ignored(client):
     assert resp.status_code == 200
     names = [e["name"] for e in resp.json()["options"][0]["timeline"]]
     assert names == ["A", "B"]
+
+
+def test_eat_the_frog_moves_frog_to_front(client):
+    payload = {
+        "start_time": "2026-09-02T08:00:00Z",
+        "day_start": "2026-09-02T06:00:00Z",
+        "day_end": "2026-09-02T23:00:00Z",
+        "activities": [
+            {"name": "A", "estimated_duration": 1800},
+            {"name": "B", "estimated_duration": 900, "is_frog": True},
+            {"name": "C", "estimated_duration": 3600},
+        ],
+        "strategies": ["eat-the-frog"],
+    }
+    resp = client.post("/api/schedules/generate", json=payload)
+    assert resp.status_code == 200
+    opt = resp.json()["options"][0]
+    names = [e["name"] for e in opt["timeline"]]
+    assert names == ["B", "A", "C"]
+    assert "B" in opt["description"]
+
+
+def test_eat_the_frog_no_frog_fallback(client):
+    payload = {
+        "start_time": "2026-09-02T08:00:00Z",
+        "day_start": "2026-09-02T06:00:00Z",
+        "day_end": "2026-09-02T23:00:00Z",
+        "activities": [
+            {"name": "A", "estimated_duration": 1800},
+            {"name": "B", "estimated_duration": 900},
+            {"name": "C", "estimated_duration": 3600},
+        ],
+        "strategies": ["eat-the-frog"],
+    }
+    resp = client.post("/api/schedules/generate", json=payload)
+    assert resp.status_code == 200
+    opt = resp.json()["options"][0]
+    names = [e["name"] for e in opt["timeline"]]
+    assert names == ["A", "B", "C"]
+
+
+def test_eat_the_frog_multiple_frogs_first_wins(client):
+    payload = {
+        "start_time": "2026-09-02T08:00:00Z",
+        "day_start": "2026-09-02T06:00:00Z",
+        "day_end": "2026-09-02T23:00:00Z",
+        "activities": [
+            {"name": "A", "estimated_duration": 1800},
+            {"name": "B", "estimated_duration": 900, "is_frog": True},
+            {"name": "C", "estimated_duration": 3600},
+            {"name": "D", "estimated_duration": 1200, "is_frog": True},
+            {"name": "E", "estimated_duration": 600},
+        ],
+        "strategies": ["eat-the-frog"],
+    }
+    resp = client.post("/api/schedules/generate", json=payload)
+    assert resp.status_code == 200
+    names = [e["name"] for e in resp.json()["options"][0]["timeline"]]
+    assert names == ["B", "A", "C", "D", "E"]
