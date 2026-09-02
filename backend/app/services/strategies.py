@@ -142,11 +142,66 @@ def _eisenhower(activities, **kwargs):
         "excluded": excluded,
     }
 
+
+
+def _best_fit_slots(activities, start_time, day_start, day_end, existing_events, **kwargs):
+    events = sorted(
+        [e for e in existing_events if e["start"] >= day_start and e["start"] < day_end],
+        key=lambda e: e["start"],
+    )
+
+    gaps = []
+    cursor = day_start
+    for ev in events:
+        if ev["start"] > cursor:
+            gaps.append({"start": cursor, "end": ev["start"]})
+        if ev["end"] > cursor:
+            cursor = ev["end"]
+    if cursor < day_end:
+        gaps.append({"start": cursor, "end": day_end})
+
+    for g in gaps:
+        g["cursor"] = max(g["start"], start_time)
+        g["remaining"] = max(0.0, (g["end"] - g["cursor"]).total_seconds())
+
+    ordered = sorted(activities, key=lambda a: a["estimated_duration"], reverse=True)
+    timeline = []
+    excluded = []
+
+    for activity in ordered:
+        dur = activity["estimated_duration"]
+        placed = False
+        for gap in gaps:
+            if gap["remaining"] >= dur:
+                entry_start = gap["cursor"]
+                entry_end = entry_start + timedelta(seconds=dur)
+                timeline.append({
+                    "task_id": activity.get("task_id"),
+                    "name": activity["name"],
+                    "start": entry_start,
+                    "end": entry_end,
+                })
+                gap["cursor"] = entry_end
+                gap["remaining"] -= dur
+                placed = True
+                break
+        if not placed:
+            excluded.append({"name": activity["name"], "reason": "no-free-slot"})
+
+    return {
+        "label": "Best Fit Slots",
+        "description": "Activities placed into free gaps around your existing events.",
+        "timeline": timeline,
+        "flagged": [],
+        "excluded": excluded,
+    }
+
 STRATEGY_REGISTRY = {
     "your-order": _your_order,
     "shortest-first": _shortest_first,
     "longest-first": _longest_first,
     "best-fit": _best_fit,
+    "best-fit-slots": _best_fit_slots,
     "eat-the-frog": _eat_the_frog,
     "eisenhower": _eisenhower,
 }

@@ -87,10 +87,10 @@ strategies MUST reproduce them exactly, including order of equal-duration ties (
   - [x] Full pytest passes
 
 ### 9. Best-fit-slots strategy (gap-aware timeline)
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Add `best-fit-slots`, a NEW strategy (do not change `best-fit`): actually place activities into the free gaps computed in task 5 — each timeline entry's `start`/`end` sits inside a gap, never overlapping `existing_events`. Placement order: longest activity into the earliest gap that fits it, starting no earlier than `start_time`. Activities that fit nowhere go to `excluded` with reason `no-free-slot`.
 - **Acceptance Criteria:**
-  - [ ] No timeline entry overlaps any existing event; entries within a gap are contiguous
-  - [ ] Unit tests: activity too big for any gap → excluded; empty events → equals longest-first laid from start_time
-  - [ ] `best-fit` parity tests from task 5 still pass unchanged
-  - [ ] Full pytest passes
+  - [x] No timeline entry overlaps any existing event; entries within a gap are contiguous
+  - [x] Unit tests: activity too big for any gap → excluded; empty events → equals longest-first laid from start_time
+  - [x] `best-fit` parity tests from task 5 still pass unchanged
+  - [x] Full pytest passes

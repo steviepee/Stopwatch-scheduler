@@ -238,7 +238,10 @@ def generate_schedules(body: schemas.GenerateRequest, db: Session = Depends(get_
             day_end=body.day_end,
             existing_events=existing_events,
         )
-        timeline = _build_timeline(result["ordered"], start_time)
+        if "timeline" in result:
+            timeline = result["timeline"]
+        else:
+            timeline = _build_timeline(result["ordered"], start_time)
         options.append(schemas.StrategyOption(
             strategy=name,
             label=result["label"],

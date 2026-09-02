@@ -126,3 +126,11 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Files changed:** backend/app/routers/insights.py, backend/app/main.py, backend/tests/conftest.py, backend/tests/test_insights.py
 - **Verification:** venv/bin/python -m pytest backend/tests/ -q -- 59 passed
 - **Gotchas:** The db fixture in conftest must use the same TestingSessionLocal (and thus same SQLite engine) as the client fixture so seeded data is visible to the endpoint. When testing ties in peak_hour, max(range(24)) returns the lowest tied hour -- make test sessions unambiguous to avoid false tie failures.
+
+## 9. Best-fit-slots strategy (gap-aware timeline)
+- **Date:** 2026-09-02
+- **Status:** DONE
+- **Summary:** Added _best_fit_slots to strategies.py: builds free gaps within [day_start, day_end], clips each gap cursor to max(gap_start, start_time), places activities longest-first into the earliest gap with enough remaining space; activities that fit nowhere go to excluded with reason no-free-slot. Strategy returns a prebuilt 'timeline' key instead of 'ordered'; router now checks for it before falling back to _build_timeline. Added 4 tests: no-overlap assertion, too-big excluded, empty-events equals longest-first, and best-fit parity still passing.
+- **Files changed:** backend/app/services/strategies.py, backend/app/routers/schedules.py, backend/tests/test_generate.py
+- **Verification:** venv/bin/python -m pytest backend/tests/ -v -- 63 passed
+- **Gotchas:** Strategies that compute explicit start/end times must return a 'timeline' key; the router short-circuits _build_timeline when that key is present. With no existing events, one whole-day gap is clipped to start_time, producing longest-first sequential output.
