@@ -16,11 +16,13 @@ def google_login():
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/callback")
-def auth_callback(code: str):
+def auth_callback(code: str, state: str):
     """Handle OAuth callback from Google"""
     try:
-        calendar_service.authenticate(code)
+        calendar_service.authenticate(code, state)
         return {"message": "Successfully authenticated with Google Calendar"}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

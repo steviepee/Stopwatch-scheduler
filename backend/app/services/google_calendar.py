@@ -5,6 +5,7 @@ from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from google.auth.transport.requests import Request
 import pickle
+import secrets
 
 class GoogleCalendarService:
     SCOPES = ['https://www.googleapis.com/auth/calendar']
@@ -13,6 +14,7 @@ class GoogleCalendarService:
     def __init__(self):
         self.creds = None
         self.service = None
+        self._pending_state = None
         self._load_credentials()
 
     def _load_credentials(self):
@@ -50,11 +52,17 @@ class GoogleCalendarService:
         )
         flow.redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
 
-        auth_url, _ = flow.authorization_url(prompt='consent')
+        auth_url, state = flow.authorization_url(prompt='consent')
+        self._pending_state = state
         return auth_url
 
-    def authenticate(self, code: str):
+    def authenticate(self, code: str, state: str):
         """Complete OAuth flow with authorization code"""
+        expected_state = self._pending_state
+        self._pending_state = None
+        if not expected_state or not secrets.compare_digest(state, expected_state):
+            raise ValueError("Invalid OAuth state")
+
         flow = Flow.from_client_config(
             {
                 "web": {
