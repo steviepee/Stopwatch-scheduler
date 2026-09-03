@@ -80,8 +80,8 @@ Healthy responses:
 ```bash
 curl -s localhost:8000/api/health          # {"status":"healthy"}
 curl -s localhost:3000/api/auth/status     # {"authenticated":true}
-                                           # false on a long-running server is usually the
-                                           # hourly token-refresh bug, not lost credentials
+                                           # false now means genuinely revoked or never
+                                           # authorized; staleness refreshes automatically
 curl -s localhost:3000/api/tasks/          # 200 with a JSON array
 ```
 

@@ -27,8 +27,13 @@ print('refresh_token:', bool(c.refresh_token), '| expired:', c.expired, '| valid
 `refresh_token: True` with `valid: False` is this bug. A fresh `GoogleCalendarService()`
 returns authenticated immediately, which proves the credentials are sound.
 
-**Workaround:** restart the backend. **Real fix, not yet applied:** refresh on use rather than
-only at construction.
+**FIXED 2026-09-03.** `_refresh_if_needed` now runs before every use via `is_authenticated`,
+rather than only at construction. It also reloads credentials from disk when the instance has
+none, which matters because `sessions.py` and `calendar_auth.py` each hold their own service
+instance. A refresh failure now degrades to unauthenticated instead of raising, so a dead
+refresh token no longer stops the backend booting.
+
+The check above is still the right way to tell a genuinely revoked token from a stale one.
 
 **Occurred:** 2026-09-03, on a server up since morning.
 

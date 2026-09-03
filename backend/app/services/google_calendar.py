@@ -19,16 +19,30 @@ class GoogleCalendarService:
 
     def _load_credentials(self):
         """Load saved credentials if they exist"""
-        if os.path.exists(self.TOKEN_FILE):
+        self._refresh_if_needed()
+
+    def _refresh_if_needed(self):
+        """Load credentials from disk if absent and refresh an expired access token.
+
+        Access tokens last about an hour, so this runs before every use rather
+        than only at construction. A refresh failure degrades to unauthenticated
+        instead of raising, so a dead refresh token cannot stop the app booting.
+        """
+        if self.creds is None and os.path.exists(self.TOKEN_FILE):
             with open(self.TOKEN_FILE, 'rb') as token:
                 self.creds = pickle.load(token)
+            self.service = None
 
-        # Refresh expired credentials
         if self.creds and self.creds.expired and self.creds.refresh_token:
-            self.creds.refresh(Request())
-            self._save_credentials()
+            try:
+                self.creds.refresh(Request())
+                self._save_credentials()
+            except Exception:
+                self.creds = None
+                self.service = None
+                return
 
-        if self.creds and self.creds.valid:
+        if self.creds and self.creds.valid and self.service is None:
             self.service = build('calendar', 'v3', credentials=self.creds)
 
     def _save_credentials(self):
@@ -84,6 +98,7 @@ class GoogleCalendarService:
 
     def is_authenticated(self):
         """Check if user is authenticated"""
+        self._refresh_if_needed()
         return self.creds is not None and self.creds.valid
 
     def get_events_for_date(self, date_str: str, tz_offset: int = 0) -> list:
