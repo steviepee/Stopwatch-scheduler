@@ -6,6 +6,40 @@ Not a task list. Nothing here is committed to.
 
 ---
 
+## Wire the Phase 3 backend surface into the frontend
+
+**Raised:** 2026-09-03. Deferred deliberately, to be scoped as its own PRD.
+
+Phase 3 built a server-side scheduling engine that nothing consumes. Three capabilities are
+finished, tested, and unreachable by a user:
+
+| Capability | Route | Gap |
+|---|---|---|
+| Seven ordering strategies | `POST /api/schedules/generate` | UI has its own four, computed in the browser |
+| Peak-hours analytics | `GET /api/insights/peak-hours` | Nothing displays it |
+| Urgency / importance / frog flags | `PUT /api/tasks/{id}` | Never called; no component references the fields |
+
+**Why it was left this way.** The current frontend is slated for replacement, not extension, so
+wiring it now is work that gets thrown away. The browser-side ordering code is also the parity
+reference the server strategies are tested against, and deleting it before the rewrite would
+remove what the fixtures measure.
+
+**What the eventual PRD has to cover**
+
+- Add a `generate` method to the API client; it does not exist today.
+- Replace the client-side timeline builder and best-fit implementation with calls to the endpoint,
+  then delete `buildTimeline` and `bestFitOrder` from `ScheduleTimeline.tsx`.
+- Decide what happens to `backend/tests/fixtures/generate_parity.json` once the code it was
+  captured from is gone. The fixtures stay valid as regression data, but nothing regenerates them.
+- Build a quadrant picker and a daily frog pick, which is the only way the Eisenhower and
+  eat-the-frog strategies become usable.
+- Surface peak-hours somewhere it changes a decision, not as a chart for its own sake.
+
+**Ordering note.** This depends on the frontend rewrite, which is Phase 5 in the roadmap. It is
+not a standalone piece of work.
+
+---
+
 ## Parallel activities and stacked schedule items
 
 **Raised:** 2026-09-02

@@ -40,7 +40,8 @@ Single user. No authentication or multi-tenancy anywhere by design.
 
 **Scheduling**
 - Build a day from Activities, each with an estimated duration seeded from its history.
-- Generate orderings via seven strategies (below), compare them, then save one.
+- Generate orderings, compare them, then save one. The UI offers four strategies and computes
+  them in the browser; the server's seven are **API only** until the new frontend lands.
 - Save a schedule as a *regimen* and re-apply it to any future date.
 - Rate a completed schedule, so the ordering that worked is recoverable later.
 
@@ -50,9 +51,11 @@ Single user. No authentication or multi-tenancy anywhere by design.
 - Import existing Google Calendar events for a date so scheduling works around real commitments.
 - Export any block to Google Calendar and remove it again.
 
-**Insight**
-- Peak-hours endpoint reporting when recorded work actually happens.
+**Insight** — none of this is reachable from the UI yet.
+- Peak-hours reporting of when recorded work actually happens. **API only.**
 - Eisenhower urgency/importance flags and an eat-the-frog flag as scheduling inputs.
+  **API only, and there is no write path from the app at all** — the one route that sets them,
+  `PUT /api/tasks/{id}`, is never called by the client, and no component references the fields.
 
 **Platform**
 - Installable PWA with offline caching.
@@ -173,15 +176,18 @@ Registered in `STRATEGY_REGISTRY` in `services/strategies.py`. All are pure orde
 except the last, and all must reproduce `backend/tests/fixtures/generate_parity.json` exactly,
 including tie order.
 
-| Strategy | Behavior |
-|---|---|
-| `your-order` | Keeps the given order |
-| `shortest-first` | Stable ascending sort by duration |
-| `longest-first` | Stable descending sort by duration |
-| `best-fit` | Greedily packs longest activities into largest gaps between existing events; **orders only** |
-| `best-fit-slots` | Gap-aware, places items into actual free time rather than stacking sequentially |
-| `eat-the-frog` | The flagged activity goes first, rest keep their order |
-| `eisenhower` | Orders by urgency and importance quadrant |
+The UI does **not** call this endpoint. It has its own copy of the first four, computed in the
+browser, which is the parity reference these are tested against. The last three exist only here.
+
+| Strategy | Behavior | In UI |
+|---|---|---|
+| `your-order` | Keeps the given order | yes |
+| `shortest-first` | Stable ascending sort by duration | yes |
+| `longest-first` | Stable descending sort by duration | yes |
+| `best-fit` | Greedily packs longest activities into largest gaps between existing events; **orders only** | yes |
+| `best-fit-slots` | Gap-aware, places items into actual free time rather than stacking sequentially | **API only** |
+| `eat-the-frog` | The flagged activity goes first, rest keep their order | **API only** |
+| `eisenhower` | Orders by urgency and importance quadrant | **API only** |
 
 Ties must be stable. Python's `sorted` already guarantees this, so no secondary sort key.
 
