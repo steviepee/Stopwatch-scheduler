@@ -1,5 +1,8 @@
 # Stopwatch Scheduler - Project Context
 
+> Known failure modes and how to recognize them: [GOTCHAS.md](GOTCHAS.md).
+> Check it before debugging a 500, an auth error, or tests that pass while the app is broken.
+
 ## Quick Start
 
 ```bash
