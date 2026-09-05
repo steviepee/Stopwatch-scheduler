@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import os
+import hmac
 from dotenv import load_dotenv
 
 from app.database import engine, Base
@@ -36,7 +37,7 @@ async def bearer_gate(request: Request, call_next):
         return await call_next(request)
     token = os.getenv('API_TOKEN')
     auth = request.headers.get('Authorization', '')
-    if auth != f'Bearer {token}':
+    if not hmac.compare_digest(auth, f'Bearer {token}'):
         return JSONResponse(status_code=401, content={'detail': 'Not authenticated'})
     return await call_next(request)
 
