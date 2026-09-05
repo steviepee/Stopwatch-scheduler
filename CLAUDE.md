@@ -2,6 +2,9 @@
 
 > Known failure modes and how to recognize them: [GOTCHAS.md](GOTCHAS.md).
 > Check it before debugging a 500, an auth error, or tests that pass while the app is broken.
+>
+> Where the project is going and what is decided: [roadmap.md](roadmap.md). Current tasks: [prd.md](prd.md).
+> Handoff for a fresh session: [AsIWasSaying.md](AsIWasSaying.md).
 
 ## Quick Start
 

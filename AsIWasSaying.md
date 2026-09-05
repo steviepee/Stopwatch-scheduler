@@ -1,156 +1,115 @@
-# Standing Orders — Planning Handoff
+# Standing Orders — Phase 4 → 5
 
-Written 2026-09-03 for a fresh agent about to plan **Phase 4 and Phase 5** with the user in
-plan mode. Read this, then the three files named below, then start grilling. Do not start by
-re-deriving the state of the repo; it was verified the day this was written and the facts are
-in section 2.
-
-Your job in that session is to ask, not to build. The user wants to be grilled until the
-decisions are actually made. The questions in section 5 are the ones that matter, roughly in
-the order they should be settled, because several of them determine each other.
+Current as of 2026-09-05. Read this, then `prd.md`, then start on the first PENDING task.
 
 ---
 
-## 1. What to read first
+## 1. What to read
 
 | File | Why |
 |---|---|
-| [DIAGNOSTIC.md](DIAGNOSTIC.md) | The system as it should be. Capabilities, API surface, schema, and a verification checklist. |
-| [GOTCHAS.md](GOTCHAS.md) | Four failure modes with symptoms. Read before debugging anything. |
-| [future-work.md](future-work.md) | Deferred scope with the reasoning. Two entries, both relevant to Phase 5. |
+| [roadmap.md](roadmap.md) | Phases 1–6 and decisions D1–D20. Settled; work within them. |
+| [prd.md](prd.md) | The phase in flight. Tasks marked USER are for the user, not the loop. |
+| [CONTEXT.md](CONTEXT.md) | Glossary. Product names differ from code names; use the product names in prose and new code. |
+| [GOTCHAS.md](GOTCHAS.md) | Failure modes with symptoms. Read before debugging a 500, an auth error, or green tests beside a broken app. |
+| [docs/adr/](docs/adr/) | Why React Native, and why one bearer token with no tenancy. |
+| [DIAGNOSTIC.md](DIAGNOSTIC.md) | API surface, schema, runtime expectations, verification checklist. |
+| [future-work.md](future-work.md) | Deferred scope. Not scheduled. |
 
-`prd.md` holds only the **current** phase and is fully consumed. `progress.md` is the Ralph
-loop's per-iteration log.
+## 2. State of the repo
 
----
+- Backend suite 75 passing; frontend 16. Backend on 8000, Vite on 3000 proxying `/api`.
+- Google Calendar authenticated; credentials refresh on use.
+- Live MySQL schema matches the models, five tables, real recordings since February.
+- Phases 1–3 complete. Phase 4 PRD written; no tasks started.
 
-## 2. Verified state as of 2026-09-03
+## 3. Decisions that shape day-to-day work
 
-- Backend suite: 75 passing. Frontend suite: 16 passing.
-- Both servers up; backend on port 8000, Vite on 3000 proxying `/api` to it.
-- Google Calendar authenticated and refreshing correctly.
-- Live MySQL schema matches the models. All five tables.
-- `main` was in sync with origin. Check `git status` for anything left uncommitted, including
-  this file.
-- Phases 1, 2, and 3 are complete. `prd.md` has nine tasks done, zero pending.
+Full table in `roadmap.md`. The ones that matter most while executing:
 
-**The leaked-credential incident is closed.** The old OAuth client was deleted and replaced,
-which revoked its tokens. The blob still in public git history is dead. Do not raise it again
-and do not propose a history rewrite.
+- **D6/D7** The new frontend is React Native + Expo **dev build** (not Expo Go), Android first, iOS kept buildable via stubs.
+- **D3** Auth is one static bearer token checked in middleware. No users table, no owner columns.
+- **D4** The test suite keeps `create_all` in `conftest.py`. Schema drift is caught by `test_migrations.py` running `alembic check` against throwaway SQLite.
+- **D10/D15** The gate lands before the backend is bound to `0.0.0.0`. Alembic lands any time before deploy.
+- **D11** `frontend/` is **frozen**: no features, no fixes. It is deleted once the Android app can record and list. Only `vite.config.ts` and its env files may change, and only for the gate.
+- **D13** `backend/tests/fixtures/generate_parity.json` is frozen regression data. If a strategy change breaks parity, the strategy is wrong.
+- **D14** Google OAuth never runs on the phone. The user authorizes once from a laptop; `token.pickle` is global.
+- **D20** Tests are written by a separate loop iteration from the task's acceptance criteria, before the implementation iteration. PRD tasks are paired `N.tests` / `N.impl`. Keep that pairing in every PRD you write.
 
----
+## 4. Phase 4 — in flight
 
-## 3. The two steps being planned
+`./ralph.sh --max N` runs `prd.md`. Skip USER tasks and tell the user what they need to do:
 
-**Phase 4 — auth + Alembic.** Smaller than the roadmap makes it look: peak-energy analytics
-was listed here but already shipped as task 8 of Phase 3. What remains is user authentication
-and database migrations.
+- **Task 3:** set `API_TOKEN` in `backend/.env` and `frontend/.env`, restart uvicorn with `--host 0.0.0.0`, verify from the phone's browser that `/api/health` is 200 and `/api/tasks/` is 401.
+- **Task 6:** `alembic revision --autogenerate -m baseline` against live MySQL, review booleans as `TINYINT(1) NOT NULL DEFAULT 0`, then `alembic stamp head`. Never `upgrade` — the tables exist.
 
-**Phase 5 — frontend rewrite.** The current frontend is deleted, not extended. The stated
-reasons are fatal timer drift, mouse-and-hover-only interaction, and no responsive design.
-Target is phone use. Scope includes a quadrant picker, the daily frog pick, a Pomodoro timer
-mode, and surfacing insights. It also absorbs the wiring described in future-work.md.
+Phase 5 may begin once task 3 is verified. Tasks 4–7 can land in parallel with it.
 
-Neither phase has a written task list. That is the immediate output the planning session
-should produce.
+## 5. Phase 5 — write this into `prd.md` when Phase 4a is done
 
----
+Archive the Phase 4 PRD to `docs/prd-phase4-completed.md` once 4b is also done. Every
+implementation task gets a paired `.tests` task carrying its acceptance criteria.
 
-## 4. Decided already — do not reopen
+### Prep
 
-These were settled on 2026-09-01 or during Phase 3. Relitigating them wastes the session.
+- **5.2** Scaffold `mobile/` with Expo (TypeScript, latest SDK) as a dev build from the start. Add `jest-expo` and `@testing-library/react-native`.
+- **5.3** Copy `frontend/src/types/index.ts`, `services/api.ts`, `utils/calendarUtils.ts` into `mobile/src/`. In `api.ts`: `baseURL` from `EXPO_PUBLIC_API_URL`; an axios request interceptor reads the bearer from `expo-secure-store`. Add `scheduleAPI.generate()` — it does not exist.
 
-- **The backend is the asset.** Kept and extended first, API frozen before the rewrite.
-- **The frontend is rebuilt from scratch**, not refactored.
-- **Rules-based scheduling now, AI later.** The strategy registry is deliberately shaped so an
-  AI planner slots in as one more entry rather than a rewrite.
-- **All four methodology concepts eventually**: Eisenhower, Eat the Frog, Timeboxing, Pomodoro.
-- **UTC everywhere**, with an explicit `Z` suffix, enforced by `UTCDateTime`.
-- **Phase 3's server-side engine stays unwired** until the rewrite. The browser-side ordering
-  code is the parity reference its tests measure against, so it cannot be deleted first.
+### Build 1 — Android, record and list. Retires the web app.
 
----
+5.4 is the riskiest task in the phase (see GOTCHAS). Spike it before any screen.
 
-## 5. What to grill on
+- **5.4** Native module via the Expo Modules API in `mobile/modules/timer-native/`: (a) `elapsedRealtime()`; (b) start/stop a foreground service with an ongoing notification showing elapsed time. iOS stub for both so the iOS build compiles. Document the dev-build command in `mobile/README.md`.
+  Fallback if it cannot be built: timestamp-only mode — `Date.now()` at start and stop, duration by subtraction, no notification. Keep the clock-jump check from 5.5.
+- **5.5 / 5.6** `mobile/src/timer/core.ts`, a pure state machine, tests first: `idle → running → paused`; start captures `{wallStart, monoStart}`; stop yields `{durationMs, startUtc, endUtc, clockJumpDetected}`. Duration from monotonic only. Wall timestamps ISO with `Z`. `|wallΔ − monoΔ| > 2000ms` sets the flag. Resume after process death reconstructs from persisted `{wallStart, monoStart}`. Persist to `AsyncStorage` on every transition.
+- **5.7** Offline save queue, tests first: failed `POST /api/sessions/` or `/api/time-logs/` writes go to a persisted queue; flush on app foreground and on connectivity change (`@react-native-community/netinfo`). Nothing else works offline.
+- **5.8** Screens, each with its `.tests` task first:
+  - **Stopwatch** — start/stop/reset; save as Recording or to an Activity; uses 5.4 for the notification, 5.6 for time.
+  - **Activities** — list with avg/median/prev from `GET /api/tasks/{id}/stats`; create.
+  - **Recordings** — list, name search, date filter.
+  - **Schedule** — pick activities, `POST /api/schedules/generate`, compare options, save one. Regimens: list and apply.
+  - **Settings** — API URL and bearer token, written to `expo-secure-store`.
+- **5.9** Phone-first: 44pt minimum targets, no hover states, portrait, safe-area aware. Glassmorphic palette as a token file.
+- **5.10** Port `frontend/public/icon.svg` and `scripts/generate-icons.js` to Expo `app.json` icon config before deleting `frontend/`.
+- **5.11** Once 5.8 records and lists on a physical phone against the LAN backend: delete `frontend/`. Remove `CORS_ORIGINS` (native sends no `Origin`). Update `CLAUDE.md`, `DIAGNOSTIC.md` §2–4 and §8, and this file.
 
-### The question that unlocks the others
+### Build 2 — the API-only surface and the calendar
 
-**Where does this actually run?** Today the backend is on localhost and the app is a browser
-tab on the same machine. A phone app cannot talk to localhost. So the moment Phase 5 targets a
-phone, the backend has to be reachable from off-box, and the moment it is reachable, it needs
-authentication. Phase 4 and Phase 5 are coupled through deployment, and the user may not have
-noticed that yet. Settle this first; several answers below collapse out of it.
+- **5.12** Quadrant picker on the Activity screen → `PUT /api/tasks/{id}` with `is_urgent` / `is_important`.
+- **5.13** Daily frog pick in the Schedule screen → `is_frog` on the schedule item.
+- **5.14** Expose `eat-the-frog`, `eisenhower`, `best-fit-slots` as selectable strategies. Needs 5.12 and 5.13.
+- **5.15** Pomodoro as a mode of `core.ts` (work/break intervals, notification on transition). Tests first.
+- **5.16** Peak-hours (`GET /api/insights/peak-hours`) as the suggested `start_time` default in the Schedule screen. Not a chart.
+- **5.17** Day-view calendar: `react-native-gesture-handler` + Reanimated for move and edge-resize within one day column; agenda list for the week. Port `calendarUtils` positioning. Google Calendar import for the day; export/remove per block.
 
-### Phase 4 — authentication
+## 6. Phase 6 — deploy
 
-- What is auth actually for? The app is single-user by design and the roadmap says so. Is this
-  protecting a deployed instance, or is it genuinely multi-user?
-- If it is one person on their own server, is a single credential gate enough, or is real user
-  management wanted? These have very different schema costs.
-- Does it imply multi-tenancy? Every table would need an owner column, and every query a filter.
-  That is a far larger change than "add auth" sounds.
-- What happens to the Google token? There is currently one credential file on disk, global to
-  the process. Per-user calendars would change that model.
-- Does auth block the rewrite, or can they proceed in parallel?
+Host is open; decide when reached. Not open: TLS is mandatory; `alembic upgrade head` is a
+deploy step; `mysqldump` the data → restore → `alembic stamp head`; `GOOGLE_REDIRECT_URI` →
+`https://<host>/api/auth/callback`, registered verbatim, backend restarted; the user
+authorizes Google once from a laptop; `EXPO_PUBLIC_API_URL` → public host, rebuild. Verify from
+cellular with Wi-Fi off.
 
-### Phase 4 — Alembic
+## 7. Verification gates
 
-- The database already exists with real data. Stamp it at a baseline revision, or generate an
-  initial migration representing current state?
-- Do the tests keep building from models, or start running migrations? **If they keep using
-  `create_all`, the drift problem Alembic is meant to solve stays invisible to the suite.**
-  This is the question that decides whether Alembic actually earns its keep.
-- Does the Ralph loop own migration generation? If so `PROMPT.md` needs updating, or the
-  automation will keep adding columns that never reach the database.
-- Is a check wanted that fails when models and migrations disagree?
+1. **Phase 4a:** `curl http://<lan-ip>:8000/api/tasks/` → 401; with `-H "Authorization: Bearer $API_TOKEN"` → 200. Web app at `localhost:3000` still lists recordings.
+2. **Phase 4b:** pytest green; add a throwaway column to a model with no revision → `test_migrations.py` fails; remove it → green. `alembic current` on MySQL shows head.
+3. **Build 1, the gate to delete the web app:** on a physical Android phone against the LAN backend — start recording, lock the screen 10+ minutes, unlock, stop; duration matches wall time within 1s; notification was visible while locked; save lands in MySQL. Airplane mode: record and save → queued; airplane off → appears in `GET /api/sessions/`.
+4. **Phase 6:** gate 3 from cellular with Wi-Fi off.
 
-### Phase 5 — the platform decision
+## 8. Traps
 
-Left open on 2026-09-01 and still open. It gates everything else in the phase.
+- **Green tests do not prove the app works.** Until 4b lands, the suite builds SQLite from the models and cannot see MySQL drift. Green suite plus a 500 is the signature; see GOTCHAS.
+- **The API-only surface is deliberate** until build 2. Three strategies, peak-hours, and the priority flags have no UI. Do not wire them early.
+- **Timer drift in the old `useStopwatch.ts` is a bug** (`+10` per tick instead of timestamp subtraction), not a platform limit. Do not fix it — the file is frozen — and do not cite it as a reason for native.
+- Config changes need a backend restart; env is read once at import.
+- Collection endpoints need trailing slashes; FastAPI 307s without them.
+- `token.pickle` is a credential. It is gitignored; keep it that way.
 
-- **React Native with Expo, or stay a progressive web app?**
-- **Does the timer need to run while the app is backgrounded or the screen is off?** This is
-  the single question that decides the platform. A web app cannot reliably time in the
-  background on iOS. If the answer is yes, the choice is made for them.
-- Timer drift is given as a reason for the rewrite. Drift comes from how the interval is
-  implemented, not from the platform. Push on whether a rewrite is required to fix it, or
-  whether it is being bundled in with the real reasons.
-- Android only, or iOS as well? The roadmap says both. iOS materially changes the answer.
-- Does offline still matter? The current app is an installable PWA with caching.
-- What survives the rewrite? The types, the API client, and the calendar utilities are
-  candidates. Or is it genuinely everything?
-- What happens to the 16 existing frontend tests, and to the parity fixtures once the code they
-  were captured from is deleted?
-
-### Cross-cutting
-
-- Existing recordings must survive whatever happens. There is real data from February.
-- The Google redirect URI is registered per OAuth client and currently points at localhost.
-  Deployment changes it.
-- Is there an order preference between the two phases, or a reason to interleave?
-
----
-
-## 6. Traps for a cold agent
-
-- **Green tests do not prove the app works.** The suite builds a fresh SQLite database from the
-  models each run and never touches MySQL, so it structurally cannot see schema drift. A passing
-  suite alongside a 500 is the signature. See GOTCHAS.
-- **The API-only surface is not a bug.** Three strategies, peak-hours, and the priority flags
-  have no interface and no client write path. That is deliberate sequencing. Do not "fix" it.
-- **`prd.md` is empty of pending work.** Running the Ralph loop now does nothing.
-- **The roadmap is not in the repo.** It exists only in agent memory. Writing it into the
-  project as a real file is a reasonable first act of the planning session.
-- **Config changes need a backend restart.** Environment variables are read once at import.
-- Collection endpoints need trailing slashes; FastAPI redirects without them.
-
----
-
-## 7. How the user works
+## 9. How the user works
 
 - Concise and direct. No preamble, no restating the question.
 - Never commit or push unless explicitly asked. Stage files by name.
-- `kill -15` before `kill -9` on their processes.
+- `kill -15` before `kill -9`.
 - Markdown links for file references, never backticks around paths.
-- They will push back on reasoning they find thin, and they expect the pushback to be answered
-  rather than absorbed.
+- They push back on thin reasoning and expect the pushback answered, not absorbed.
