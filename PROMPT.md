@@ -150,7 +150,7 @@ Do **not** attempt the next PENDING task. One task per session. Exit and let the
 | Frontend API client | `frontend/src/services/api.ts` | Axios, follows taskAPI/sessionAPI pattern |
 | CSS design system | `frontend/src/index.css` | All `glass-*` classes defined here |
 
-**Database:** MySQL, `stopwatch_scheduler`. New tables are created automatically via `Base.metadata.create_all` on backend restart — no manual migrations needed.
+**Database:** MySQL, `stopwatch_scheduler`. `Base.metadata.create_all` creates **missing tables only** — it never adds a column to an existing table. If a task adds or changes a column on an existing model, the live database will not have it and the endpoint will 500 while the suite stays green (see GOTCHAS.md, "Schema drift"). Until Alembic lands (Phase 4b in `roadmap.md`), record the exact `ALTER TABLE` needed in `progress.md` so it can be applied by hand. Once Alembic exists, every model change requires `alembic revision --autogenerate` and `tests/test_migrations.py` will fail without one.
 
 **Backend venv:** Always activate before running Python: `source backend/venv/bin/activate`
 

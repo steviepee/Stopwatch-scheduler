@@ -5,6 +5,30 @@ Append new entries as they come up. Newest first.
 
 ---
 
+## RISK (not yet occurred): the Android foreground-service module may not be buildable
+
+**What it is:** Phase 5 task 5.4 — a native Expo module exposing `SystemClock.elapsedRealtime()`
+and a foreground service with an ongoing notification. It is the single task most likely to
+sink the rewrite: it needs an Expo **dev build** (Expo Go cannot load it), a config plugin, and
+a working Android toolchain, none of which exist in this repo yet.
+
+**Symptom if it fails:** the app runs in Expo Go but the notification never appears, or the dev
+build fails at the Gradle step, or `elapsedRealtime()` is undefined at runtime because the
+module was not linked into the build that is running.
+
+**Why it is sequenced first:** every timer screen depends on it. Spike it before writing any
+screen so the failure is cheap.
+
+**Fallback:** D8's timestamp-only mode. Duration is still `monotonicStop - monotonicStart`
+computed on resume, so recordings stay correct; what is lost is visibility while the screen is
+locked and protection from the OS killing the process. If the fallback is taken, drop
+`elapsedRealtime()` to `Date.now()` with the clock-jump check from D9 kept as the safety net.
+
+**Logged:** 2026-09-05, during Phase 4/5 planning. Move this above the line and rewrite it as a
+real entry the day it actually breaks.
+
+---
+
 ## Google auth silently drops after about an hour of uptime
 
 **Symptom:** `/api/auth/status` returns `false` on a backend that has been running a while,
