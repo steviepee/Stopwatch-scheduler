@@ -1,18 +1,22 @@
+import os
 import pytest
 from unittest.mock import patch, MagicMock
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-# Patch Google Calendar service before importing app to avoid credential refresh at import time
-with patch("app.services.google_calendar.GoogleCalendarService._load_credentials", return_value=None):
+os.environ.setdefault('API_TOKEN', 'test-token')
+
+with patch('app.services.google_calendar.GoogleCalendarService._load_credentials', return_value=None):
     from fastapi.testclient import TestClient
     from app.database import Base, get_db
     from app.main import app
 
-SQLALCHEMY_TEST_URL = "sqlite:///./test.db"
+SQLALCHEMY_TEST_URL = 'sqlite:///./test.db'
 
-engine = create_engine(SQLALCHEMY_TEST_URL, connect_args={"check_same_thread": False})
+engine = create_engine(SQLALCHEMY_TEST_URL, connect_args={'check_same_thread': False})
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+_TEST_TOKEN = os.environ['API_TOKEN']
 
 
 @pytest.fixture(autouse=True)
@@ -32,7 +36,7 @@ def client():
             db.close()
 
     app.dependency_overrides[get_db] = override_get_db
-    c = TestClient(app)
+    c = TestClient(app, headers={'Authorization': f'Bearer {_TEST_TOKEN}'})
     yield c
     app.dependency_overrides.clear()
 

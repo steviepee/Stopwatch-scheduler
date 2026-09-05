@@ -32,13 +32,13 @@ database or the running process and are not for the loop — skip them and move 
   - [x] Tests use a fixture-provided `API_TOKEN`; no real token in the repo
 
 ### 1.impl — Gate middleware
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement the contract from task 1.tests as middleware in `backend/app/main.py` (or `backend/app/middleware.py` registered there). Add `API_TOKEN` to `backend/.env.example`. Update `backend/tests/conftest.py` so the shared `client` fixture sends the correct bearer header by default — the existing 75 tests must stay green without edits.
 - **Acceptance Criteria:**
-  - [ ] All tests from 1.tests pass
-  - [ ] Full pytest passes (75 + new)
-  - [ ] `API_TOKEN` documented in `.env.example` and in the Environment Variables section of `CLAUDE.md`
-  - [ ] No route other than the three exempt ones is reachable without the header
+  - [x] All tests from 1.tests pass
+  - [x] Full pytest passes (75 + new)
+  - [x] `API_TOKEN` documented in `.env.example` and in the Environment Variables section of `CLAUDE.md`
+  - [x] No route other than the three exempt ones is reachable without the header
 
 ### 2. Frozen web app keeps working through the gate
 - **Status:** PENDING

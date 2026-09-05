@@ -137,6 +137,8 @@ GOOGLE_CLIENT_SECRET=your_client_secret
 GOOGLE_REDIRECT_URI=http://localhost:8000/api/auth/callback
 
 CORS_ORIGINS=http://localhost:3000
+
+API_TOKEN=your_api_token
 ```
 
 ## Current State (Feb 2026)

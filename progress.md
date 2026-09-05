@@ -143,3 +143,11 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Verification:** venv/bin/python -m pytest tests/test_auth_gate.py -v -- 4 passed, 3 failed (all for the right reason)
 - **Gotchas:** The subprocess -c code for test_startup_fails_without_api_token must use actual newlines in the string for the with-block body to parse. String concatenation with spaces inside parens produces SyntaxError. Build via string concatenation with literal backslash-n sequences.
 
+
+## 1.impl. Gate middleware
+- **Date:** 2026-09-05
+- **Status:** DONE
+- **Summary:** Implemented bearer gate middleware in main.py. Added startup check (raises RuntimeError if API_TOKEN unset). Middleware exempts /api/health, /api/auth/google/login, /api/auth/callback; all other /api/* routes return 401 unless Authorization: Bearer <API_TOKEN> matches. Updated conftest.py to set API_TOKEN env before app import and send bearer header on client fixture. Added local client fixture override in test_auth_gate.py (no header, inline session factory) so the gate tests can test unauthenticated access without breaking the 75 other tests.
+- **Files changed:** backend/app/main.py, backend/tests/conftest.py, backend/tests/test_auth_gate.py, backend/.env.example, CLAUDE.md
+- **Verification:** venv/bin/python -m pytest tests/ -q -- 81 passed, 1 pre-existing failure in test_credential_refresh.py::test_startup_survives_dead_refresh_token (unrelated to gate, pre-dates this session)
+- **Gotchas:** Cannot import TestingSessionLocal from conftest in test files -- pytest does not add the tests/ dir to sys.path in this setup. Instead, create an inline engine/sessionmaker in the test file pointing to the same sqlite URL (./test.db). The autouse setup_db fixture creates/drops tables on that same file, so the inline session factory still sees them. The local client fixture must use monkeypatch.setenv to set API_TOKEN, since middleware reads os.getenv at request time (not a cached module-level var), and the app module-level check also needs API_TOKEN set before import.
