@@ -18,10 +18,10 @@ Current as of 2026-09-05. Read this, then `prd.md`, then start on the first PEND
 
 ## 2. State of the repo
 
-- Backend suite 75 passing; frontend 16. Backend on 8000, Vite on 3000 proxying `/api`.
+- Backend suite 82 passing; frontend 16. Backend on 8000, Vite on 3000 proxying `/api`.
 - Google Calendar authenticated; credentials refresh on use.
 - Live MySQL schema matches the models, five tables, real recordings since February.
-- Phases 1–3 complete. Phase 4 PRD written; no tasks started.
+- Phases 1–3 complete. Phase 4 tasks 1.tests and 1.impl done: the bearer gate is in `main.py` and the suite sends the header by default. Task 2 is next; task 3 is the user's.
 
 ## 3. Decisions that shape day-to-day work
 

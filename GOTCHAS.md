@@ -5,6 +5,46 @@ Append new entries as they come up. Newest first.
 
 ---
 
+## Ralph loop exits in two seconds with "Credit balance is too low"
+
+**Symptom:** every iteration finishes instantly, `[WARN] Claude session exited with non-zero
+status`, nothing changes in the repo. The log shows `Credit balance is too low` a few lines
+above the warning.
+
+**Cause:** `ANTHROPIC_API_KEY` is exported from `~/.bashrc`. When it is set, `claude` bills the
+API account instead of the claude.ai login, and the API account has no credits. The interactive
+session works because it was started under the claude.ai plan; the spawned `claude --print`
+sessions inherit the shell env and are not.
+
+**Fix:** `ralph.sh` now runs `env -u ANTHROPIC_API_KEY claude ...` so the loop uses the same
+login as the interactive session. If the symptom returns, check the script still does that,
+then check `claude` is logged in.
+
+**Occurred:** 2026-09-05, first run of the Phase 4 PRD. Both iterations were lost.
+
+---
+
+## `test_startup_survives_dead_refresh_token` fails only when a real token.pickle exists
+
+**Symptom:** `tests/test_credential_refresh.py::test_startup_survives_dead_refresh_token`
+fails with `assert True is False` on a machine that has authorized Google Calendar. It passes
+on a clean checkout, so it looks like a regression from whatever changed last. It is not.
+
+**Cause:** the test mocks `open` and `pickle.load` inside a `with` block, then calls
+`svc.is_authenticated()` **after** the block exits. `_refresh_if_needed` reloads credentials
+from disk when the instance has none, so it reads the real, valid `backend/token.pickle` and
+reports authenticated.
+
+**Confirm:** `mv token.pickle token.pickle.aside`, run the test, move it back. It passes.
+
+**FIXED 2026-09-05.** The assertion now sits inside the `with` block so the mocks are still
+active. Kept here because the shape — assert after the mocks exit, on a method that reloads from
+disk — is easy to reintroduce.
+
+**Occurred:** 2026-09-05, noticed after the Phase 4 loop reported it as pre-existing.
+
+---
+
 ## RISK (not yet occurred): the Android foreground-service module may not be buildable
 
 **What it is:** Phase 5 task 5.4 — a native Expo module exposing `SystemClock.elapsedRealtime()`
