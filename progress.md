@@ -134,3 +134,12 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Files changed:** backend/app/services/strategies.py, backend/app/routers/schedules.py, backend/tests/test_generate.py
 - **Verification:** venv/bin/python -m pytest backend/tests/ -v -- 63 passed
 - **Gotchas:** Strategies that compute explicit start/end times must return a 'timeline' key; the router short-circuits _build_timeline when that key is present. With no existing events, one whole-day gap is clipped to start_time, producing longest-first sequential output.
+
+## 1.tests. Gate middleware tests
+- **Date:** 2026-09-05
+- **Status:** DONE
+- **Summary:** Wrote backend/tests/test_auth_gate.py with 7 tests covering the bearer-token gate contract. Tests import cleanly and fail for the right reasons: test_no_token_is_401 and test_wrong_token_is_401 get 200 (no middleware yet); test_startup_fails_without_api_token gets returncode 0 (no startup check yet). 4 other tests pass.
+- **Files changed:** backend/tests/test_auth_gate.py, prd.md, progress.md
+- **Verification:** venv/bin/python -m pytest tests/test_auth_gate.py -v -- 4 passed, 3 failed (all for the right reason)
+- **Gotchas:** The subprocess -c code for test_startup_fails_without_api_token must use actual newlines in the string for the with-block body to parse. String concatenation with spaces inside parens produces SyntaxError. Build via string concatenation with literal backslash-n sequences.
+

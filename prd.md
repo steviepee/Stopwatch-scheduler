@@ -20,16 +20,16 @@ database or the running process and are not for the loop — skip them and move 
 ## Tasks
 
 ### 1.tests — Gate middleware tests
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Write `backend/tests/test_auth_gate.py` against the contract below. Do not implement the middleware. The tests will fail until task 1.impl; that is expected — mark this task DONE when the tests exist, import cleanly, and fail for the right reason (401 not returned).
 - **Contract:** Every `/api/*` route returns 401 `{"detail": "Not authenticated"}` unless the request carries `Authorization: Bearer <API_TOKEN>` where `API_TOKEN` is read from the environment. Exempt: `GET /api/health`, `GET /api/auth/google/login`, `GET /api/auth/callback`. A wrong token is 401, not 403. A missing `API_TOKEN` env var at startup is a hard error, not an open gate.
 - **Acceptance Criteria:**
-  - [ ] Test: `GET /api/tasks/` with no header → 401
-  - [ ] Test: `GET /api/tasks/` with wrong token → 401
-  - [ ] Test: `GET /api/tasks/` with correct token → 200
-  - [ ] Test: each of the three exempt routes → not 401 with no header (login/callback may return other codes; assert only that the gate did not fire)
-  - [ ] Test: app import with `API_TOKEN` unset raises at startup
-  - [ ] Tests use a fixture-provided `API_TOKEN`; no real token in the repo
+  - [x] Test: `GET /api/tasks/` with no header → 401
+  - [x] Test: `GET /api/tasks/` with wrong token → 401
+  - [x] Test: `GET /api/tasks/` with correct token → 200
+  - [x] Test: each of the three exempt routes → not 401 with no header (login/callback may return other codes; assert only that the gate did not fire)
+  - [x] Test: app import with `API_TOKEN` unset raises at startup
+  - [x] Tests use a fixture-provided `API_TOKEN`; no real token in the repo
 
 ### 1.impl — Gate middleware
 - **Status:** PENDING
