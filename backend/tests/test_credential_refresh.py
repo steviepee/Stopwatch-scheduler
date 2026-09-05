@@ -80,4 +80,4 @@ def test_startup_survives_dead_refresh_token():
          patch("builtins.open", MagicMock()), \
          patch("app.services.google_calendar.pickle.load", return_value=creds):
         svc = GoogleCalendarService()
-    assert svc.is_authenticated() is False
+        assert svc.is_authenticated() is False
