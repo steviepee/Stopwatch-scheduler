@@ -6,6 +6,7 @@ from app.database import get_db
 from app.models import task as task_model
 from app.models import time_log as time_log_model
 from app.models import schemas
+from app.services.task_stats import add_recording, remove_recording
 
 router = APIRouter()
 
@@ -33,10 +34,7 @@ def create_time_log(time_log: schemas.TimeLogCreate, db: Session = Depends(get_d
     )
     db.add(db_time_log)
 
-    # Update task average duration
-    total_duration = task.average_duration * task.total_recordings
-    task.total_recordings += 1
-    task.average_duration = (total_duration + time_log.duration) / task.total_recordings
+    add_recording(task, time_log.duration)
 
     db.commit()
     db.refresh(db_time_log)
@@ -52,14 +50,7 @@ def delete_time_log(time_log_id: int, db: Session = Depends(get_db)):
     # Get the task
     task = db.query(task_model.Task).filter(task_model.Task.id == db_time_log.task_id).first()
 
-    # Recalculate average duration
-    if task.total_recordings > 1:
-        total_duration = task.average_duration * task.total_recordings
-        task.total_recordings -= 1
-        task.average_duration = (total_duration - db_time_log.duration) / task.total_recordings
-    else:
-        task.total_recordings = 0
-        task.average_duration = 0.0
+    remove_recording(task, db_time_log.duration)
 
     db.delete(db_time_log)
     db.commit()

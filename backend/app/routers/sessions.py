@@ -4,8 +4,11 @@ from typing import List, Optional
 
 from app.database import get_db
 from app.models.stopwatch_session import StopwatchSession
+from app.models import task as task_model
+from app.models import time_log as time_log_model
 from app.models import schemas
 from app.services.google_calendar import GoogleCalendarService
+from app.services.task_stats import add_recording, remove_recording
 
 router = APIRouter()
 calendar_service = GoogleCalendarService()
@@ -53,6 +56,19 @@ def create_session(session: schemas.StopwatchSessionCreate, db: Session = Depend
         end_time=session.end_time
     )
     db.add(db_session)
+    db.flush()
+
+    if session.task_id is not None:
+        task = db.query(task_model.Task).filter(task_model.Task.id == session.task_id).first()
+        if task:
+            log = time_log_model.TimeLog(
+                task_id=session.task_id,
+                session_id=db_session.id,
+                duration=session.duration,
+            )
+            db.add(log)
+            add_recording(task, session.duration)
+
     db.commit()
     db.refresh(db_session)
     return db_session
@@ -69,6 +85,23 @@ def update_session(
         raise HTTPException(status_code=404, detail="Session not found")
 
     update_data = session.model_dump(exclude_unset=True)
+
+    if 'task_id' in update_data and update_data['task_id'] != db_session.task_id:
+        old_task_id = db_session.task_id
+        new_task_id = update_data['task_id']
+        linked_log = db.query(time_log_model.TimeLog).filter(
+            time_log_model.TimeLog.session_id == session_id
+        ).first()
+        if linked_log and old_task_id is not None:
+            old_task = db.query(task_model.Task).filter(task_model.Task.id == old_task_id).first()
+            if old_task:
+                remove_recording(old_task, linked_log.duration)
+            linked_log.task_id = new_task_id
+        if linked_log and new_task_id is not None:
+            new_task = db.query(task_model.Task).filter(task_model.Task.id == new_task_id).first()
+            if new_task:
+                add_recording(new_task, linked_log.duration)
+
     for field, value in update_data.items():
         setattr(db_session, field, value)
 
@@ -82,6 +115,16 @@ def delete_session(session_id: int, db: Session = Depends(get_db)):
     db_session = db.query(StopwatchSession).filter(StopwatchSession.id == session_id).first()
     if not db_session:
         raise HTTPException(status_code=404, detail="Session not found")
+
+    linked_log = db.query(time_log_model.TimeLog).filter(
+        time_log_model.TimeLog.session_id == session_id
+    ).first()
+    if linked_log:
+        if db_session.task_id is not None:
+            task = db.query(task_model.Task).filter(task_model.Task.id == db_session.task_id).first()
+            if task:
+                remove_recording(task, linked_log.duration)
+        db.delete(linked_log)
 
     db.delete(db_session)
     db.commit()

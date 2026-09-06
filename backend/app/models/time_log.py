@@ -7,6 +7,7 @@ class TimeLog(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False)
+    session_id = Column(Integer, ForeignKey("stopwatch_sessions.id", ondelete="CASCADE"), nullable=True)
     duration = Column(Float, nullable=False)  # in seconds
     notes = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=utcnow)

@@ -60,6 +60,7 @@ class TimeLogCreate(TimeLogBase):
 
 class TimeLog(TimeLogBase):
     id: int
+    session_id: Optional[int] = None
     created_at: UTCDateTime
 
     class Config:

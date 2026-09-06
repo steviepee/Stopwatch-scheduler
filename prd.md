@@ -122,10 +122,10 @@ sees them.
   - [x] Tests do not depend on a real `token.pickle` or `backend/.env`
 
 ### 8.impl — Attached Recordings feed the Activity
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement the contract from 8.tests. Add `session_id` (nullable FK to `stopwatch_sessions`, ON DELETE CASCADE) to `TimeLog`. Extract the average-update arithmetic from `routers/time_logs.py` into one helper both routers call. Add the Alembic revision for the new column — `tests/test_migrations.py` will fail without it once task 7 exists.
 - **Acceptance Criteria:**
-  - [ ] All tests from 8.tests pass; full pytest passes
-  - [ ] One Alembic revision under `backend/alembic/versions/` adding `time_logs.session_id`
-  - [ ] `DIAGNOSTIC.md` §10 schema updated; API surface unchanged (no new routes)
-  - [ ] The `ALTER TABLE` for MySQL recorded in `progress.md` in case the user applies it before running the migration
+  - [x] All tests from 8.tests pass; full pytest passes
+  - [x] One Alembic revision under `backend/alembic/versions/` adding `time_logs.session_id`
+  - [x] `DIAGNOSTIC.md` §10 schema updated; API surface unchanged (no new routes)
+  - [x] The `ALTER TABLE` for MySQL recorded in `progress.md` in case the user applies it before running the migration

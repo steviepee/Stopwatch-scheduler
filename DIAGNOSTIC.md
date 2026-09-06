@@ -276,7 +276,8 @@ Live MySQL schema, in `stopwatch_scheduler`.
 tasks               id, name, average_duration, total_recordings,
                     is_urgent, is_important, created_at, updated_at
 
-time_logs           id, task_id -> tasks, duration, notes, created_at
+time_logs           id, task_id -> tasks, session_id -> stopwatch_sessions (nullable, CASCADE),
+                    duration, notes, created_at
 
 stopwatch_sessions  id, name, duration, task_id -> tasks, notes,
                     calendar_event_id, is_on_calendar,

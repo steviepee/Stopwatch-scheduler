@@ -58,7 +58,7 @@ def get_peak_hours(
             start_utc = s.created_at - timedelta(seconds=s.duration)
         _distribute(start_utc, end_utc, offset, hours_data)
 
-    for tl in db.query(TimeLog).all():
+    for tl in db.query(TimeLog).filter(TimeLog.session_id.is_(None)).all():
         end_utc = tl.created_at
         start_utc = tl.created_at - timedelta(seconds=tl.duration)
         _distribute(start_utc, end_utc, offset, hours_data)
