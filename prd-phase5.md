@@ -71,13 +71,13 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
   - [x] Committed: everything under `mobile/` except `node_modules`, `.env`, and `.expo`
 
 ### P2. Project baseline
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Depends on P1 (USER). If `mobile/package.json` does not exist, P1 has not been done: change nothing, do not mark anything, output `RALPH_BLOCKED: P1 not done` and exit. Otherwise: turn the template into the project skeleton. No product behaviour yet, so this task has no `.tests` pair. Configure Jest (`"jest": { "preset": "jest-expo" }` and a `"test": "jest"` script in `package.json`; a `jest.setup.ts` if needed for async-storage's jest mock). Delete the template's example screens and components. Create `mobile/src/theme/tokens.ts` — colours, spacing, radii, type scale — lifted from the glassmorphic palette in `frontend/src/index.css` (read it; do not import it). Create the Router layout: `src/app/_layout.tsx` wraps everything in a QueryClientProvider (client created in P7; for now a plain `new QueryClient()`), `src/app/(tabs)/_layout.tsx` with four tabs — Stopwatch, Activities, Recordings, Schedule — each a placeholder screen, and `src/app/settings.tsx` reached from a gear icon in the header, not a tab. Add `dist/` to `mobile/.gitignore`.
 - **Acceptance Criteria:**
-  - [ ] `npx jest --ci` runs one smoke test (`src/__tests__/smoke.test.tsx` renders the tabs layout) and passes
-  - [ ] `npx tsc --noEmit` clean; `npx expo export --platform android` succeeds
-  - [ ] Four tabs and a settings route exist; every screen is a stub with the tab's name
-  - [ ] No template example code remains
+  - [x] `npx jest --ci` runs one smoke test (`src/__tests__/smoke.test.tsx` renders the tabs layout) and passes
+  - [x] `npx tsc --noEmit` clean; `npx expo export --platform android` succeeds
+  - [x] Four tabs and a settings route exist; every screen is a stub with the tab's name
+  - [x] No template example code remains
 
 ### P3.tests — Salvaged API client
 - **Status:** PENDING
