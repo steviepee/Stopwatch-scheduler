@@ -1,3 +1,9 @@
+"""
+generate_parity.json provenance: captured 2026-09-03 from the browser implementation of
+buildTimeline/bestFitOrder in ScheduleTimeline.tsx, which has since been deleted. The 1800s
+tie between "Email sweep" and "Read chapter" is deliberate and pins stable sort order. All
+instants are fixed UTC so the fixture is timezone-independent. Nothing regenerates it.
+"""
 import json
 import os
 from datetime import datetime, timezone

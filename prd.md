@@ -57,12 +57,12 @@ database or the running process and are not for the loop — skip them and move 
   - [x] Web app at `localhost:3000` still lists recordings
 
 ### 4. Freeze the parity fixture
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** `frontend/src/__tests__/fixtures-capture.test.ts` overwrites `backend/tests/fixtures/generate_parity.json` on every frontend test run, so the oracle the backend is measured against moves (roadmap D13). Delete the generator. Add a module docstring to `backend/tests/test_generate.py` recording provenance: captured 2026-09-03 from the browser implementation of `buildTimeline`/`bestFitOrder` that has since been deleted; the 1800s tie between "Email sweep" and "Read chapter" is deliberate and pins stable sort order; all instants are fixed UTC so the fixture is timezone-independent; nothing regenerates it.
 - **Acceptance Criteria:**
-  - [ ] Generator file deleted; `generate_parity.json` byte-identical before and after
-  - [ ] Docstring present in `test_generate.py`
-  - [ ] Frontend vitest passes (15); backend pytest passes
+  - [x] Generator file deleted; `generate_parity.json` byte-identical before and after
+  - [x] Docstring present in `test_generate.py`
+  - [x] Frontend vitest passes (15); backend pytest passes
 
 ### 5. Alembic scaffold
 - **Status:** PENDING

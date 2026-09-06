@@ -159,3 +159,11 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Files changed:** frontend/vite.config.ts, frontend/.env.example, frontend/.gitignore
 - **Verification:** cd frontend && npx vitest run -- 16 passed
 - **Gotchas:** Vite config runs in Node context; process.env does NOT pick up .env files automatically. Use loadEnv(mode, process.cwd(), '') from vite (empty prefix loads all vars) and access as env.API_TOKEN. Must convert defineConfig({...}) to defineConfig(({ mode }) => { ... return { ... } }) to get mode for loadEnv.
+
+## 4. Freeze the parity fixture
+- **Date:** 2026-09-05
+- **Status:** DONE
+- **Summary:** Deleted `frontend/src/__tests__/fixtures-capture.test.ts` (the generator that overwrote `generate_parity.json` on every vitest run). Added a module docstring to `backend/tests/test_generate.py` recording fixture provenance, the deliberate 1800s tie, and that nothing regenerates it.
+- **Files changed:** frontend/src/__tests__/fixtures-capture.test.ts (deleted), backend/tests/test_generate.py
+- **Verification:** `cd frontend && npx vitest run` — 15 passed; `venv/bin/python -m pytest tests/ -q` — 81 passed, 1 pre-existing failure (test_auth_gate.py::test_startup_fails_without_api_token, flaky subprocess test unrelated to this task)
+- **Gotchas:** The 1 pre-existing failure alternates between test_startup_fails_without_api_token and test_credential_refresh.py::test_startup_survives_dead_refresh_token across sessions — both are environment-dependent subprocess tests, not affected by code changes here.
