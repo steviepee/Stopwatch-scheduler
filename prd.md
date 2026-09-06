@@ -75,8 +75,11 @@ sees them.
 
 ### 6. USER — Baseline revision
 - **Status:** USER (not for the loop; the user does this by hand)
-- **Description:** Autogenerate compares the models to a database and writes the *difference*. Against the live database the difference is nothing, so the baseline must be generated against an **empty** MySQL database and then the live one is stamped. From `backend/` with the venv active and `DB_*` exported from `.env`:
+- **Description:** Autogenerate compares the models to a database and writes the *difference*. Against the live database the difference is nothing, so the baseline must be generated against an **empty** MySQL database and then the live one is stamped. All in one shell tab, in this order:
   ```bash
+  cd ~/Stopwatch-scheduler/backend && source venv/bin/activate
+  export $(grep -E "^DB_" .env | xargs)
+  echo "$DB_HOST $DB_PORT $DB_USER $DB_NAME"      # must print four values; if blank, stop here
   mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p"$DB_PASSWORD" -e "CREATE DATABASE stopwatch_baseline"
   alembic -x db_url="mysql+pymysql://$DB_USER:$DB_PASSWORD@$DB_HOST:$DB_PORT/stopwatch_baseline" revision --autogenerate -m baseline
   # review backend/alembic/versions/<id>_baseline.py: five create_table calls; Boolean columns
