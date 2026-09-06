@@ -5,6 +5,26 @@ Append new entries as they come up. Newest first.
 
 ---
 
+## Ralph loop session reports "write permission was denied" and exits RALPH_BLOCKED
+
+**Symptom:** an iteration finishes in about a minute with no commit and no file changes. The
+session output says it cannot modify files and asks for write permission, then prints
+`RALPH_BLOCKED`. Earlier iterations that edited files worked fine.
+
+**Cause:** the project's permission allow list contains Bash commands only; there is no `Edit`
+or `Write` rule. A `claude --print` session cannot prompt, so a direct file edit is denied.
+The iterations that succeeded did so because the agent happened to fall back to
+`python3 -c "open(...).write(...)"`, which is allowed via `Bash(python3:*)`. Whether an
+iteration succeeded depended on which tool the agent reached for first.
+
+**Fix:** `ralph.sh` now passes `--permission-mode acceptEdits`, which auto-approves file edits
+inside the project for the spawned session while Bash stays on the allow list. If the symptom
+returns, check the flag is still on the `claude` line.
+
+**Occurred:** 2026-09-05, Phase 4 task 2. One iteration lost.
+
+---
+
 ## Ralph loop exits in two seconds with "Credit balance is too low"
 
 **Symptom:** every iteration finishes instantly, `[WARN] Claude session exited with non-zero

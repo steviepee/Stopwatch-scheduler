@@ -140,7 +140,7 @@ while [[ $iteration -lt $MAX_ITERATIONS ]]; do
   # Spawn a fresh Claude Code session with the prompt
   # --print mode sends the prompt and gets a response without interactive mode
   # The prompt file tells Claude to read CLAUDE.md, prd.md, and progress.md
-  env -u ANTHROPIC_API_KEY claude --model "$MODEL" --print "$(cat "$PROMPT_FILE")" || {
+  env -u ANTHROPIC_API_KEY claude --model "$MODEL" --permission-mode acceptEdits --print "$(cat "$PROMPT_FILE")" || {
     echo ""
     echo "[WARN] Claude session exited with non-zero status at $(timestamp)"
     echo "       Continuing to next iteration..."
