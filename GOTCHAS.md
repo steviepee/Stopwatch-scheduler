@@ -184,8 +184,9 @@ for name, table in Base.metadata.tables.items():
     print(name, sorted(missing) or "OK")
 ```
 
-**Fix:** add the column by hand, matching the model definition. There is no Alembic here.
-`Column(Boolean, nullable=False, default=False)` becomes:
+**Fix:** run `alembic revision --autogenerate -m 'description'`, review the generated file,
+then `alembic upgrade head` against the live database. If for some reason Alembic is
+unavailable, add the column by hand:
 
 ```sql
 ALTER TABLE tasks ADD COLUMN is_urgent TINYINT(1) NOT NULL DEFAULT 0;

@@ -5,13 +5,10 @@ import os
 import hmac
 from dotenv import load_dotenv
 
-from app.database import engine, Base
 from app.routers import tasks, time_logs, calendar_auth, sessions, schedules, insights
 import app.models.schedule
 
 load_dotenv()
-
-Base.metadata.create_all(bind=engine)
 
 _api_token = os.getenv('API_TOKEN')
 if not _api_token:

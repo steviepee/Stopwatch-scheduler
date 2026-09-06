@@ -246,3 +246,11 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Files changed:** backend/tests/test_migrations.py, prd.md, progress.md
 - **Verification:** `venv/bin/python -m pytest tests/ -q` — 84 passed, 0 failures
 - **Gotchas:** Set alembic x-args programmatically via `cfg.cmd_opts = argparse.Namespace(x=[f"db_url={db_url}"])` — this is the only way to pass `-x` flags without the CLI. Use `table.to_metadata(new_meta)` (SQLAlchemy 2.0 API; `tometadata` was removed) to copy all tables into a fresh `MetaData` before appending the sentinel column, so `Base.metadata` is never mutated between tests. `compare_type=False` in `MigrationContext.configure` suppresses SQLite/MySQL type-name noise.
+
+## 7.impl. Make the drift test pass and hand off schema ownership
+- **Date:** 2026-09-06
+- **Status:** DONE
+- **Summary:** `test_migrations.py` already passed against the task-6 baseline (no code change needed there). Removed `Base.metadata.create_all(bind=engine)` and the unused `engine, Base` import from `backend/app/main.py` — Alembic now owns the production schema. Updated DIAGNOSTIC.md §4 (removed "create_all on startup" from main.py description), §8 (corrected test count to 84, added note that test_migrations.py catches drift), and §10 (removed "no migration tool" sentence, replaced with Alembic guidance). Updated GOTCHAS.md schema-drift fix line to say `alembic revision --autogenerate`. Confirmed PROMPT.md Database paragraph is accurate and left it unchanged.
+- **Files changed:** backend/app/main.py, DIAGNOSTIC.md, GOTCHAS.md, prd.md, progress.md
+- **Verification:** `venv/bin/python -m pytest tests/ -q` — 84 passed, 0 failures
+- **Gotchas:** None

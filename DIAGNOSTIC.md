@@ -99,7 +99,7 @@ restart**, never just a save.
 
 | File | Responsibility |
 |---|---|
-| `main.py` | App entry, CORS, router registration, `create_all` on startup |
+| `main.py` | App entry, CORS, router registration |
 | `database.py` | Engine and session factory, reads `DB_*` from env |
 | `models/task.py` | Activity: name, average, recording count, urgency/importance |
 | `models/time_log.py` | One recorded duration against an Activity |
@@ -216,11 +216,14 @@ Never committed: `backend/.env`, `token.pickle`, `*.db`, `credentials.json`,
 
 | Suite | Count | Command |
 |---|---|---|
-| Backend | 69 | `cd backend && venv/bin/python -m pytest tests/ -q` |
-| Frontend | 16 | `cd frontend && npx vitest run` |
+| Backend | 84 | `cd backend && venv/bin/python -m pytest tests/ -q` |
+| Frontend | 15 | `cd frontend && npx vitest run` |
 
 Backend tests build a fresh SQLite database from the models on every run and never touch
-MySQL. **They therefore cannot detect schema drift in the real database.** See GOTCHAS.
+MySQL. Most tests **cannot detect schema drift in the real database** — see GOTCHAS.
+`tests/test_migrations.py` is the exception: it runs `alembic upgrade head` against a
+throwaway SQLite file and asserts the diff against `Base.metadata` is empty. A model change
+without a matching revision will fail this test.
 
 Pinned for compatibility: `httpx<0.28`, since starlette 0.35.1 breaks on 0.28+.
 `GoogleCalendarService._load_credentials` must be mocked before importing the app in tests.
@@ -287,8 +290,9 @@ schedule_items      id, schedule_id -> schedules, task_id -> tasks, custom_name,
                     estimated_duration, position, scheduled_time, is_frog, created_at
 ```
 
-Booleans are `TINYINT(1) NOT NULL DEFAULT 0`. There is **no migration tool**; columns added
-to a model must be applied to MySQL by hand.
+Booleans are `TINYINT(1) NOT NULL DEFAULT 0`. Schema is managed by Alembic; every model
+change requires `alembic revision --autogenerate` followed by `alembic upgrade head` on the
+live database. See GOTCHAS for the full procedure.
 
 `ScheduleItem.position` is an ordinal, not a time. Items are assumed non-overlapping, which is
 the constraint the parallel-activities work in future-work.md would have to break.

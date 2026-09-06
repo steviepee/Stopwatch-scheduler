@@ -104,13 +104,13 @@ sees them.
   - [x] Throwaway database is created under `tmp_path`, never in the repo
 
 ### 7.impl — Make the drift test pass and hand off schema ownership
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** With task 6's baseline in place, make `test_migrations.py` green. Then remove `Base.metadata.create_all` from `backend/app/main.py` startup — migrations own the production schema now (roadmap D4). `conftest.py` keeps `create_all`. Update DIAGNOSTIC.md §8 and §10 ("There is no migration tool" is no longer true) and the fix line of the GOTCHAS schema-drift entry to say `alembic revision --autogenerate`.
 - **Acceptance Criteria:**
-  - [ ] Full pytest passes including `test_migrations.py`
-  - [ ] `create_all` absent from `main.py`
-  - [ ] DIAGNOSTIC.md and GOTCHAS.md updated
-  - [ ] `PROMPT.md` Database paragraph already describes the Alembic rule (done 2026-09-05); confirm it is accurate and leave it
+  - [x] Full pytest passes including `test_migrations.py`
+  - [x] `create_all` absent from `main.py`
+  - [x] DIAGNOSTIC.md and GOTCHAS.md updated
+  - [x] `PROMPT.md` Database paragraph already describes the Alembic rule (done 2026-09-05); confirm it is accurate and leave it
 
 ### 8.tests — Attached Recordings feed the Activity
 - **Status:** PENDING
