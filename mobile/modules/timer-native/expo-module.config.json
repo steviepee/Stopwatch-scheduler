@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android", "web"],
+  "apple": {
+    "modules": ["TimerNativeModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.timernative.TimerNativeModule"]
+  }
+}

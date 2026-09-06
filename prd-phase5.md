@@ -47,7 +47,7 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
 ## Tasks
 
 ### P1. USER — Expo account, scaffold, dependencies
-- **Status:** USER
+- **Status:** USER — DONE 2026-09-06. Note: the SDK 57 template puts routes under `src/app/`, not `app/`; every route path in this PRD is written that way. It also ships `AGENTS.md` (read the v57 docs) and a `.claude/settings.json` enabling the Expo plugin; both are committed and apply to loop sessions.
 - **Description:** Everything that needs an account or a package install, done once so the loop never has to. From the repo root:
   ```bash
   npm install -g eas-cli
@@ -63,16 +63,16 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
   ```
   Then in `mobile/app.json`: `"name": "Stopwatch Scheduler"`, `"slug": "stopwatchscheduler"` (no dash, user preference), `android.package` = `app.workflow.stopwatch`, and add `"expo-dev-client"` to plugins if `eas build:configure` did not. Create `mobile/.env` with `EXPO_PUBLIC_API_URL=http://192.168.0.5:8000/api` and commit `mobile/.env.example` with the same key and no value.
 - **Acceptance Criteria:**
-  - [ ] `mobile/package.json` lists every package above
-  - [ ] `mobile/modules/timer-native/` exists with `expo-module.config.json`, `android/`, `ios/`, `src/`
-  - [ ] `mobile/app.json` has the projectId, name, slug, and `app.workflow.stopwatch`
-  - [ ] `mobile/eas.json` has a `development` profile with `developmentClient: true`
-  - [ ] `mobile/.env` exists and is gitignored; `mobile/.env.example` is committed
-  - [ ] Committed: everything under `mobile/` except `node_modules`, `.env`, and `.expo`
+  - [x] `mobile/package.json` lists every package above
+  - [x] `mobile/modules/timer-native/` exists with `expo-module.config.json`, `android/`, `ios/`, `src/`
+  - [x] `mobile/app.json` has the projectId, name, slug, and `app.workflow.stopwatch`
+  - [x] `mobile/eas.json` has a `development` profile with `developmentClient: true`
+  - [x] `mobile/.env` exists and is gitignored; `mobile/.env.example` is committed
+  - [x] Committed: everything under `mobile/` except `node_modules`, `.env`, and `.expo`
 
 ### P2. Project baseline
 - **Status:** PENDING
-- **Description:** Depends on P1 (USER). If `mobile/package.json` does not exist, P1 has not been done: change nothing, do not mark anything, output `RALPH_BLOCKED: P1 not done` and exit. Otherwise: turn the template into the project skeleton. No product behaviour yet, so this task has no `.tests` pair. Configure Jest (`"jest": { "preset": "jest-expo" }` and a `"test": "jest"` script in `package.json`; a `jest.setup.ts` if needed for async-storage's jest mock). Delete the template's example screens and components. Create `mobile/src/theme/tokens.ts` — colours, spacing, radii, type scale — lifted from the glassmorphic palette in `frontend/src/index.css` (read it; do not import it). Create the Router layout: `app/_layout.tsx` wraps everything in a QueryClientProvider (client created in P7; for now a plain `new QueryClient()`), `app/(tabs)/_layout.tsx` with four tabs — Stopwatch, Activities, Recordings, Schedule — each a placeholder screen, and `app/settings.tsx` reached from a gear icon in the header, not a tab. Add `dist/` to `mobile/.gitignore`.
+- **Description:** Depends on P1 (USER). If `mobile/package.json` does not exist, P1 has not been done: change nothing, do not mark anything, output `RALPH_BLOCKED: P1 not done` and exit. Otherwise: turn the template into the project skeleton. No product behaviour yet, so this task has no `.tests` pair. Configure Jest (`"jest": { "preset": "jest-expo" }` and a `"test": "jest"` script in `package.json`; a `jest.setup.ts` if needed for async-storage's jest mock). Delete the template's example screens and components. Create `mobile/src/theme/tokens.ts` — colours, spacing, radii, type scale — lifted from the glassmorphic palette in `frontend/src/index.css` (read it; do not import it). Create the Router layout: `src/app/_layout.tsx` wraps everything in a QueryClientProvider (client created in P7; for now a plain `new QueryClient()`), `src/app/(tabs)/_layout.tsx` with four tabs — Stopwatch, Activities, Recordings, Schedule — each a placeholder screen, and `src/app/settings.tsx` reached from a gear icon in the header, not a tab. Add `dist/` to `mobile/.gitignore`.
 - **Acceptance Criteria:**
   - [ ] `npx jest --ci` runs one smoke test (`src/__tests__/smoke.test.tsx` renders the tabs layout) and passes
   - [ ] `npx tsc --noEmit` clean; `npx expo export --platform android` succeeds
@@ -158,16 +158,16 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
 ### P7.impl — Offline save queue
 - **Status:** PENDING
 - **Model:** Opus
-- **Description:** Implement `queryClient.ts` and `mutations.ts` to the contract; replace the placeholder client from P2 in `app/_layout.tsx` with `PersistQueryClientProvider` and call `resumePausedMutations()` on hydrate. Only recording saves are offline-capable (roadmap D17); reads keep the default network mode and show a plain "offline" state.
+- **Description:** Implement `queryClient.ts` and `mutations.ts` to the contract; replace the placeholder client from P2 in `src/app/_layout.tsx` with `PersistQueryClientProvider` and call `resumePausedMutations()` on hydrate. Only recording saves are offline-capable (roadmap D17); reads keep the default network mode and show a plain "offline" state.
 - **Acceptance Criteria:**
   - [ ] All P7.tests pass; tsc clean; export succeeds
-  - [ ] `app/_layout.tsx` uses `PersistQueryClientProvider`
+  - [ ] `src/app/_layout.tsx` uses `PersistQueryClientProvider`
   - [ ] Queries for tasks/sessions/schedules are `networkMode: 'online'` (the default), not offline-first
 
 ### P8a.tests — Stopwatch screen
 - **Status:** PENDING
 - **Description:** Write `mobile/src/__tests__/StopwatchScreen.test.tsx` with `@testing-library/react-native`, mocking `useTimer`, `useCreateSession`, and `taskAPI.getAll`.
-- **Contract:** `app/(tabs)/index.tsx`. Shows elapsed as `H:MM:SS`. Buttons: Start / Pause / Resume / Reset, each ≥44pt. When paused with elapsed > 0, a **Save** button opens a sheet with: an optional name field, an Activity picker (list from `taskAPI.getAll`, searchable, "none" allowed), and Save/Cancel. One save (D26): calls `useCreateSession().mutate` with `{ name, duration, task_id?, start_time, end_time }` from `finish()`; if the name is blank and an Activity is chosen, the name is the Activity's name; if blank with no Activity, the name is the date and time. After save: reset, sheet closes, a brief "Saved" confirmation; if `clockJumpDetected`, the confirmation says the clock moved during the recording. No second "save to activity" path exists.
+- **Contract:** `src/app/(tabs)/index.tsx`. Shows elapsed as `H:MM:SS`. Buttons: Start / Pause / Resume / Reset, each ≥44pt. When paused with elapsed > 0, a **Save** button opens a sheet with: an optional name field, an Activity picker (list from `taskAPI.getAll`, searchable, "none" allowed), and Save/Cancel. One save (D26): calls `useCreateSession().mutate` with `{ name, duration, task_id?, start_time, end_time }` from `finish()`; if the name is blank and an Activity is chosen, the name is the Activity's name; if blank with no Activity, the name is the date and time. After save: reset, sheet closes, a brief "Saved" confirmation; if `clockJumpDetected`, the confirmation says the clock moved during the recording. No second "save to activity" path exists.
 - **Acceptance Criteria:**
   - [ ] Tests: Start/Pause/Resume/Reset call the hook; Save appears only when paused with elapsed > 0
   - [ ] Test: blank name + Activity "Gym" saves with `name: "Gym"` and `task_id`
@@ -186,7 +186,7 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
 ### P8b.tests — Activities screen
 - **Status:** PENDING
 - **Description:** `mobile/src/__tests__/ActivitiesScreen.test.tsx`, mocking `taskAPI`.
-- **Contract:** `app/(tabs)/activities.tsx`. List from `useQuery(['tasks'], taskAPI.getAll)`: name, average, and recording count per row; tap a row → `app/activity/[id].tsx` showing `taskAPI.getStats(id)` (average, median, previous) and the last ten time logs. A "+" button opens a create sheet with a name field → `taskAPI.create`, invalidating `['tasks']`. Offline: a plain "Offline — showing nothing" state, not a crash. Durations formatted with `format.ts`.
+- **Contract:** `src/app/(tabs)/activities.tsx`. List from `useQuery(['tasks'], taskAPI.getAll)`: name, average, and recording count per row; tap a row → `src/app/activity/[id].tsx` showing `taskAPI.getStats(id)` (average, median, previous) and the last ten time logs. A "+" button opens a create sheet with a name field → `taskAPI.create`, invalidating `['tasks']`. Offline: a plain "Offline — showing nothing" state, not a crash. Durations formatted with `format.ts`.
 - **Acceptance Criteria:**
   - [ ] Test: rows render name, formatted average, count
   - [ ] Test: create posts the name and refetches
@@ -202,7 +202,7 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
 ### P8c.tests — Recordings screen
 - **Status:** PENDING
 - **Description:** `mobile/src/__tests__/RecordingsScreen.test.tsx`, mocking `sessionAPI`.
-- **Contract:** `app/(tabs)/recordings.tsx`. List from `useQuery(['sessions'], sessionAPI.getAll)` newest first: name, duration, date, Activity name if attached. A search field filters by name client-side. A date-range control (two `datetimepicker`s) filters client-side. Optimistic entries from the offline queue appear with a "pending" marker. Swipe or long-press → delete via `sessionAPI.delete`, invalidating `['sessions']`.
+- **Contract:** `src/app/(tabs)/recordings.tsx`. List from `useQuery(['sessions'], sessionAPI.getAll)` newest first: name, duration, date, Activity name if attached. A search field filters by name client-side. A date-range control (two `datetimepicker`s) filters client-side. Optimistic entries from the offline queue appear with a "pending" marker. Swipe or long-press → delete via `sessionAPI.delete`, invalidating `['sessions']`.
 - **Acceptance Criteria:**
   - [ ] Test: list order, fields, and Activity name
   - [ ] Test: search narrows the list; clearing restores it
@@ -219,7 +219,7 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
 ### P8d.tests — Schedule screen
 - **Status:** PENDING
 - **Description:** `mobile/src/__tests__/ScheduleScreen.test.tsx`, mocking `taskAPI`, `scheduleAPI`.
-- **Contract:** `app/(tabs)/schedule.tsx`, a three-step flow on one screen. **Step 1**: pick Activities from `['tasks']` (multi-select, search), each with an editable estimated duration defaulting to its average; set a start time (default: now rounded up to the next 15 minutes) and day end (default 23:00 local, sent as UTC). **Step 2**: call `scheduleAPI.generate` with `strategies: ['your-order', 'shortest-first', 'longest-first', 'best-fit']` (the four the user knows; the other three are build 2) and show the options as a vertical list of cards, each expandable to its timeline; select one. **Step 3**: name it (default: the date), optional "save as regimen", → `scheduleAPI.create` then `addItem` per timeline entry with `position` and `scheduled_time`. A **Regimens** section below lists `is_regimen` schedules with an "apply to date" action → `scheduleAPI.applyRegimen`. Existing Google Calendar events are **not** imported in build 1.
+- **Contract:** `src/app/(tabs)/schedule.tsx`, a three-step flow on one screen. **Step 1**: pick Activities from `['tasks']` (multi-select, search), each with an editable estimated duration defaulting to its average; set a start time (default: now rounded up to the next 15 minutes) and day end (default 23:00 local, sent as UTC). **Step 2**: call `scheduleAPI.generate` with `strategies: ['your-order', 'shortest-first', 'longest-first', 'best-fit']` (the four the user knows; the other three are build 2) and show the options as a vertical list of cards, each expandable to its timeline; select one. **Step 3**: name it (default: the date), optional "save as regimen", → `scheduleAPI.create` then `addItem` per timeline entry with `position` and `scheduled_time`. A **Regimens** section below lists `is_regimen` schedules with an "apply to date" action → `scheduleAPI.applyRegimen`. Existing Google Calendar events are **not** imported in build 1.
 - **Acceptance Criteria:**
   - [ ] Test: selecting Activities pre-fills durations from averages; edits are respected in the request
   - [ ] Test: generate is called with the four strategies and UTC `Z` datetimes
@@ -237,7 +237,7 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
 ### P8e.tests — Settings screen
 - **Status:** PENDING
 - **Description:** `mobile/src/__tests__/SettingsScreen.test.tsx`, mocking `services/auth` and `axios`.
-- **Contract:** `app/settings.tsx`, reached from a gear icon in the tab header. Fields: API URL (prefilled from `getApiUrl()`), bearer token (secure text entry, paste-friendly, D31), a **Test connection** button that GETs `/health` then `/tasks/` with the entered values and reports: unreachable / reachable but token rejected / OK. Save writes both via `setApiUrl` / `setToken` and invalidates all queries. Also shows: app version, whether the native timer module is available (`isNativeAvailable()`), and the number of pending offline saves.
+- **Contract:** `src/app/settings.tsx`, reached from a gear icon in the tab header. Fields: API URL (prefilled from `getApiUrl()`), bearer token (secure text entry, paste-friendly, D31), a **Test connection** button that GETs `/health` then `/tasks/` with the entered values and reports: unreachable / reachable but token rejected / OK. Save writes both via `setApiUrl` / `setToken` and invalidates all queries. Also shows: app version, whether the native timer module is available (`isNativeAvailable()`), and the number of pending offline saves.
 - **Acceptance Criteria:**
   - [ ] Test: fields prefill from stored values
   - [ ] Test: Test connection distinguishes the three outcomes
