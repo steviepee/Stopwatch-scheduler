@@ -96,12 +96,12 @@ sees them.
   - [x] `stopwatch_baseline` dropped
 
 ### 7.tests — Migration drift test
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Write `backend/tests/test_migrations.py` against this contract: create a throwaway SQLite file, run `alembic upgrade head` against it via `-x db_url=`, then compare `Base.metadata` to the migrated database with `alembic.autogenerate.compare_metadata` and assert the diff is empty. Start with `compare_type=False`; SQLite/MySQL type mismatches are expected noise. Also assert the reverse: temporarily adding a column to a model inside the test (monkeypatch) makes the diff non-empty.
 - **Acceptance Criteria:**
-  - [ ] Test file exists and imports cleanly
-  - [ ] It fails until task 6's revision exists (no head to upgrade to) — that is the correct failure
-  - [ ] Throwaway database is created under `tmp_path`, never in the repo
+  - [x] Test file exists and imports cleanly
+  - [x] It fails until task 6's revision exists (no head to upgrade to) — that is the correct failure
+  - [x] Throwaway database is created under `tmp_path`, never in the repo
 
 ### 7.impl — Make the drift test pass and hand off schema ownership
 - **Status:** PENDING

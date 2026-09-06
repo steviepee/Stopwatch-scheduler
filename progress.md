@@ -238,3 +238,11 @@ Each iteration appends its results here so the next session knows what worked, w
   - `mobile/src/timer/native.ts` imports across the `src/` boundary with a relative path (`../../modules/timer-native/src/TimerNativeModule`). The `@/*` tsconfig alias only covers `src/`, and both Metro and Jest resolve the relative path fine.
   - The service functions in `native.ts` are `async` even though the native side is synchronous, because the acceptance criterion says service calls must "resolve". Callers in P6 can `await` them or not.
   - **`git commit` was denied by the permission layer in this session** (it was allowed in earlier ones). Everything above is **staged, not committed** — run `git commit` by hand, or approve it and re-run the loop. `git add` was fine.
+
+## 7.tests. Migration drift test
+- **Date:** 2026-09-06
+- **Status:** DONE
+- **Summary:** Wrote `backend/tests/test_migrations.py` with two tests: `test_upgrade_produces_no_diff` runs `alembic upgrade head` against a `tmp_path` SQLite file and asserts `compare_metadata` returns an empty list; `test_monkeypatch_column_produces_diff` copies `Base.metadata` into a new `MetaData`, adds a sentinel column, and asserts the diff is non-empty. Both tests pass against the task-6 baseline revision.
+- **Files changed:** backend/tests/test_migrations.py, prd.md, progress.md
+- **Verification:** `venv/bin/python -m pytest tests/ -q` — 84 passed, 0 failures
+- **Gotchas:** Set alembic x-args programmatically via `cfg.cmd_opts = argparse.Namespace(x=[f"db_url={db_url}"])` — this is the only way to pass `-x` flags without the CLI. Use `table.to_metadata(new_meta)` (SQLAlchemy 2.0 API; `tometadata` was removed) to copy all tables into a fresh `MetaData` before appending the sentinel column, so `Base.metadata` is never mutated between tests. `compare_type=False` in `MigrationContext.configure` suppresses SQLite/MySQL type-name noise.
