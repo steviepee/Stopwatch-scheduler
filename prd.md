@@ -65,12 +65,12 @@ database or the running process and are not for the loop — skip them and move 
   - [x] Frontend vitest passes (15); backend pytest passes
 
 ### 5. Alembic scaffold
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Add `alembic` to `backend/requirements.txt` (pinned). `alembic init backend/alembic`. In `env.py`: import `Base` from `app.database` and all four model modules so autogenerate sees every table; build the URL from the same `DB_*` env vars `database.py` uses; allow override via `alembic -x db_url=sqlite:///...` for tests. Do **not** generate a revision in this task.
 - **Acceptance Criteria:**
-  - [ ] `cd backend && venv/bin/alembic current` runs without error (no revisions yet)
-  - [ ] `env.py` honours `-x db_url=`
-  - [ ] Full pytest passes unchanged
+  - [x] `cd backend && venv/bin/alembic current` runs without error (no revisions yet)
+  - [x] `env.py` honours `-x db_url=`
+  - [x] Full pytest passes unchanged
 
 ### 6. USER — Baseline revision from live MySQL
 - **Status:** PENDING (user step, not for the loop)

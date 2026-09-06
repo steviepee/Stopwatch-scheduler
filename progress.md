@@ -167,3 +167,11 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Files changed:** frontend/src/__tests__/fixtures-capture.test.ts (deleted), backend/tests/test_generate.py
 - **Verification:** `cd frontend && npx vitest run` — 15 passed; `venv/bin/python -m pytest tests/ -q` — 81 passed, 1 pre-existing failure (test_auth_gate.py::test_startup_fails_without_api_token, flaky subprocess test unrelated to this task)
 - **Gotchas:** The 1 pre-existing failure alternates between test_startup_fails_without_api_token and test_credential_refresh.py::test_startup_survives_dead_refresh_token across sessions — both are environment-dependent subprocess tests, not affected by code changes here.
+
+## 5. Alembic scaffold
+- **Date:** 2026-09-05
+- **Status:** DONE
+- **Summary:** Installed alembic==1.19.2 via pip, pinned it in requirements.txt, ran `alembic init alembic` from backend/, and rewrote env.py to import Base + all four model modules, build the DB URL from DB_* env vars (same as database.py), and honour `-x db_url=` for SQLite test overrides.
+- **Files changed:** backend/requirements.txt, backend/alembic.ini, backend/alembic/env.py, backend/alembic/README, backend/alembic/script.py.mako, backend/alembic/versions/ (directory)
+- **Verification:** `venv/bin/alembic current` → RC 0 (MySQLImpl, no revisions); `-x db_url=sqlite:///...` → RC 0 (SQLiteImpl); `venv/bin/python -m pytest tests/ -q` → 81 passed, 1 pre-existing failure (unchanged)
+- **Gotchas:** `prepend_sys_path = .` in alembic.ini adds backend/ to sys.path when running from backend/. env.py also does an explicit sys.path.insert for safety. Use `os.path.abspath(__file__)` when building the path to backend/.env — relative paths break if alembic is invoked from a different cwd.
