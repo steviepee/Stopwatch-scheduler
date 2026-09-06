@@ -61,7 +61,7 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
   eas init                                      # writes the projectId into app.json
   eas build:configure                           # writes eas.json with a development profile
   ```
-  Then in `mobile/app.json`: `"name": "Stopwatch Scheduler"`, `"slug": "stopwatch-scheduler"`, `android.package` = `app.workflow.stopwatch`, and add `"expo-dev-client"` to plugins if `eas build:configure` did not. Create `mobile/.env` with `EXPO_PUBLIC_API_URL=http://192.168.0.5:8000/api` and commit `mobile/.env.example` with the same key and no value.
+  Then in `mobile/app.json`: `"name": "Stopwatch Scheduler"`, `"slug": "stopwatchscheduler"` (no dash, user preference), `android.package` = `app.workflow.stopwatch`, and add `"expo-dev-client"` to plugins if `eas build:configure` did not. Create `mobile/.env` with `EXPO_PUBLIC_API_URL=http://192.168.0.5:8000/api` and commit `mobile/.env.example` with the same key and no value.
 - **Acceptance Criteria:**
   - [ ] `mobile/package.json` lists every package above
   - [ ] `mobile/modules/timer-native/` exists with `expo-module.config.json`, `android/`, `ios/`, `src/`
