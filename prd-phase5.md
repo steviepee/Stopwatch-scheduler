@@ -100,16 +100,16 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
   - [x] `calendarUtils.ts` is byte-identical to the web copy apart from the import path, if any
 
 ### P4. Native timer module (the spike)
-- **Status:** PENDING
+- **Status:** DONE
 - **Model:** Opus
 - **Description:** The riskiest task in the phase — see GOTCHAS ("RISK: the Android foreground-service module"). Implement the local Expo module scaffolded in P1 at `mobile/modules/timer-native/`. Android (Kotlin): `elapsedRealtime(): Double` returning `SystemClock.elapsedRealtime()`; `startForegroundService(startedAtElapsedMs: Double)` starting a foreground service that posts an **ongoing** notification whose text is the elapsed time, refreshed every second, tapping it opens the app; `stopForegroundService()`. Declare what the manifest needs through the module's config plugin or `app.json` android permissions: `FOREGROUND_SERVICE`, the Android 14+ foreground-service type and its permission, `POST_NOTIFICATIONS` (requested at runtime on Android 13+). No Stop button on the notification in build 1 (D28). iOS (Swift): stubs — `elapsedRealtime()` returns `Date().timeIntervalSince1970 * 1000`; the service functions are no-ops — so the iOS build compiles. TypeScript: `mobile/src/timer/native.ts` wraps the module and **falls back** to `Date.now()` and no-op service calls when the native module is unavailable (Jest, Expo Go), exposing `isNativeAvailable()` so the app can tell.
   The loop cannot build this. Acceptance is what it can check; the build is P5. If P5 fails, this task is reopened. If you cannot make it compile in your own judgement, mark BLOCKED with the exact obstacle — **do not** implement the fallback as the primary path (D25).
 - **Acceptance Criteria:**
-  - [ ] Kotlin and Swift sources exist with the four functions; module registered in `expo-module.config.json`
-  - [ ] `mobile/src/timer/native.ts` exports `elapsedRealtime`, `startForegroundService`, `stopForegroundService`, `isNativeAvailable`
-  - [ ] `mobile/src/__tests__/native.test.ts` (write it in this task — a wrapper has no product behaviour to spec ahead) covers the fallback path: without the module, `elapsedRealtime()` returns a number close to `Date.now()` and service calls resolve without throwing
-  - [ ] tsc clean; export succeeds
-  - [ ] `mobile/README.md` documents: `eas build --profile development --platform android`, installing the APK from the EAS link, `npx expo start --dev-client`, and that Expo Go cannot run this app
+  - [x] Kotlin and Swift sources exist with the four functions; module registered in `expo-module.config.json`
+  - [x] `mobile/src/timer/native.ts` exports `elapsedRealtime`, `startForegroundService`, `stopForegroundService`, `isNativeAvailable`
+  - [x] `mobile/src/__tests__/native.test.ts` (write it in this task — a wrapper has no product behaviour to spec ahead) covers the fallback path: without the module, `elapsedRealtime()` returns a number close to `Date.now()` and service calls resolve without throwing
+  - [x] tsc clean; export succeeds
+  - [x] `mobile/README.md` documents: `eas build --profile development --platform android`, installing the APK from the EAS link, `npx expo start --dev-client`, and that Expo Go cannot run this app
 
 ### P5. USER — First dev build and notification check
 - **Status:** USER

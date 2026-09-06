@@ -1,8 +1,5 @@
-import { NativeModule, requireNativeModule } from 'expo';
+import { requireOptionalNativeModule } from 'expo';
 
-declare class TimerNativeModule extends NativeModule<{}> {
-  hello(): string;
-  setValueAsync(value: string): Promise<void>;
-}
+import { TimerNative } from './TimerNative.types';
 
-export default requireNativeModule<TimerNativeModule>('TimerNative');
+export default requireOptionalNativeModule<TimerNative>('TimerNative');

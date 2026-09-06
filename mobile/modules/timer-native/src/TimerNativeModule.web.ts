@@ -1,11 +1,10 @@
-import { registerWebModule, NativeModule } from 'expo';
+import { TimerNative } from './TimerNative.types';
 
-class TimerNativeModule extends NativeModule<{}> {
-  hello() {
-    return 'Hello world! 👋';
-  }
+const TimerNativeModule: TimerNative = {
+  elapsedRealtime: () => Date.now(),
+  startForegroundService: () => {},
+  stopForegroundService: () => {},
+  requestNotificationPermissionAsync: async () => false,
+};
 
-  async setValueAsync(value: string): Promise<void> {}
-}
-
-export default registerWebModule(TimerNativeModule, 'TimerNativeModule');
+export default TimerNativeModule;

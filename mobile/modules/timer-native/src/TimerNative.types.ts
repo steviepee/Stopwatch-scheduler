@@ -1,1 +1,6 @@
-// Define your exported module types here.
+export type TimerNative = {
+  elapsedRealtime(): number;
+  startForegroundService(startedAtElapsedMs: number): void;
+  stopForegroundService(): void;
+  requestNotificationPermissionAsync(): Promise<boolean>;
+};

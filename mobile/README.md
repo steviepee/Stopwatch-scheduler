@@ -1,56 +1,54 @@
-# Welcome to your Expo app 👋
+# Stopwatch Scheduler — mobile
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Expo Router app for Android. It talks to the FastAPI backend in `../backend`.
 
-## Get started
+## Expo Go cannot run this app
 
-1. Install dependencies
+The stopwatch depends on a local native module, `modules/timer-native`, which exposes
+`SystemClock.elapsedRealtime()` and an Android foreground service. Expo Go ships a fixed set of
+native modules and cannot load this one, so the app must run inside a **development build**.
+
+## First run on a phone
+
+1. Build the dev client (needs `eas login` once):
 
    ```bash
-   npm install
+   cd mobile
+   eas build --profile development --platform android
    ```
 
-2. Start the app
+2. Open the link EAS prints when the build finishes and install the APK on the phone. The QR
+   code on the build page installs it directly.
+
+3. Start the bundler on this machine:
 
    ```bash
-   npx expo start
+   npx expo start --dev-client
    ```
 
-In the output, you'll find options to open the app in a
+4. Open the installed app on the phone. It is on the same Wi-Fi, so it finds the bundler; if it
+   does not, scan the QR code from the terminal.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+Rebuild with `eas build` only when native code changes — a JS-only change just needs
+`npx expo start --dev-client`.
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## Verifying the native timer
 
-## Get a fresh project
+`src/timer/native.ts` wraps the module and falls back to `Date.now()` with no-op service calls
+when the module is unavailable (Jest, Expo Go). `isNativeAvailable()` reports which path is
+live — it must be `true` in the dev build. Android 13+ also needs notification permission, which
+`requestNotificationPermission()` asks for.
 
-When you're ready, run:
+## Backend URL and token
+
+`EXPO_PUBLIC_API_URL` in `mobile/.env` is the default (see `.env.example`). Both the URL and the
+bearer token can be overridden on the phone from the Settings screen; they are stored in
+`expo-secure-store`.
+
+## Checks
 
 ```bash
-npm run reset-project
+npx jest --ci
+npx tsc --noEmit
+npx expo export --platform android
 ```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-### Other setup steps
-
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
