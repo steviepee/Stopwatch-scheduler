@@ -16,8 +16,8 @@ password *was* sent, and it was wrong. `.env` is correct.
 file. Anything that reads `.env` properly (`load_dotenv`, `alembic/env.py`) still works, which
 makes it look like a per-tab mystery.
 
-**Fix:** load the file as shell variables instead: `set -a; source .env; set +a`. `prd.md`
-task 6 now says this.
+**Fix:** load the file as shell variables instead: `set -a; source .env; set +a`. `docs/prd-phase4-completed.md`
+task 6 says this.
 
 **Occurred:** 2026-09-06, during the Alembic baseline.
 

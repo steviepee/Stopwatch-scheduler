@@ -18,10 +18,10 @@ Current as of 2026-09-05. Read this, then `prd.md`, then start on the first PEND
 
 ## 2. State of the repo
 
-- Backend suite 82 passing; frontend 16. Backend on 8000, Vite on 3000 proxying `/api`.
+- Backend suite 91 passing; frontend 15; mobile 19. Backend on 8000, Vite on 3000 proxying `/api`.
 - Google Calendar authenticated; credentials refresh on use.
 - Live MySQL schema matches the models, five tables, real recordings since February.
-- Phases 1–3 complete. Phase 4 in flight — task status lives in `prd.md`, per-task notes in `progress.md`. This file does not track it.
+- Phases 1–4 complete. Phase 5 build 1 in flight — task status lives in `prd.md`, per-task notes in `progress.md`. This file does not track it.
 
 ## 3. Decisions that shape day-to-day work
 
@@ -36,20 +36,20 @@ Full table in `roadmap.md`. The ones that matter most while executing:
 - **D14** Google OAuth never runs on the phone. The user authorizes once from a laptop; `token.pickle` is global.
 - **D20** Tests are written by a separate loop iteration from the task's acceptance criteria, before the implementation iteration. PRD tasks are paired `N.tests` / `N.impl`. Keep that pairing in every PRD you write.
 
-## 4. Phase 4 — in flight
+## 4. Phase 4 — done
 
-`./ralph.sh --max N` runs `prd.md`. Skip USER tasks and tell the user what they need to do:
+Archived at `docs/prd-phase4-completed.md`. Alembic owns the live schema: `alembic current` is at head, `alembic check` is clean, and `tests/test_migrations.py` fails on any model change without a revision. Task 8 landed: a Recording with a `task_id` creates the Activity's Time Log and updates its average.
+
+How USER tasks worked, for the next PRD that has them:
 
 - **Task 3:** set `API_TOKEN` in `backend/.env` and `frontend/.env`, restart uvicorn with `--host 0.0.0.0`, verify from the phone's browser that `/api/health` is 200 and `/api/tasks/` is 401.
 - **Task 6:** `alembic revision --autogenerate -m baseline` against live MySQL, review booleans as `TINYINT(1) NOT NULL DEFAULT 0`, then `alembic stamp head`. Never `upgrade` — the tables exist.
 
-Phase 4a is done. Tasks 6 (USER) and 7–8 remain and can land in parallel with Phase 5.
-Task 8 must be DONE before the build-1 phone check (`prd-phase5.md` P10).
+The loop never picks a `USER` status; it picks the first `PENDING`.
 
-## 5. Phase 5 — build 1 is in `prd-phase5.md`
+## 5. Phase 5 — build 1 is `prd.md`
 
-Run it with `./ralph.sh --prd prd-phase5.md --model claude-opus-5` through P7.impl, then
-without `--model`. P1, P5, and P10 are USER tasks; P11 is HOLD until the user passes P10.
+Run it with `./ralph.sh --model claude-opus-5` through P7.impl, then without `--model`. P1, P5, and P10 are USER tasks; P11 is HOLD until the user passes P10.
 Decisions D22–D33 in `roadmap.md` are the ones that shaped it.
 
 Build 2 gets its own PRD after P10 passes. Its outline, so it is not lost:

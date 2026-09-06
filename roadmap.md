@@ -18,9 +18,9 @@ the output surface. Single user by design.
 | 1 | Leaked Google credential revoked and client rotated | Done 2026-09-02 |
 | 2 | UTC everywhere, `UTCDateTime` enforced, legacy rows converted | Done 2026-09-01 |
 | 3 | Priority flags, server-side strategy engine (7 strategies), peak-hours insights | Done 2026-09-03 — see `docs/prd-phase3-completed.md` |
-| 4a | Single bearer credential gate; backend bound to the LAN | **Next** — `prd.md` |
-| 4b | Alembic: baseline from live MySQL, drift test, `create_all` out of startup | Any time before deploy; bound to the deploy step |
-| 5 | Frontend rewrite as React Native + Expo. Build 1: record and list — `prd-phase5.md`. Build 2: quadrant, frog, Pomodoro, insights, day calendar — later PRD | **In flight** |
+| 4a | Single bearer credential gate; backend bound to the LAN | Done 2026-09-05 |
+| 4b | Alembic baseline, drift test, `create_all` out of startup; attached Recordings feed the Activity | Done 2026-09-06 — see `docs/prd-phase4-completed.md` |
+| 5 | Frontend rewrite as React Native + Expo. Build 1: record and list — `prd.md`. Build 2: quadrant, frog, Pomodoro, insights, day calendar — later PRD | **In flight** |
 | 6 | Public deploy to Azure with TLS, data migration, Google redirect re-registered | Last |
 
 ## Decisions (2026-09-05)
