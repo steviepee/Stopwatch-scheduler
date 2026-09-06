@@ -144,16 +144,16 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
   - [x] The render interval is 1000ms, and is cleared on unmount and on pause
 
 ### P7.tests — Offline save queue
-- **Status:** PENDING
+- **Status:** DONE
 - **Model:** Opus
 - **Description:** Write `mobile/src/__tests__/offlineQueue.test.tsx`. The queue is TanStack Query's persisted mutations, not custom code; the tests exercise the configured client.
 - **Contract:** `mobile/src/services/queryClient.ts` exports `queryClient` with `networkMode: 'offlineFirst'` on mutations, `retry` bounded, and an AsyncStorage persister via `@tanstack/query-async-storage-persister` + `PersistQueryClientProvider`; `mutationCache` has defaults registered for the `createSession` mutation key so paused mutations can resume after restart (`queryClient.setMutationDefaults`). `onlineManager` is driven by `@react-native-community/netinfo`. `mobile/src/services/mutations.ts` exports `useCreateSession()` wrapping `sessionAPI.create` with an optimistic insert into the `['sessions']` list. On app start, `resumePausedMutations()` is called after hydration.
 - **Acceptance Criteria:**
-  - [ ] Test: with `onlineManager.setOnline(false)`, `useCreateSession().mutate(...)` does not call the API and the mutation is paused
-  - [ ] Test: `onlineManager.setOnline(true)` flushes it; the API is called once with the original body
-  - [ ] Test: a paused mutation survives creating a fresh QueryClient from the same persisted storage and `resumePausedMutations()` sends it
-  - [ ] Test: while paused, the optimistic recording is visible in the `['sessions']` cache
-  - [ ] netinfo and AsyncStorage are mocked; axios is mocked at the adapter
+  - [x] Test: with `onlineManager.setOnline(false)`, `useCreateSession().mutate(...)` does not call the API and the mutation is paused
+  - [x] Test: `onlineManager.setOnline(true)` flushes it; the API is called once with the original body
+  - [x] Test: a paused mutation survives creating a fresh QueryClient from the same persisted storage and `resumePausedMutations()` sends it
+  - [x] Test: while paused, the optimistic recording is visible in the `['sessions']` cache
+  - [x] netinfo and AsyncStorage are mocked; axios is mocked at the adapter
 
 ### P7.impl — Offline save queue
 - **Status:** PENDING
