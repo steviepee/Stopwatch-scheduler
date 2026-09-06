@@ -10,7 +10,9 @@
 
 ```bash
 # Terminal 1 - Backend (requires MySQL)
-cd backend && source venv/bin/activate && uvicorn app.main:app --port 8000 --reload
+cd backend && source venv/bin/activate && uvicorn app.main:app --host 0.0.0.0 --port 8000
+# --host 0.0.0.0 so a phone on the LAN can reach it (WSL is in mirrored networking mode,
+# so this box answers on the Windows LAN address). API_TOKEN must be set in backend/.env.
 
 # Terminal 2 - Frontend
 cd frontend && npm run dev

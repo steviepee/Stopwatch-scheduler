@@ -50,11 +50,11 @@ database or the running process and are not for the loop — skip them and move 
   - [x] Frontend vitest suite still passes (16)
 
 ### 3. USER — Expose the backend on the LAN
-- **Status:** PENDING (user step, not for the loop)
+- **Status:** DONE (2026-09-05; WSL switched to mirrored networking, Hyper-V firewall rule for 8000)
 - **Description:** Only after tasks 1 and 2: set `API_TOKEN` in `backend/.env` and `frontend/.env`, restart uvicorn with `--host 0.0.0.0`, update the Quick Start in `CLAUDE.md`. `GOOGLE_REDIRECT_URI` stays `localhost:8000` (roadmap D14).
 - **Acceptance Criteria:**
-  - [ ] From the phone's browser: `http://<lan-ip>:8000/api/health` → 200, `/api/tasks/` → 401
-  - [ ] Web app at `localhost:3000` still lists recordings
+  - [x] From the phone's browser: `http://<lan-ip>:8000/api/health` → 200, `/api/tasks/` → 401
+  - [x] Web app at `localhost:3000` still lists recordings
 
 ### 4. Freeze the parity fixture
 - **Status:** PENDING
