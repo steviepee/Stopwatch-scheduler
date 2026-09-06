@@ -254,3 +254,11 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Files changed:** backend/app/main.py, DIAGNOSTIC.md, GOTCHAS.md, prd.md, progress.md
 - **Verification:** `venv/bin/python -m pytest tests/ -q` — 84 passed, 0 failures
 - **Gotchas:** None
+
+## 8.tests. Attached Recordings feed the Activity
+- **Date:** 2026-09-06
+- **Status:** DONE
+- **Summary:** Wrote `backend/tests/test_session_feeds_task.py` with 7 tests covering the full contract: create-with-task updates average/count (FAIL); create-with-task creates linked TimeLog with session_id (FAIL); create-without-task creates no log (PASS); delete recalculates (FAIL); retarget moves log and recalculates both tasks (FAIL); peak-hours no double count (PASS pre-impl, guards against double-count in 8.impl); standalone time-log unchanged (PASS). 4 tests fail for the right reason (no linked log created, average unchanged). 84 existing tests unaffected.
+- **Files changed:** backend/tests/test_session_feeds_task.py, prd.md, progress.md
+- **Verification:** `venv/bin/python -m pytest tests/test_session_feeds_task.py -v` — 4 failed (correct), 3 passed; `venv/bin/python -m pytest tests/ -q --ignore=tests/test_session_feeds_task.py` — 84 passed
+- **Gotchas:** `test_peak_hours_no_double_count` passes before 8.impl (no linked TimeLog exists yet, so no double-count). It becomes the guard during 8.impl: once the linked TimeLog is created without the peak-hours filter fix, this test will fail, forcing the fix. `test_create_without_task_creates_no_log` and `test_standalone_time_log_unchanged` also pass pre-impl (correct behavior already exists).

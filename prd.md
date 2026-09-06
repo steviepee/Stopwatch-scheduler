@@ -113,13 +113,13 @@ sees them.
   - [x] `PROMPT.md` Database paragraph already describes the Alembic rule (done 2026-09-05); confirm it is accurate and leave it
 
 ### 8.tests — Attached Recordings feed the Activity
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Today a Recording saved with a `task_id` does nothing to the Activity: only a standalone `POST /api/time-logs/` updates the average. The product model (see `CONTEXT.md`) is that attaching a Recording to an Activity *is* how the Activity learns. Write the tests for that contract; do not implement.
 - **Contract:** `POST /api/sessions/` with a `task_id` also creates a Time Log for that task with the same duration, linked by a new nullable `time_logs.session_id` column, and updates the task's `average_duration` / `total_recordings` exactly as `POST /api/time-logs/` does. `DELETE /api/sessions/{id}` deletes the linked Time Log and recalculates. `PUT /api/sessions/{id}` that changes `task_id` moves the linked log to the new task and recalculates both. `GET /api/insights/peak-hours` must not double count: a Time Log with a `session_id` is skipped because its session is already counted. Standalone `POST /api/time-logs/` keeps working unchanged.
 - **Acceptance Criteria:**
-  - [ ] `backend/tests/test_session_feeds_task.py` covers: create-with-task updates average and count and creates a linked log; create-without-task creates no log; delete recalculates; retarget moves the log; peak-hours total equals the session's duration once, not twice
-  - [ ] Tests import cleanly and fail for the right reason (no `session_id` column, average unchanged)
-  - [ ] Tests do not depend on a real `token.pickle` or `backend/.env`
+  - [x] `backend/tests/test_session_feeds_task.py` covers: create-with-task updates average and count and creates a linked log; create-without-task creates no log; delete recalculates; retarget moves the log; peak-hours total equals the session's duration once, not twice
+  - [x] Tests import cleanly and fail for the right reason (no `session_id` column, average unchanged)
+  - [x] Tests do not depend on a real `token.pickle` or `backend/.env`
 
 ### 8.impl — Attached Recordings feed the Activity
 - **Status:** PENDING
