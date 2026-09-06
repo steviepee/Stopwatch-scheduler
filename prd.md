@@ -112,13 +112,13 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
   - [x] `mobile/README.md` documents: `eas build --profile development --platform android`, installing the APK from the EAS link, `npx expo start --dev-client`, and that Expo Go cannot run this app
 
 ### P5. USER — First dev build and notification check
-- **Status:** USER
+- **Status:** USER — DONE 2026-09-06. EAS build `a5b68cfe` (first build ~35 min). Installed from the link; dev client connected to Metro on `192.168.0.5:8081`; `isNativeAvailable()` true; ongoing notification ticked, survived a two-minute screen lock, and cleared on stop. Checked with a throwaway probe on the Stopwatch tab, reverted afterwards. For later rebuilds prefer `eas build:dev`, which skips the build when the native fingerprint is unchanged.
 - **Description:** `cd mobile && eas build --profile development --platform android`. Install the APK from the link on the phone. Run `npx expo start --dev-client` on this machine; open the app on the phone (same Wi-Fi; mirrored networking makes `192.168.0.5` reachable). From a throwaway button or the dev menu, call `startForegroundService(elapsedRealtime())`; confirm an ongoing notification appears with a ticking elapsed time and survives locking the screen for two minutes. Confirm `isNativeAvailable()` is true.
   If the build fails or the notification never appears: set P4 back to PENDING with a failure note in `progress.md` describing exactly what failed. If it fails a second time, decide between fixing the native build and accepting the timestamp-only fallback (roadmap D8, GOTCHAS) — that decision is yours, not the loop's.
 - **Acceptance Criteria:**
-  - [ ] Dev build installed on a physical Android phone
-  - [ ] Ongoing notification shows elapsed time and survives screen lock
-  - [ ] `isNativeAvailable()` true in the dev build
+  - [x] Dev build installed on a physical Android phone
+  - [x] Ongoing notification shows elapsed time and survives screen lock
+  - [x] `isNativeAvailable()` true in the dev build
 
 ### P6.tests — Timer core
 - **Status:** PENDING

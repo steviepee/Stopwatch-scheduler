@@ -5,6 +5,34 @@ Append new entries as they come up. Newest first.
 
 ---
 
+## Dev client says "Failed to connect to /192.168.0.5:8081"
+
+**Symptom:** the Expo dev build installs and opens, but tapping the server (or scanning the
+Metro QR) fails with `Failed to connect to /192.168.0.5:8081`. Everything on the PC checks out:
+Metro listening on `*:8081`, `curl http://192.168.0.5:8081/status` answers from WSL.
+
+**Causes, in the order to check them:**
+
+1. **The phone is not on the LAN.** Mobile data, a guest network, or the wrong router. A
+   carrier landing page when you open `http://192.168.0.5:8000/api/health` in the phone's
+   browser is the tell. Join the same Wi-Fi as the PC and turn mobile data off while testing.
+2. **8081 has no firewall rules.** 8000's rules do not cover it. In mirrored mode both layers
+   need one, from an Administrator PowerShell:
+   ```powershell
+   New-NetFirewallHyperVRule -Name metro8081 -DisplayName "Metro 8081" -Direction Inbound -VMCreatorId '{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}' -Protocol TCP -LocalPorts 8081
+   New-NetFirewallRule -DisplayName "Metro 8081" -Direction Inbound -Protocol TCP -LocalPort 8081 -Action Allow -Profile Any
+   ```
+
+**Not a cause:** the red `ERROR ... Running as root without --no-sandbox` under the QR. That is
+Expo trying to open the Electron DevTools window; the bundler is fine.
+
+**Diagnose from the phone's browser, not the app:** `http://192.168.0.5:8000/api/health` and
+`http://192.168.0.5:8081/status`. Both fail → phone network. Only 8081 fails → firewall.
+
+**Occurred:** 2026-09-06, first dev build. Phone had joined a neighbouring router.
+
+---
+
 ## `export $(grep ... .env | xargs)` corrupts the database password
 
 **Symptom:** a `mysql` command that worked in one tab fails in another with
