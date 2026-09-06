@@ -151,3 +151,11 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Files changed:** backend/app/main.py, backend/tests/conftest.py, backend/tests/test_auth_gate.py, backend/.env.example, CLAUDE.md
 - **Verification:** venv/bin/python -m pytest tests/ -q -- 81 passed, 1 pre-existing failure in test_credential_refresh.py::test_startup_survives_dead_refresh_token (unrelated to gate, pre-dates this session)
 - **Gotchas:** Cannot import TestingSessionLocal from conftest in test files -- pytest does not add the tests/ dir to sys.path in this setup. Instead, create an inline engine/sessionmaker in the test file pointing to the same sqlite URL (./test.db). The autouse setup_db fixture creates/drops tables on that same file, so the inline session factory still sees them. The local client fixture must use monkeypatch.setenv to set API_TOKEN, since middleware reads os.getenv at request time (not a cached module-level var), and the app module-level check also needs API_TOKEN set before import.
+
+## 2. Frozen web app keeps working through the gate
+- **Date:** 2026-09-05
+- **Status:** DONE
+- **Summary:** Converted vite.config.ts from object form to functional form using loadEnv to read API_TOKEN from frontend/.env. Added headers: { Authorization: 'Bearer ' + env.API_TOKEN } to the /api proxy entry so the Vite dev server injects the bearer token on every proxied request. Created frontend/.env.example with API_TOKEN= placeholder and added .env to frontend/.gitignore. No src/ files touched.
+- **Files changed:** frontend/vite.config.ts, frontend/.env.example, frontend/.gitignore
+- **Verification:** cd frontend && npx vitest run -- 16 passed
+- **Gotchas:** Vite config runs in Node context; process.env does NOT pick up .env files automatically. Use loadEnv(mode, process.cwd(), '') from vite (empty prefix loads all vars) and access as env.API_TOKEN. Must convert defineConfig({...}) to defineConfig(({ mode }) => { ... return { ... } }) to get mode for loadEnv.

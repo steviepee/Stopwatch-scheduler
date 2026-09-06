@@ -41,13 +41,13 @@ database or the running process and are not for the loop — skip them and move 
   - [x] No route other than the three exempt ones is reachable without the header
 
 ### 2. Frozen web app keeps working through the gate
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** The current web frontend is frozen (roadmap D11) and must not be edited except for this. Inject the bearer header in the Vite dev proxy so the browser never sees the token: in `frontend/vite.config.ts`, `server.proxy['/api'].headers = { Authorization: 'Bearer ' + process.env.API_TOKEN }`, reading from `frontend/.env` (`API_TOKEN=`, gitignored). Do not touch `frontend/src/`.
 - **Acceptance Criteria:**
-  - [ ] `frontend/.env.example` gains `API_TOKEN=`
-  - [ ] `frontend/.gitignore` covers `.env`
-  - [ ] Only `vite.config.ts` and the two env files change under `frontend/`
-  - [ ] Frontend vitest suite still passes (16)
+  - [x] `frontend/.env.example` gains `API_TOKEN=`
+  - [x] `frontend/.gitignore` covers `.env`
+  - [x] Only `vite.config.ts` and the two env files change under `frontend/`
+  - [x] Frontend vitest suite still passes (16)
 
 ### 3. USER — Expose the backend on the LAN
 - **Status:** PENDING (user step, not for the loop)
