@@ -12,7 +12,7 @@ Follow every step in order. Do not skip steps.
 
 ### Step 1 — Pick your task
 
-Read `prd.md`. Find the **first task** whose status is `PENDING`. That is your task for this session. Work on nothing else.
+Read `prd.md`. Find the **first task** whose status is `PENDING`. That is your task for this session. Work on nothing else. Tasks whose status is `USER` are the user's to do by hand; they are not PENDING, never pick them, and do not wait on them unless your task's description says it depends on one.
 
 If there are no PENDING tasks, output `RALPH_DONE: all tasks complete` and exit immediately.
 

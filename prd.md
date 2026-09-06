@@ -6,8 +6,9 @@ complete. Add failure notes if a task fails. Decisions behind these tasks are in
 (D3, D4, D5, D10, D13) and ADR 0002.
 
 **Context:** The backend is about to be reached from a phone on the LAN, so it needs a gate
-first. Alembic can land any time before deploy. Tasks marked **USER** touch the live MySQL
-database or the running process and are not for the loop — skip them and move on.
+first. Alembic can land any time before deploy. Tasks with status **USER** touch the live MySQL
+database or the running process. They are not for the loop and are not PENDING; the loop never
+sees them.
 
 **Rules for this PRD:**
 - The suite keeps `create_all` in `conftest.py`. Do not replace it with migrations.
@@ -73,7 +74,7 @@ database or the running process and are not for the loop — skip them and move 
   - [x] Full pytest passes unchanged
 
 ### 6. USER — Baseline revision from live MySQL
-- **Status:** PENDING (user step, not for the loop)
+- **Status:** USER (not for the loop; the user does this by hand)
 - **Description:** `alembic revision --autogenerate -m "baseline"` against the live database. Review by hand: booleans must map to `TINYINT(1) NOT NULL DEFAULT 0` (see GOTCHAS). Then `alembic stamp head`. **Do not `upgrade`** — the tables exist and hold February data.
 - **Acceptance Criteria:**
   - [ ] One revision file committed under `backend/alembic/versions/`
@@ -96,3 +97,21 @@ database or the running process and are not for the loop — skip them and move 
   - [ ] `create_all` absent from `main.py`
   - [ ] DIAGNOSTIC.md and GOTCHAS.md updated
   - [ ] `PROMPT.md` Database paragraph already describes the Alembic rule (done 2026-09-05); confirm it is accurate and leave it
+
+### 8.tests — Attached Recordings feed the Activity
+- **Status:** PENDING
+- **Description:** Today a Recording saved with a `task_id` does nothing to the Activity: only a standalone `POST /api/time-logs/` updates the average. The product model (see `CONTEXT.md`) is that attaching a Recording to an Activity *is* how the Activity learns. Write the tests for that contract; do not implement.
+- **Contract:** `POST /api/sessions/` with a `task_id` also creates a Time Log for that task with the same duration, linked by a new nullable `time_logs.session_id` column, and updates the task's `average_duration` / `total_recordings` exactly as `POST /api/time-logs/` does. `DELETE /api/sessions/{id}` deletes the linked Time Log and recalculates. `PUT /api/sessions/{id}` that changes `task_id` moves the linked log to the new task and recalculates both. `GET /api/insights/peak-hours` must not double count: a Time Log with a `session_id` is skipped because its session is already counted. Standalone `POST /api/time-logs/` keeps working unchanged.
+- **Acceptance Criteria:**
+  - [ ] `backend/tests/test_session_feeds_task.py` covers: create-with-task updates average and count and creates a linked log; create-without-task creates no log; delete recalculates; retarget moves the log; peak-hours total equals the session's duration once, not twice
+  - [ ] Tests import cleanly and fail for the right reason (no `session_id` column, average unchanged)
+  - [ ] Tests do not depend on a real `token.pickle` or `backend/.env`
+
+### 8.impl — Attached Recordings feed the Activity
+- **Status:** PENDING
+- **Description:** Implement the contract from 8.tests. Add `session_id` (nullable FK to `stopwatch_sessions`, ON DELETE CASCADE) to `TimeLog`. Extract the average-update arithmetic from `routers/time_logs.py` into one helper both routers call. Add the Alembic revision for the new column — `tests/test_migrations.py` will fail without it once task 7 exists.
+- **Acceptance Criteria:**
+  - [ ] All tests from 8.tests pass; full pytest passes
+  - [ ] One Alembic revision under `backend/alembic/versions/` adding `time_logs.session_id`
+  - [ ] `DIAGNOSTIC.md` §10 schema updated; API surface unchanged (no new routes)
+  - [ ] The `ALTER TABLE` for MySQL recorded in `progress.md` in case the user applies it before running the migration

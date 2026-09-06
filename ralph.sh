@@ -35,15 +35,20 @@ while [[ $# -gt 0 ]]; do
       MODEL="$2"
       shift 2
       ;;
+    --prd)
+      PRD_FILE="$2"
+      shift 2
+      ;;
     --dry-run)
       DRY_RUN=true
       shift
       ;;
     -h|--help)
-      echo "Usage: ./ralph.sh [--max N] [--model MODEL] [--dry-run] [-h|--help]"
+      echo "Usage: ./ralph.sh [--max N] [--model MODEL] [--prd FILE] [--dry-run] [-h|--help]"
       echo ""
       echo "Options:"
       echo "  --max N       Maximum iterations (default: 30)"
+      echo "  --prd FILE    Task file to work from (default: prd.md)"
       echo "  --model MODEL Claude model ID (default: claude-sonnet-4-6)"
       echo "  --dry-run     Show status without running"
       echo "  -h, --help    Show this help"
@@ -140,7 +145,8 @@ while [[ $iteration -lt $MAX_ITERATIONS ]]; do
   # Spawn a fresh Claude Code session with the prompt
   # --print mode sends the prompt and gets a response without interactive mode
   # The prompt file tells Claude to read CLAUDE.md, prd.md, and progress.md
-  env -u ANTHROPIC_API_KEY claude --model "$MODEL" --permission-mode acceptEdits --print "$(cat "$PROMPT_FILE")" || {
+  # The prompt is written against prd.md; point it at whichever PRD this run uses.
+  env -u ANTHROPIC_API_KEY claude --model "$MODEL" --permission-mode acceptEdits --print "$(sed "s|prd\.md|$PRD_FILE|g" "$PROMPT_FILE")" || {
     echo ""
     echo "[WARN] Claude session exited with non-zero status at $(timestamp)"
     echo "       Continuing to next iteration..."

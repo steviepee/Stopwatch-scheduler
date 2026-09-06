@@ -14,12 +14,12 @@ A named, repeatable thing you do, with a running average and median duration lea
 _Avoid_: Task (the code name — `Task` model, `/api/tasks`), job, item
 
 **Recording**:
-One timed run of the stopwatch, saved with a name and a duration, optionally attached to an Activity.
+One timed run of the stopwatch, saved with a name and a duration. The unit of truth: attaching a Recording to an Activity is what teaches the Activity how long it takes.
 _Avoid_: Session, stopwatch session (the code name — `StopwatchSession`, `/api/sessions`)
 
 **Time Log**:
-A single duration appended to an Activity's history. Created when a Recording is saved to an Activity.
-_Avoid_: Entry, log line
+An Activity's history entry — one duration that contributes to its average. Created automatically when a Recording is attached to an Activity; older ones were entered directly and have no Recording behind them.
+_Avoid_: Entry, log line, "saving to a task" as something distinct from recording
 
 **Monotonic reading**:
 A clock value that only moves forward and is immune to the phone's clock being changed. Used to compute a Recording's duration.
