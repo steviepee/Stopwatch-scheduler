@@ -74,11 +74,11 @@ sees them.
   - [x] Full pytest passes unchanged
 
 ### 6. USER — Baseline revision
-- **Status:** USER (not for the loop; the user does this by hand)
+- **Status:** USER — DONE 2026-09-06. Revision `e70f88cf3c24_baseline.py`; live database stamped; `alembic check` clean.
 - **Description:** Autogenerate compares the models to a database and writes the *difference*. Against the live database the difference is nothing, so the baseline must be generated against an **empty** MySQL database and then the live one is stamped. All in one shell tab, in this order:
   ```bash
   cd ~/Stopwatch-scheduler/backend && source venv/bin/activate
-  export $(grep -E "^DB_" .env | xargs)
+  set -a; source .env; set +a                     # NOT `export $(grep ... | xargs)` — it mangles passwords with special characters
   echo "$DB_HOST $DB_PORT $DB_USER $DB_NAME"      # must print four values; if blank, stop here
   mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p"$DB_PASSWORD" -e "CREATE DATABASE stopwatch_baseline"
   alembic -x db_url="mysql+pymysql://$DB_USER:$DB_PASSWORD@$DB_HOST:$DB_PORT/stopwatch_baseline" revision --autogenerate -m baseline
@@ -89,11 +89,11 @@ sees them.
   ```
   If the review shows booleans without a server default, add `server_default=sa.text('0')` by hand — autogenerate reads the ORM `default=`, which is Python-side, not the column default.
 - **Acceptance Criteria:**
-  - [ ] One revision file under `backend/alembic/versions/` with five `create_table` calls
-  - [ ] `alembic current` on the live database reports that revision as head
-  - [ ] `alembic check` against the live database reports no changes
-  - [ ] DIAGNOSTIC.md §9 step 5 schema check still prints OK for every table
-  - [ ] `stopwatch_baseline` dropped
+  - [x] One revision file under `backend/alembic/versions/` with five `create_table` calls
+  - [x] `alembic current` on the live database reports that revision as head
+  - [x] `alembic check` against the live database reports no changes
+  - [x] DIAGNOSTIC.md §9 step 5 schema check still prints OK for every table
+  - [x] `stopwatch_baseline` dropped
 
 ### 7.tests — Migration drift test
 - **Status:** PENDING

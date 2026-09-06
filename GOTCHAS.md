@@ -5,6 +5,24 @@ Append new entries as they come up. Newest first.
 
 ---
 
+## `export $(grep ... .env | xargs)` corrupts the database password
+
+**Symptom:** a `mysql` command that worked in one tab fails in another with
+`ERROR 1045 (28000): Access denied for user 'root'@'localhost' (using password: YES)` — a
+password *was* sent, and it was wrong. `.env` is correct.
+
+**Cause:** `xargs` strips quotes and backslashes while splitting its input. The password in
+`backend/.env` contains characters it eats, so the exported `DB_PASSWORD` is not the one in the
+file. Anything that reads `.env` properly (`load_dotenv`, `alembic/env.py`) still works, which
+makes it look like a per-tab mystery.
+
+**Fix:** load the file as shell variables instead: `set -a; source .env; set +a`. `prd.md`
+task 6 now says this.
+
+**Occurred:** 2026-09-06, during the Alembic baseline.
+
+---
+
 ## `test_startup_fails_without_api_token` fails once API_TOKEN is in backend/.env
 
 **Symptom:** the test asserts the app refuses to boot with no token, but the subprocess exits
