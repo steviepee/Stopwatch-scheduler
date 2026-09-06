@@ -135,13 +135,13 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
   - [x] No imports from `react`, `react-native`, or the native module
 
 ### P6.impl — Timer core and persistence
-- **Status:** PENDING
+- **Status:** DONE
 - **Model:** Opus
 - **Description:** Implement `core.ts` to the contract. Then `mobile/src/timer/store.ts`: a hook `useTimer()` that owns the state, uses `clocks = { wall: Date.now, mono: native.elapsedRealtime }`, persists `{ status, wallStart, monoStart, accumulatedMs }` to AsyncStorage on every transition and restores on mount, calls `startForegroundService` on start/resume and `stopForegroundService` on pause/reset/finish, and re-renders once per second while running (D27 — seconds, not centiseconds). Add `src/timer/format.ts`: `formatElapsed(ms) → "H:MM:SS"` (hours omitted under one hour).
 - **Acceptance Criteria:**
-  - [ ] All P6.tests pass; tsc clean; export succeeds
-  - [ ] `useTimer` restores a running timer after the hook remounts (test with a mocked AsyncStorage)
-  - [ ] The render interval is 1000ms, and is cleared on unmount and on pause
+  - [x] All P6.tests pass; tsc clean; export succeeds
+  - [x] `useTimer` restores a running timer after the hook remounts (test with a mocked AsyncStorage)
+  - [x] The render interval is 1000ms, and is cleared on unmount and on pause
 
 ### P7.tests — Offline save queue
 - **Status:** PENDING
