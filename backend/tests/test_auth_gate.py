@@ -85,6 +85,8 @@ def test_startup_fails_without_api_token():
     backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     env = {k: v for k, v in os.environ.items() if k != 'API_TOKEN'}
     code = (
+        'import dotenv\n'
+        'dotenv.load_dotenv = lambda *a, **k: False\n'
         'from unittest.mock import patch\n'
         'with patch('
         "'app.services.google_calendar.GoogleCalendarService._load_credentials',"

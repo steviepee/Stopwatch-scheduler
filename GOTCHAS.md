@@ -5,6 +5,23 @@ Append new entries as they come up. Newest first.
 
 ---
 
+## `test_startup_fails_without_api_token` fails once API_TOKEN is in backend/.env
+
+**Symptom:** the test asserts the app refuses to boot with no token, but the subprocess exits
+0 on a machine where `backend/.env` contains `API_TOKEN`. Passes on a clean checkout.
+
+**Cause:** the test strips `API_TOKEN` from the subprocess environment, but `main.py` calls
+`load_dotenv()` at import and reads it straight back from the file.
+
+**FIXED 2026-09-05.** The subprocess replaces `dotenv.load_dotenv` with a no-op before
+importing `app.main`. Same family as the `token.pickle` entry below: a test that lets real
+machine state — a credential file, an env file — reach the code under test will pass on the
+machine that lacks it and fail on the one that has it. Isolate the source, not the symptom.
+
+**Occurred:** 2026-09-05, surfaced after task 3 put the token in `.env`.
+
+---
+
 ## Ralph loop session reports "write permission was denied" and exits RALPH_BLOCKED
 
 **Symptom:** an iteration finishes in about a minute with no commit and no file changes. The
