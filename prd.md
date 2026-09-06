@@ -121,18 +121,18 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
   - [x] `isNativeAvailable()` true in the dev build
 
 ### P6.tests — Timer core
-- **Status:** PENDING
+- **Status:** DONE
 - **Model:** Opus
 - **Description:** Write `mobile/src/__tests__/timerCore.test.ts` against the contract. Pure logic, no renderer, no native module: the core takes its clocks as parameters so the tests inject fake ones.
 - **Contract:** `mobile/src/timer/core.ts` exports a pure state machine. State is `{ status: 'idle' | 'running' | 'paused', wallStart: number | null, monoStart: number | null, accumulatedMs: number }` (all ms; `wall` is epoch ms, `mono` is monotonic ms). Functions take `(state, clocks)` where `clocks = { wall(): number, mono(): number }` and return a new state, never mutate: `start`, `pause`, `resume`, `reset`. `elapsedMs(state, clocks)` — from monotonic only. `finish(state, clocks)` returns `{ durationSeconds: number, startUtc: string, endUtc: string, clockJumpDetected: boolean }`: duration from monotonic, `startUtc`/`endUtc` ISO strings with a `Z` suffix from wall-clock, and `clockJumpDetected` true when `|wallΔ − monoΔ| > 2000` for the whole recording. `restore(persisted, clocks)` reconstructs a running state from `{ wallStart, monoStart, accumulatedMs, status }` after process death: if the monotonic clock has gone *backwards* since `monoStart` (the device rebooted), fall back to wall-clock for the interval since the reboot and set the jump flag.
 - **Acceptance Criteria:**
-  - [ ] Tests: start→elapsed grows with mono, not wall; pause freezes; resume continues; reset returns to idle
-  - [ ] Test: wall clock jumping forward 1h mid-recording does not change `durationSeconds`; jump flag set
-  - [ ] Test: wall clock jumping back does not produce a negative or shortened duration; flag set
-  - [ ] Test: `startUtc`/`endUtc` end in `Z` and differ by wall elapsed, not mono elapsed
-  - [ ] Test: `restore` after simulated reboot (mono reset to a small number) yields a sane duration and the flag
-  - [ ] Test: durations are seconds as a float (the API's unit), not ms
-  - [ ] No imports from `react`, `react-native`, or the native module
+  - [x] Tests: start→elapsed grows with mono, not wall; pause freezes; resume continues; reset returns to idle
+  - [x] Test: wall clock jumping forward 1h mid-recording does not change `durationSeconds`; jump flag set
+  - [x] Test: wall clock jumping back does not produce a negative or shortened duration; flag set
+  - [x] Test: `startUtc`/`endUtc` end in `Z` and differ by wall elapsed, not mono elapsed
+  - [x] Test: `restore` after simulated reboot (mono reset to a small number) yields a sane duration and the flag
+  - [x] Test: durations are seconds as a float (the API's unit), not ms
+  - [x] No imports from `react`, `react-native`, or the native module
 
 ### P6.impl — Timer core and persistence
 - **Status:** PENDING
