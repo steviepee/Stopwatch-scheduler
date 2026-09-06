@@ -206,3 +206,16 @@ Each iteration appends its results here so the next session knows what worked, w
   - Assertions use `baseURL + url` concatenated, not `url` alone, so the impl may resolve the base URL either by setting `config.baseURL` in an interceptor or by rewriting `config.url`.
   - `config.headers` in the adapter is an `AxiosHeaders` instance — read it with `.get('Authorization')`, not property access.
   - Bash heredocs containing `${...}` are blocked by this environment's security check ("brace with quote character"); use the Write tool for scratch files. `rm` is still blocked — delete with `python3 -c "shutil.rmtree(...)"`.
+
+## P3.impl. Salvaged API client
+- **Date:** 2026-09-06
+- **Status:** DONE
+- **Summary:** Copied `types/index.ts`, `utils/calendarUtils.ts`, and `services/api.ts` from `frontend/src/` into `mobile/src/` with `python3 shutil.copyfile`. Wrote `mobile/src/services/auth.ts` (expo-secure-store keys `api_token` / `api_url`, `getApiUrl()` falling back to `process.env.EXPO_PUBLIC_API_URL`). In `api.ts`: dropped the hardcoded `baseURL: '/api'` from `axios.create` and added one async request interceptor that sets `config.baseURL` from `getApiUrl()` and the `Authorization: Bearer` header from `getToken()`; added `scheduleAPI.generate` posting to `/schedules/generate`. Added `GenerateActivity`/`GenerateEvent`/`GenerateRequest`/`TimelineEntry`/`FlaggedEntry`/`StrategyOption`/`GenerateResponse` to `types/index.ts`. All 13 tests pass (12 P3 + smoke).
+- **Files changed:** mobile/src/services/auth.ts, mobile/src/services/api.ts, mobile/src/types/index.ts, mobile/src/utils/calendarUtils.ts, prd-phase5.md, progress.md
+- **Verification:** from `mobile/`: `npx jest --ci` — 13 passed, 2 suites; `npx tsc --noEmit` — clean; `npx expo export --platform android` — succeeded (2.8MB bundle). `grep -rn "window\.\|document\.\|localStorage" src/services src/types src/utils` — no matches.
+- **Gotchas:**
+  - The web `types/index.ts` had the comment `// User preferences stored in localStorage` above `UserOptions`. It is a comment, but the acceptance grep is textual, so it had to be reworded ("persisted on the device"). Watch for the same trap in any future file salvaged from `frontend/`.
+  - **The base URL must be resolved in the interceptor, not at `axios.create` time.** `getApiUrl()` is async and the stored value can change at runtime (Settings, P8e). Axios request interceptors may be async and the resolved config is what reaches the adapter, so `config.baseURL = await getApiUrl()` works. Setting it once at module load would also break the P3 test that calls `setApiUrl` after importing the module.
+  - In axios 1.20 a **custom adapter receives `baseURL` and `url` still separate** — `buildFullPath`/`buildURL` run inside the built-in adapters, not in `dispatchRequest`. That is why the test's `fullUrl()` concatenates the two, and why query `params` never appear in `config.url`. `config.data` *is* already serialized (transformRequest runs before the adapter), hence `JSON.parse(requests[0].data)`.
+  - `config.headers` inside a request interceptor is an `AxiosHeaders` instance: use `.set('Authorization', ...)`, and it reads back with `.get(...)`.
+  - `calendarUtils.ts` imports nothing, so the byte-identical copy needed no edit at all.

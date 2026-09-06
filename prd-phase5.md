@@ -92,12 +92,12 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
   - [x] `expo-secure-store` is mocked in the tests; nothing touches real storage
 
 ### P3.impl — Salvaged API client
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Copy `frontend/src/types/index.ts` → `mobile/src/types/index.ts`, `frontend/src/utils/calendarUtils.ts` → `mobile/src/utils/calendarUtils.ts`, `frontend/src/services/api.ts` → `mobile/src/services/api.ts`; then make the P3.tests contract pass. Add `GenerateRequest` / `GenerateResponse` types to `types/index.ts`. The token and URL live in `expo-secure-store` via `services/auth.ts`. Nothing in these three files may reference the DOM, `window`, or `localStorage`.
 - **Acceptance Criteria:**
-  - [ ] All P3.tests pass; tsc clean; export succeeds
-  - [ ] `grep -rn "window\.\|document\.\|localStorage" mobile/src/services mobile/src/types mobile/src/utils` is empty
-  - [ ] `calendarUtils.ts` is byte-identical to the web copy apart from the import path, if any
+  - [x] All P3.tests pass; tsc clean; export succeeds
+  - [x] `grep -rn "window\.\|document\.\|localStorage" mobile/src/services mobile/src/types mobile/src/utils` is empty
+  - [x] `calendarUtils.ts` is byte-identical to the web copy apart from the import path, if any
 
 ### P4. Native timer module (the spike)
 - **Status:** PENDING
