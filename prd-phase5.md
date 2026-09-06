@@ -80,16 +80,16 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
   - [x] No template example code remains
 
 ### P3.tests — Salvaged API client
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Write `mobile/src/__tests__/api.test.ts` against the contract below. The client does not exist yet in `mobile/`; tests import from `../services/api` and `../services/auth` and will fail to resolve until P3.impl — that is the correct failure.
 - **Contract:** `services/auth.ts` exports `getToken(): Promise<string | null>`, `setToken(t)`, `getApiUrl(): Promise<string>` (secure-store override, else `process.env.EXPO_PUBLIC_API_URL`), `setApiUrl(u)`. `services/api.ts` is the web client (`frontend/src/services/api.ts`) ported: same `taskAPI`, `timeLogAPI`, `sessionAPI`, `scheduleAPI`, `calendarImportAPI` surface, `baseURL` resolved from `getApiUrl()`, and an axios request interceptor that adds `Authorization: Bearer <token>` when a token is stored. New: `scheduleAPI.generate(req: GenerateRequest): Promise<GenerateResponse>` posting to `/schedules/generate` (no trailing slash — it is not a collection). Request/response shapes are in `docs/prd-phase3-completed.md`, task 3.
 - **Acceptance Criteria:**
-  - [ ] Test: with a stored token, a `taskAPI.getAll()` request carries the bearer header (mock axios or use an adapter)
-  - [ ] Test: with no token, no `Authorization` header is sent
-  - [ ] Test: `scheduleAPI.generate` POSTs to `/schedules/generate` with the request body unchanged and returns the parsed body
-  - [ ] Test: collection calls keep their trailing slashes (`/tasks/`, `/sessions/`, `/schedules/`)
-  - [ ] Test: `getApiUrl()` returns the env default when nothing is stored, the stored value when set
-  - [ ] `expo-secure-store` is mocked in the tests; nothing touches real storage
+  - [x] Test: with a stored token, a `taskAPI.getAll()` request carries the bearer header (mock axios or use an adapter)
+  - [x] Test: with no token, no `Authorization` header is sent
+  - [x] Test: `scheduleAPI.generate` POSTs to `/schedules/generate` with the request body unchanged and returns the parsed body
+  - [x] Test: collection calls keep their trailing slashes (`/tasks/`, `/sessions/`, `/schedules/`)
+  - [x] Test: `getApiUrl()` returns the env default when nothing is stored, the stored value when set
+  - [x] `expo-secure-store` is mocked in the tests; nothing touches real storage
 
 ### P3.impl — Salvaged API client
 - **Status:** PENDING
