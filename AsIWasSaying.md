@@ -84,7 +84,8 @@ implementation task gets a paired `.tests` task carrying its acceptance criteria
 
 ## 6. Phase 6 — deploy
 
-Host is open; decide when reached. Not open: TLS is mandatory; `alembic upgrade head` is a
+Host is **Azure** (D21) — chosen for practice, not cost. Expect a managed MySQL, the backend in a
+container, and platform-issued TLS. Not open: TLS is mandatory; `alembic upgrade head` is a
 deploy step; `mysqldump` the data → restore → `alembic stamp head`; `GOOGLE_REDIRECT_URI` →
 `https://<host>/api/auth/callback`, registered verbatim, backend restarted; the user
 authorizes Google once from a laptop; `EXPO_PUBLIC_API_URL` → public host, rebuild. Verify from

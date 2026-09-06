@@ -21,7 +21,7 @@ the output surface. Single user by design.
 | 4a | Single bearer credential gate; backend bound to the LAN | **Next** — `prd.md` |
 | 4b | Alembic: baseline from live MySQL, drift test, `create_all` out of startup | Any time before deploy; bound to the deploy step |
 | 5 | Frontend rewrite as React Native + Expo. Build 1: record and list. Build 2: quadrant, frog, Pomodoro, insights, day calendar | After 4a |
-| 6 | Public deploy with TLS, data migration, Google redirect re-registered | Last |
+| 6 | Public deploy to Azure with TLS, data migration, Google redirect re-registered | Last |
 
 ## Decisions (2026-09-05)
 
@@ -46,6 +46,7 @@ the output surface. Single user by design.
 | D17 | Offline | Recording only; save is queued and flushed on connectivity |
 | D18 | Build 1 scope | Stopwatch, Activities, Recordings, server-side schedule generation |
 | D19 | Test stack | `jest-expo` + `@testing-library/react-native`; timer core is a pure module tested without a renderer |
+| D21 | Deploy host | **Azure**, decided 2026-09-05. Chosen for practice with the platform, not cost; do not propose alternatives on price. Implies a managed MySQL, a containerised backend, and platform-issued TLS |
 | D20 | Test authorship | A fresh-context Ralph iteration writes each task's tests from its spec before the implementation iteration runs |
 
 ## Findings that shaped the plan
