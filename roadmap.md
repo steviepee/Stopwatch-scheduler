@@ -31,7 +31,7 @@ the output surface. Single user by design.
 | D2 | Public deploy timing | Last, after Phase 5 build 1 |
 | D3 | Auth | Single static bearer token in FastAPI middleware; on the phone in `expo-secure-store`. No users table, no owner columns — see ADR 0002 |
 | D4 | Alembic + suite | Suite keeps `create_all`; a pytest test runs `alembic check` against throwaway SQLite |
-| D5 | Alembic baseline | Autogenerate from live MySQL, review, `alembic stamp head` |
+| D5 | Alembic baseline | Autogenerate against an **empty** MySQL database (against the live one the diff is empty), review, then `alembic stamp head` on the live database |
 | D6 | Platform | React Native + Expo dev build — see ADR 0001 |
 | D7 | Targets | Android now; iOS later, kept buildable (native modules carry iOS stubs) |
 | D8 | Background timing | As stock Android: timestamp subtraction for truth, foreground service + ongoing notification for visibility |

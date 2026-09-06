@@ -73,13 +73,24 @@ sees them.
   - [x] `env.py` honours `-x db_url=`
   - [x] Full pytest passes unchanged
 
-### 6. USER — Baseline revision from live MySQL
+### 6. USER — Baseline revision
 - **Status:** USER (not for the loop; the user does this by hand)
-- **Description:** `alembic revision --autogenerate -m "baseline"` against the live database. Review by hand: booleans must map to `TINYINT(1) NOT NULL DEFAULT 0` (see GOTCHAS). Then `alembic stamp head`. **Do not `upgrade`** — the tables exist and hold February data.
+- **Description:** Autogenerate compares the models to a database and writes the *difference*. Against the live database the difference is nothing, so the baseline must be generated against an **empty** MySQL database and then the live one is stamped. From `backend/` with the venv active and `DB_*` exported from `.env`:
+  ```bash
+  mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p"$DB_PASSWORD" -e "CREATE DATABASE stopwatch_baseline"
+  alembic -x db_url="mysql+pymysql://$DB_USER:$DB_PASSWORD@$DB_HOST:$DB_PORT/stopwatch_baseline" revision --autogenerate -m baseline
+  # review backend/alembic/versions/<id>_baseline.py: five create_table calls; Boolean columns
+  # carry server_default='0' and nullable=False (the TINYINT(1) NOT NULL DEFAULT 0 in GOTCHAS)
+  alembic stamp head          # against the LIVE database — no -x. Never `upgrade`; the tables exist.
+  mysql -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" -p"$DB_PASSWORD" -e "DROP DATABASE stopwatch_baseline"
+  ```
+  If the review shows booleans without a server default, add `server_default=sa.text('0')` by hand — autogenerate reads the ORM `default=`, which is Python-side, not the column default.
 - **Acceptance Criteria:**
-  - [ ] One revision file committed under `backend/alembic/versions/`
-  - [ ] `alembic current` on MySQL reports that revision as head
-  - [ ] DIAGNOSTIC.md §5 schema check still prints OK for every table
+  - [ ] One revision file under `backend/alembic/versions/` with five `create_table` calls
+  - [ ] `alembic current` on the live database reports that revision as head
+  - [ ] `alembic check` against the live database reports no changes
+  - [ ] DIAGNOSTIC.md §9 step 5 schema check still prints OK for every table
+  - [ ] `stopwatch_baseline` dropped
 
 ### 7.tests — Migration drift test
 - **Status:** PENDING
