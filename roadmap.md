@@ -20,7 +20,7 @@ the output surface. Single user by design.
 | 3 | Priority flags, server-side strategy engine (7 strategies), peak-hours insights | Done 2026-09-03 — see `docs/prd-phase3-completed.md` |
 | 4a | Single bearer credential gate; backend bound to the LAN | **Next** — `prd.md` |
 | 4b | Alembic: baseline from live MySQL, drift test, `create_all` out of startup | Any time before deploy; bound to the deploy step |
-| 5 | Frontend rewrite as React Native + Expo. Build 1: record and list. Build 2: quadrant, frog, Pomodoro, insights, day calendar | After 4a |
+| 5 | Frontend rewrite as React Native + Expo. Build 1: record and list — `prd-phase5.md`. Build 2: quadrant, frog, Pomodoro, insights, day calendar — later PRD | **In flight** |
 | 6 | Public deploy to Azure with TLS, data migration, Google redirect re-registered | Last |
 
 ## Decisions (2026-09-05)
@@ -46,6 +46,18 @@ the output surface. Single user by design.
 | D17 | Offline | Recording only; save is queued and flushed on connectivity |
 | D18 | Build 1 scope | Stopwatch, Activities, Recordings, server-side schedule generation |
 | D19 | Test stack | `jest-expo` + `@testing-library/react-native`; timer core is a pure module tested without a renderer |
+| D22 | Build pipeline | EAS Build in the cloud. Dev build after the native module lands, rebuilt only when native code changes. Builds are USER steps |
+| D23 | Loop acceptance for mobile | Paired tests pass, `tsc --noEmit` clean, `expo export` bundles. Physical-phone checks are USER tasks after the native spike and at the end of build 1 |
+| D24 | Mobile stack | Expo Router, `StyleSheet` + token file, TanStack Query (its persisted mutations are the offline queue), axios |
+| D25 | Native spike failure | Task goes BLOCKED and the loop halts; the user decides between fixing the build and the timestamp-only fallback |
+| D26 | One save | A save always creates a Recording. Name optional, defaults to the Activity's name. Attaching an Activity feeds its average server-side (Phase 4 task 8). The separate "save to task" path is gone |
+| D27 | Timer display | Seconds, one redraw per second. No centiseconds anywhere |
+| D28 | Notification, build 1 | Elapsed time only; tap opens the app. Stop-from-notification is build 2 |
+| D29 | Navigation | Four tabs — Stopwatch, Activities, Recordings, Schedule — and Settings behind a gear |
+| D30 | Loop permissions | Dependency installs stay with the user (one up-front install task). `npx jest` and `npx expo export` allowed for verification |
+| D31 | Token onto the phone | Pasted once into Settings, stored in `expo-secure-store`. No QR |
+| D32 | Android package | `app.workflow.stopwatch`. An identifier, not a domain claim |
+| D33 | Phase 5 PRD shape | Build 1 only, in its own file run with `--prd`. Opus for the native module, timer core, and offline queue; Sonnet for screens |
 | D21 | Deploy host | **Azure**, decided 2026-09-05. Chosen for practice with the platform, not cost; do not propose alternatives on price. Implies a managed MySQL, a containerised backend, and platform-issued TLS |
 | D20 | Test authorship | A fresh-context Ralph iteration writes each task's tests from its spec before the implementation iteration runs |
 
