@@ -200,14 +200,14 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
   - [x] No hover styles; no centiseconds
 
 ### P8b.tests — Activities screen
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** `mobile/src/__tests__/ActivitiesScreen.test.tsx`, mocking `taskAPI`.
 - **Contract:** `src/app/(tabs)/activities.tsx`. List from `useQuery(['tasks'], taskAPI.getAll)`: name, average, and recording count per row; tap a row → `src/app/activity/[id].tsx` showing `taskAPI.getStats(id)` (average, median, previous) and the last ten time logs. A "+" button opens a create sheet with a name field → `taskAPI.create`, invalidating `['tasks']`. Offline: a plain "Offline — showing nothing" state, not a crash. Durations formatted with `format.ts`.
 - **Acceptance Criteria:**
-  - [ ] Test: rows render name, formatted average, count
-  - [ ] Test: create posts the name and refetches
-  - [ ] Test: detail screen shows the three stats and time logs
-  - [ ] Test: query error state renders the offline message
+  - [x] Test: rows render name, formatted average, count
+  - [x] Test: create posts the name and refetches
+  - [x] Test: detail screen shows the three stats and time logs
+  - [x] Test: query error state renders the offline message
 
 ### P8b.impl — Activities screen
 - **Status:** PENDING
