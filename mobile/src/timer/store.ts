@@ -44,6 +44,9 @@ export function useTimer() {
         const restored = core.restore(JSON.parse(raw) as PersistedTimerState, clocks);
         setState(restored);
         setElapsedMs(core.elapsedMs(restored, clocks));
+        if (restored.status === 'running') {
+          void startForegroundService(serviceAnchor(restored));
+        }
       }
       setHydrated(true);
     });

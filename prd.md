@@ -175,10 +175,10 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
   - [x] Native module mocked as in the existing timer store tests; no changes to `timerCore.test.ts`
 
 ### P6b.impl — Restored running timer re-arms the notification
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Make the P6b.tests contract pass in `mobile/src/timer/store.ts`. Do not change `core.ts`.
 - **Acceptance Criteria:**
-  - [ ] All P6b.tests pass; the existing 56 tests still pass; tsc clean; export succeeds
+  - [x] All P6b.tests pass; the existing 56 tests still pass; tsc clean; export succeeds
 
 ### P8a.tests — Stopwatch screen
 - **Status:** PENDING

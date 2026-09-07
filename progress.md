@@ -351,3 +351,15 @@ Each iteration appends its results here so the next session knows what worked, w
   - The anchor test uses a non-zero `accumulatedMs` (20 000 ms with `monoStart` 1 000 000 and `mono()` at 1 005 000 → anchor 980 000) on purpose. With `accumulatedMs: 0` the anchor equals the persisted `monoStart`, so a wrong implementation that just forwards `monoStart` would pass.
   - `persist()` deletes the storage key when the status is `idle`, so a persisted idle blob cannot occur in real use; the criterion names it anyway, so both it and the empty-store case are covered.
   - `waitFor` around the `toHaveBeenCalledTimes(1)` assertions, not a bare expect: `mountTimer()` only awaits `hydrated`, and an implementation is free to arm the service from an effect that runs a tick after the state lands.
+
+## P6b.impl. Restored running timer re-arms the notification
+- **Date:** 2026-09-06
+- **Status:** DONE
+- **Summary:** Three lines in the hydration effect of `mobile/src/timer/store.ts`: when the restored state's `status` is `'running'`, call `startForegroundService(serviceAnchor(restored))` inside the same `.then` that sets the state. `core.ts` untouched; `timerStore.test.tsx` untouched.
+- **Files changed:** mobile/src/timer/store.ts, prd.md, progress.md
+- **Verification:** from `mobile/`: `npx jest --ci` — 62 passed, 6 suites (56 prior + the 6 P6b tests); `npx tsc --noEmit` — clean (exit 0); `npx expo export --platform android` — succeeded (3MB bundle)
+- **Gotchas:**
+  - Arming inside the hydration `.then` — not in a separate `useEffect` keyed on `state.status` — is what keeps the negative tests green. A status-keyed effect would also fire on the `start`/`resume` transitions, double-calling `startForegroundService` for a normal start.
+  - `serviceAnchor(restored)` is the same helper `start`/`resume` use (`mono() − elapsedMs(state)`), so the restored anchor matches what `resume` would have passed. No new helper was needed.
+  - The P6.impl note "`useTimer` does not restart the foreground service for a running timer it restored" is now stale — this task fixed exactly that.
+  - `bash` pipelines using `${PIPESTATUS[0]}` are blocked by this environment's security check ("Contains expansion"). Run the command bare and read the tail, or use a separate `echo $?` on its own line.
