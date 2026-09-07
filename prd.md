@@ -181,16 +181,16 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
   - [x] All P6b.tests pass; the existing 56 tests still pass; tsc clean; export succeeds
 
 ### P8a.tests — Stopwatch screen
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Write `mobile/src/__tests__/StopwatchScreen.test.tsx` with `@testing-library/react-native`, mocking `useTimer`, `useCreateSession`, and `taskAPI.getAll`.
 - **Contract:** `src/app/(tabs)/index.tsx`. Shows elapsed as `H:MM:SS`. Buttons: Start / Pause / Resume / Reset, each ≥44pt. When paused with elapsed > 0, a **Save** button opens a sheet with: an optional name field, an Activity picker (list from `taskAPI.getAll`, searchable, "none" allowed), and Save/Cancel. One save (D26): calls `useCreateSession().mutate` with `{ name, duration, task_id?, start_time, end_time }` from `finish()`; if the name is blank and an Activity is chosen, the name is the Activity's name; if blank with no Activity, the name is the date and time. After save: reset, sheet closes, a brief "Saved" confirmation; if `clockJumpDetected`, the confirmation says the clock moved during the recording. No second "save to activity" path exists.
 - **Acceptance Criteria:**
-  - [ ] Tests: Start/Pause/Resume/Reset call the hook; Save appears only when paused with elapsed > 0
-  - [ ] Test: blank name + Activity "Gym" saves with `name: "Gym"` and `task_id`
-  - [ ] Test: blank name, no Activity saves with a date-time name and no `task_id`
-  - [ ] Test: `start_time`/`end_time` from `finish()` are passed through unchanged
-  - [ ] Test: clock-jump flag changes the confirmation text
-  - [ ] Test: every pressable has `accessibilityRole="button"` and a hit area ≥44
+  - [x] Tests: Start/Pause/Resume/Reset call the hook; Save appears only when paused with elapsed > 0
+  - [x] Test: blank name + Activity "Gym" saves with `name: "Gym"` and `task_id`
+  - [x] Test: blank name, no Activity saves with a date-time name and no `task_id`
+  - [x] Test: `start_time`/`end_time` from `finish()` are passed through unchanged
+  - [x] Test: clock-jump flag changes the confirmation text
+  - [x] Test: every pressable has `accessibilityRole="button"` and a hit area ≥44
 
 ### P8a.impl — Stopwatch screen
 - **Status:** PENDING
