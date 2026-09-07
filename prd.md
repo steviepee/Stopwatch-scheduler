@@ -193,11 +193,11 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
   - [x] Test: every pressable has `accessibilityRole="button"` and a hit area ≥44
 
 ### P8a.impl — Stopwatch screen
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract with `StyleSheet` and the P2 tokens. Big elapsed readout, large buttons, save sheet as a modal.
 - **Acceptance Criteria:**
-  - [ ] All P8a.tests pass; tsc clean; export succeeds
-  - [ ] No hover styles; no centiseconds
+  - [x] All P8a.tests pass; tsc clean; export succeeds
+  - [x] No hover styles; no centiseconds
 
 ### P8b.tests — Activities screen
 - **Status:** PENDING
