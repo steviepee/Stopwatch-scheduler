@@ -1,6 +1,10 @@
 # Standing Orders — Phase 4 → 5
 
-Current as of 2026-09-05. Read this, then `prd.md`, then start on the first PENDING task.
+Current as of 2026-09-07. Read this, then `prd.md`, then start on the first PENDING task.
+
+**Before starting a long loop run, read the three loop entries at the top of `GOTCHAS.md`** —
+usage limits silently burn iterations, killed iterations leave orphaned test files, and
+`vscode-server` plus Metro will OOM-kill the loop on this 7.6 GB box.
 
 ---
 
@@ -18,7 +22,7 @@ Current as of 2026-09-05. Read this, then `prd.md`, then start on the first PEND
 
 ## 2. State of the repo
 
-- Backend suite 91 passing; frontend 15; mobile 19. Backend on 8000, Vite on 3000 proxying `/api`.
+- Backend suite 91 passing; frontend 15; mobile 91. Backend on 8000, Vite on 3000 proxying `/api`. The mobile suite runs from `mobile/`: `npx jest --ci`, `npx tsc --noEmit`, `npx expo export --platform android`.
 - Google Calendar authenticated; credentials refresh on use.
 - Live MySQL schema matches the models, five tables, real recordings since February.
 - Phases 1–4 complete. Phase 5 build 1 in flight — task status lives in `prd.md`, per-task notes in `progress.md`. This file does not track it.

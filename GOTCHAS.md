@@ -5,6 +5,71 @@ Append new entries as they come up. Newest first.
 
 ---
 
+## The Ralph loop burns its remaining iterations when you hit a usage limit
+
+**Symptom:** a `--max 10` run reports all ten iterations "finished", but only the first few
+produced commits. The tail iterations each last about four seconds. The log shows
+`You've hit your session limit · resets <time>` followed by
+`[WARN] Claude session exited with non-zero status ... Continuing to next iteration...`
+
+**Cause:** `ralph.sh` treats any non-zero exit from `claude` as a soft failure and moves to the
+next iteration. A usage limit is not a task failure — it means *nothing* can run until the
+reset — so the loop spends every remaining iteration in seconds and stops with tasks still
+PENDING.
+
+**Cost:** the iteration in flight when the limit hits loses its uncommitted work. Everything
+committed before it is safe.
+
+**What to do:** check the reset time in the log, wait for it, and re-run with the number of
+iterations still needed. Nothing needs repairing; the PRD statuses are the source of truth.
+
+**Occurred:** 2026-09-07, Phase 5 screens. Iterations 5-10 of 10 lost; four tasks landed.
+
+---
+
+## A killed iteration leaves an orphaned `.tests` file and a failing suite
+
+**Symptom:** `npx jest` reports failures in a test file for a screen that does not exist yet,
+and `git status` shows it as untracked.
+
+**Cause:** a `.tests` iteration writes its file, then is killed (usage limit, OOM) before it
+can update `prd.md` and commit. The task is still PENDING, so the file describes an
+implementation nobody has written. Failing is the correct behaviour for a tests-first file.
+
+**What to do:** delete the orphan. The loop rewrites it when it redoes that PENDING task, and a
+clean suite is worth more than saving one iteration of work. Do not "fix" the failures by
+writing the implementation out of band.
+
+**Occurred:** twice on 2026-09-07 — `StopwatchScreen.test.tsx` (OOM kill),
+`RecordingsScreen.test.tsx` (usage limit).
+
+---
+
+## The loop gets OOM-killed while VS Code and Metro are running
+
+**Symptom:** a background loop stops with no error of its own; the host reports the system was
+low on memory. `free -h` shows swap exhausted and well under 1 GB available.
+
+**Cause:** this box has 7.6 GB. The Expo Metro bundler holds about 1 GB, and `vscode-server`
+holds 2-3 GB across dozens of processes. Each loop iteration then wants a `claude` session plus
+`jest` / `tsc` / `expo export`.
+
+**Two things that surprise people:**
+
+- **Closing the VS Code window on Windows does not stop `vscode-server` in WSL.** It lingers,
+  and reopening spawns a *second* set of extension hosts, so memory gets worse rather than
+  better. Check with `pgrep -cf vscode-server`.
+- **Metro is not needed by the loop.** It only serves the phone for live reload. The loop runs
+  `jest`, `tsc` and `expo export` and never touches it. Stop it during long runs:
+  `kill -15 $(pgrep -f "expo start")`, restart later with `npx expo start --dev-client`.
+
+**For a long loop run:** start it from a Windows Terminal tab rather than a VS Code terminal, so
+the editor is not in the picture at all.
+
+**Occurred:** 2026-09-07. One iteration lost to an OOM kill before the usage limit finished the job.
+
+---
+
 ## `az login` says "No subscriptions found" — AADSTS530035
 
 **Symptom:** `az login --use-device-code` signs in, then prints
