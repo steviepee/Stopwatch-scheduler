@@ -156,13 +156,13 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
   - [x] netinfo and AsyncStorage are mocked; axios is mocked at the adapter
 
 ### P7.impl — Offline save queue
-- **Status:** PENDING
+- **Status:** DONE
 - **Model:** Opus
 - **Description:** Implement `queryClient.ts` and `mutations.ts` to the contract; replace the placeholder client from P2 in `src/app/_layout.tsx` with `PersistQueryClientProvider` and call `resumePausedMutations()` on hydrate. Only recording saves are offline-capable (roadmap D17); reads keep the default network mode and show a plain "offline" state.
 - **Acceptance Criteria:**
-  - [ ] All P7.tests pass; tsc clean; export succeeds
-  - [ ] `src/app/_layout.tsx` uses `PersistQueryClientProvider`
-  - [ ] Queries for tasks/sessions/schedules are `networkMode: 'online'` (the default), not offline-first
+  - [x] All P7.tests pass; tsc clean; export succeeds
+  - [x] `src/app/_layout.tsx` uses `PersistQueryClientProvider`
+  - [x] Queries for tasks/sessions/schedules are `networkMode: 'online'` (the default), not offline-first
 
 ### P8a.tests — Stopwatch screen
 - **Status:** PENDING

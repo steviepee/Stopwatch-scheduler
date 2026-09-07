@@ -1,15 +1,16 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
 
+import { persister, queryClient } from '@/services/queryClient';
 import { colors } from '@/theme/tokens';
 
 export default function RootLayout() {
-  const [queryClient] = useState(() => new QueryClient());
-
   return (
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{ persister }}
+      onSuccess={() => queryClient.resumePausedMutations()}>
       <StatusBar style="light" />
       <Stack
         screenOptions={{
@@ -27,6 +28,6 @@ export default function RootLayout() {
           }}
         />
       </Stack>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   );
 }
