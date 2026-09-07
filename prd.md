@@ -165,14 +165,14 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
   - [x] Queries for tasks/sessions/schedules are `networkMode: 'online'` (the default), not offline-first
 
 ### P6b.tests — Restored running timer re-arms the notification
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Add to `mobile/src/__tests__/timerStore.test.tsx` (or a new `timerRestore.test.tsx` if that file does not exist) against this contract. Found by the P6.impl notes: `useTimer` restores a running timer after process death but never restarts the foreground service, so the notification is gone until the user presses Start again.
 - **Contract:** when `useTimer` hydrates a persisted state whose `status` is `'running'`, it calls `startForegroundService(anchor)` once with the same anchor `resume` would use, so the notification reappears without user action. Hydrating an `'idle'` or `'paused'` state calls nothing. Hydrating `'running'` does **not** call `stopForegroundService`.
 - **Acceptance Criteria:**
-  - [ ] Test: persisted running state → `startForegroundService` called exactly once after hydration
-  - [ ] Test: persisted paused state → no service call
-  - [ ] Test: persisted idle state (or nothing persisted) → no service call
-  - [ ] Native module mocked as in the existing timer store tests; no changes to `timerCore.test.ts`
+  - [x] Test: persisted running state → `startForegroundService` called exactly once after hydration
+  - [x] Test: persisted paused state → no service call
+  - [x] Test: persisted idle state (or nothing persisted) → no service call
+  - [x] Native module mocked as in the existing timer store tests; no changes to `timerCore.test.ts`
 
 ### P6b.impl — Restored running timer re-arms the notification
 - **Status:** PENDING

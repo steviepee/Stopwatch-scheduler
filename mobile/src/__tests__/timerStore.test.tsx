@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 
+import type { PersistedTimerState } from '../timer/core';
 import { formatElapsed } from '../timer/format';
 import { TIMER_STORAGE_KEY, useTimer } from '../timer/store';
 
@@ -146,6 +147,98 @@ describe('useTimer persistence', () => {
     const second = await mountTimer();
     expect(second.result.current.status).toBe('paused');
     expect(second.result.current.elapsedMs).toBe(12_000);
+  });
+});
+
+describe('useTimer re-arms the notification on restore', () => {
+  async function seed(persisted: PersistedTimerState) {
+    await AsyncStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(persisted));
+  }
+
+  it('starts the foreground service once when it hydrates a running timer', async () => {
+    await seed({
+      status: 'running',
+      wallStart: Date.now() - 5_000,
+      monoStart: 1_000_000,
+      accumulatedMs: 0,
+    });
+    mockClock.mono = 1_005_000;
+
+    const view = await mountTimer();
+
+    expect(view.result.current.status).toBe('running');
+    expect(view.result.current.elapsedMs).toBe(5_000);
+    await waitFor(() => expect(mockStartService).toHaveBeenCalledTimes(1));
+  });
+
+  it('re-arms with the anchor resume would have used', async () => {
+    await seed({
+      status: 'running',
+      wallStart: Date.now() - 45_000,
+      monoStart: 1_000_000,
+      accumulatedMs: 20_000,
+    });
+    mockClock.mono = 1_005_000;
+
+    const view = await mountTimer();
+
+    expect(view.result.current.elapsedMs).toBe(25_000);
+    await waitFor(() => expect(mockStartService).toHaveBeenCalledTimes(1));
+    expect(mockStartService).toHaveBeenCalledWith(980_000);
+    expect(mockStartService).toHaveBeenCalledWith(
+      mockClock.mono - view.result.current.elapsedMs
+    );
+  });
+
+  it('does not stop the service when it hydrates a running timer', async () => {
+    await seed({
+      status: 'running',
+      wallStart: Date.now() - 5_000,
+      monoStart: 1_000_000,
+      accumulatedMs: 0,
+    });
+    mockClock.mono = 1_005_000;
+
+    const view = await mountTimer();
+
+    expect(view.result.current.status).toBe('running');
+    await waitFor(() => expect(mockStartService).toHaveBeenCalledTimes(1));
+    expect(mockStopService).not.toHaveBeenCalled();
+  });
+
+  it('leaves the service alone for a persisted paused timer', async () => {
+    await seed({
+      status: 'paused',
+      wallStart: Date.now() - 30_000,
+      monoStart: null,
+      accumulatedMs: 12_000,
+    });
+    mockClock.mono = 1_005_000;
+
+    const view = await mountTimer();
+
+    expect(view.result.current.status).toBe('paused');
+    expect(view.result.current.elapsedMs).toBe(12_000);
+    expect(mockStartService).not.toHaveBeenCalled();
+    expect(mockStopService).not.toHaveBeenCalled();
+  });
+
+  it('leaves the service alone for a persisted idle timer', async () => {
+    await seed({ status: 'idle', wallStart: null, monoStart: null, accumulatedMs: 0 });
+
+    const view = await mountTimer();
+
+    expect(view.result.current.status).toBe('idle');
+    expect(mockStartService).not.toHaveBeenCalled();
+    expect(mockStopService).not.toHaveBeenCalled();
+  });
+
+  it('leaves the service alone when nothing is persisted', async () => {
+    const view = await mountTimer();
+
+    expect(view.result.current.status).toBe('idle');
+    expect(mockStartService).not.toHaveBeenCalled();
+    expect(mockStopService).not.toHaveBeenCalled();
   });
 });
 
