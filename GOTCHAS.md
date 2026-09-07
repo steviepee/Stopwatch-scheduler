@@ -5,6 +5,33 @@ Append new entries as they come up. Newest first.
 
 ---
 
+## `az login` says "No subscriptions found" — AADSTS530035
+
+**Symptom:** `az login --use-device-code` signs in, then prints
+`Authentication failed against tenant ... 'Default Directory': AADSTS530035: Access has been
+blocked by security defaults` and `No subscriptions found for <email>`. The portal shows the
+subscription fine.
+
+**Cause:** the subscription lives in the "Default Directory" tenant, which has Entra security
+defaults on, and security defaults now block the **device-code** login flow. The sign-in
+succeeded for the personal account but was refused for the tenant that holds the subscription.
+
+**Fix:** use the browser flow against that tenant. From WSL, point `BROWSER` at a script that
+opens the URL on Windows; mirrored networking lets the `localhost` redirect land back in WSL:
+```bash
+cat > ~/winbrowser.sh <<'EOF2'
+#!/bin/bash
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -NoProfile -Command "Start-Process '$1'" >/dev/null 2>&1
+EOF2
+chmod +x ~/winbrowser.sh
+BROWSER=~/winbrowser.sh az login --tenant 1678bfa2-dd98-416b-aa4c-ceb51469ee49
+```
+Expect a one-time MFA registration in the browser. Then `az account show --output table`.
+
+**Occurred:** 2026-09-06, first Azure login. Subscription `Azure subscription 1`.
+
+---
+
 ## Dev client says "Failed to connect to /192.168.0.5:8081"
 
 **Symptom:** the Expo dev build installs and opens, but tapping the server (or scanning the
