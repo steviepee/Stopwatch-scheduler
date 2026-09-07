@@ -22,7 +22,7 @@ DRY_RUN=false
 PROMPT_FILE="PROMPT.md"
 PRD_FILE="prd.md"
 PROGRESS_FILE="progress.md"
-MODEL="claude-sonnet-4-6"
+MODEL="claude-sonnet-5"
 
 # --- Parse args ---
 while [[ $# -gt 0 ]]; do
@@ -49,7 +49,7 @@ while [[ $# -gt 0 ]]; do
       echo "Options:"
       echo "  --max N       Maximum iterations (default: 30)"
       echo "  --prd FILE    Task file to work from (default: prd.md)"
-      echo "  --model MODEL Claude model ID (default: claude-sonnet-4-6)"
+      echo "  --model MODEL Claude model ID (default: claude-sonnet-5)"
       echo "  --dry-run     Show status without running"
       echo "  -h, --help    Show this help"
       exit 0
