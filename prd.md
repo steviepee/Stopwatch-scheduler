@@ -227,10 +227,10 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
   - [x] Test: a paused `createSession` mutation in the mutation cache renders as a pending row even when no optimistic row exists in `['sessions']`
 
 ### P8c.impl — Recordings screen
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
-  - [ ] All P8c.tests pass; tsc clean; export succeeds
+  - [x] All P8c.tests pass; tsc clean; export succeeds
 
 ### P8d.tests — Schedule screen
 - **Status:** PENDING
