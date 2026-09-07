@@ -251,14 +251,14 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
   - [x] All P8d.tests pass; tsc clean; export succeeds
 
 ### P8e.tests — Settings screen
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** `mobile/src/__tests__/SettingsScreen.test.tsx`, mocking `services/auth` and `axios`.
 - **Contract:** `src/app/settings.tsx`, reached from a gear icon in the tab header. Fields: API URL (prefilled from `getApiUrl()`), bearer token (secure text entry, paste-friendly, D31), a **Test connection** button that GETs `/health` then `/tasks/` with the entered values and reports: unreachable / reachable but token rejected / OK. Save writes both via `setApiUrl` / `setToken` and invalidates all queries. Also shows: app version, whether the native timer module is available (`isNativeAvailable()`), and the number of pending offline saves.
 - **Acceptance Criteria:**
-  - [ ] Test: fields prefill from stored values
-  - [ ] Test: Test connection distinguishes the three outcomes
-  - [ ] Test: Save persists both values and invalidates queries
-  - [ ] Test: pending-save count reflects paused mutations
+  - [x] Test: fields prefill from stored values
+  - [x] Test: Test connection distinguishes the three outcomes
+  - [x] Test: Save persists both values and invalidates queries
+  - [x] Test: pending-save count reflects paused mutations
 
 ### P8e.impl — Settings screen
 - **Status:** PENDING
