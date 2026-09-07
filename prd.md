@@ -147,7 +147,7 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
 - **Status:** DONE
 - **Model:** Opus
 - **Description:** Write `mobile/src/__tests__/offlineQueue.test.tsx`. The queue is TanStack Query's persisted mutations, not custom code; the tests exercise the configured client.
-- **Contract:** `mobile/src/services/queryClient.ts` exports `queryClient` with `networkMode: 'offlineFirst'` on mutations, `retry` bounded, and an AsyncStorage persister via `@tanstack/query-async-storage-persister` + `PersistQueryClientProvider`; `mutationCache` has defaults registered for the `createSession` mutation key so paused mutations can resume after restart (`queryClient.setMutationDefaults`). `onlineManager` is driven by `@react-native-community/netinfo`. `mobile/src/services/mutations.ts` exports `useCreateSession()` wrapping `sessionAPI.create` with an optimistic insert into the `['sessions']` list. On app start, `resumePausedMutations()` is called after hydration.
+- **Contract:** `mobile/src/services/queryClient.ts` exports `queryClient` with mutations on the default `networkMode: 'online'` (so an offline mutation pauses without firing — `offlineFirst` would hit the API once before pausing and again on flush), `retry` bounded, and an AsyncStorage persister via `@tanstack/query-async-storage-persister` + `PersistQueryClientProvider`; `mutationCache` has defaults registered for the `createSession` mutation key so paused mutations can resume after restart (`queryClient.setMutationDefaults`). `onlineManager` is driven by `@react-native-community/netinfo`. `mobile/src/services/mutations.ts` exports `useCreateSession()` wrapping `sessionAPI.create` with an optimistic insert into the `['sessions']` list. On app start, `resumePausedMutations()` is called after hydration.
 - **Acceptance Criteria:**
   - [x] Test: with `onlineManager.setOnline(false)`, `useCreateSession().mutate(...)` does not call the API and the mutation is paused
   - [x] Test: `onlineManager.setOnline(true)` flushes it; the API is called once with the original body
@@ -163,6 +163,22 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
   - [x] All P7.tests pass; tsc clean; export succeeds
   - [x] `src/app/_layout.tsx` uses `PersistQueryClientProvider`
   - [x] Queries for tasks/sessions/schedules are `networkMode: 'online'` (the default), not offline-first
+
+### P6b.tests — Restored running timer re-arms the notification
+- **Status:** PENDING
+- **Description:** Add to `mobile/src/__tests__/timerStore.test.tsx` (or a new `timerRestore.test.tsx` if that file does not exist) against this contract. Found by the P6.impl notes: `useTimer` restores a running timer after process death but never restarts the foreground service, so the notification is gone until the user presses Start again.
+- **Contract:** when `useTimer` hydrates a persisted state whose `status` is `'running'`, it calls `startForegroundService(anchor)` once with the same anchor `resume` would use, so the notification reappears without user action. Hydrating an `'idle'` or `'paused'` state calls nothing. Hydrating `'running'` does **not** call `stopForegroundService`.
+- **Acceptance Criteria:**
+  - [ ] Test: persisted running state → `startForegroundService` called exactly once after hydration
+  - [ ] Test: persisted paused state → no service call
+  - [ ] Test: persisted idle state (or nothing persisted) → no service call
+  - [ ] Native module mocked as in the existing timer store tests; no changes to `timerCore.test.ts`
+
+### P6b.impl — Restored running timer re-arms the notification
+- **Status:** PENDING
+- **Description:** Make the P6b.tests contract pass in `mobile/src/timer/store.ts`. Do not change `core.ts`.
+- **Acceptance Criteria:**
+  - [ ] All P6b.tests pass; the existing 56 tests still pass; tsc clean; export succeeds
 
 ### P8a.tests — Stopwatch screen
 - **Status:** PENDING
@@ -202,13 +218,13 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
 ### P8c.tests — Recordings screen
 - **Status:** PENDING
 - **Description:** `mobile/src/__tests__/RecordingsScreen.test.tsx`, mocking `sessionAPI`.
-- **Contract:** `src/app/(tabs)/recordings.tsx`. List from `useQuery(['sessions'], sessionAPI.getAll)` newest first: name, duration, date, Activity name if attached. A search field filters by name client-side. A date-range control (two `datetimepicker`s) filters client-side. Optimistic entries from the offline queue appear with a "pending" marker. Swipe or long-press → delete via `sessionAPI.delete`, invalidating `['sessions']`.
+- **Contract:** `src/app/(tabs)/recordings.tsx`. List from `useQuery(['sessions'], sessionAPI.getAll)` newest first: name, duration, date, Activity name if attached. A search field filters by name client-side. A date-range control (two `datetimepicker`s) filters client-side. Entries queued offline appear with a "pending" marker. Source of truth for pending is the mutation cache — paused `createSession` mutations from `queryClient.getMutationCache()` — not only optimistic rows in the `['sessions']` cache, because a mutation restored after process death carries no optimistic row (P7.impl notes). Swipe or long-press → delete via `sessionAPI.delete`, invalidating `['sessions']`.
 - **Acceptance Criteria:**
   - [ ] Test: list order, fields, and Activity name
   - [ ] Test: search narrows the list; clearing restores it
   - [ ] Test: date range excludes out-of-range items
   - [ ] Test: delete calls the API and the row disappears
-  - [ ] Test: a session with no `id` (optimistic) renders the pending marker
+  - [ ] Test: a paused `createSession` mutation in the mutation cache renders as a pending row even when no optimistic row exists in `['sessions']`
 
 ### P8c.impl — Recordings screen
 - **Status:** PENDING
