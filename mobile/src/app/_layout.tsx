@@ -19,6 +19,15 @@ export default function RootLayout() {
         }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
+          name="activity/[id]"
+          options={{
+            headerShown: true,
+            title: 'Activity',
+            headerStyle: { backgroundColor: colors.background },
+            headerTintColor: colors.text,
+          }}
+        />
+        <Stack.Screen
           name="settings"
           options={{
             headerShown: true,
