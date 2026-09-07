@@ -233,22 +233,22 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
   - [x] All P8c.tests pass; tsc clean; export succeeds
 
 ### P8d.tests — Schedule screen
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** `mobile/src/__tests__/ScheduleScreen.test.tsx`, mocking `taskAPI`, `scheduleAPI`.
 - **Contract:** `src/app/(tabs)/schedule.tsx`, a three-step flow on one screen. **Step 1**: pick Activities from `['tasks']` (multi-select, search), each with an editable estimated duration defaulting to its average; set a start time (default: now rounded up to the next 15 minutes) and day end (default 23:00 local, sent as UTC). **Step 2**: call `scheduleAPI.generate` with `strategies: ['your-order', 'shortest-first', 'longest-first', 'best-fit']` (the four the user knows; the other three are build 2) and show the options as a vertical list of cards, each expandable to its timeline; select one. **Step 3**: name it (default: the date), optional "save as regimen", → `scheduleAPI.create` then `addItem` per timeline entry with `position` and `scheduled_time`. A **Regimens** section below lists `is_regimen` schedules with an "apply to date" action → `scheduleAPI.applyRegimen`. Existing Google Calendar events are **not** imported in build 1.
 - **Acceptance Criteria:**
-  - [ ] Test: selecting Activities pre-fills durations from averages; edits are respected in the request
-  - [ ] Test: generate is called with the four strategies and UTC `Z` datetimes
-  - [ ] Test: options render one card per returned option; selecting one enables Save
-  - [ ] Test: save creates the schedule and one item per timeline entry, in order
-  - [ ] Test: regimen apply calls `applyRegimen` with the chosen date
-  - [ ] Test: generate error renders a retry, not a crash
+  - [x] Test: selecting Activities pre-fills durations from averages; edits are respected in the request
+  - [x] Test: generate is called with the four strategies and UTC `Z` datetimes
+  - [x] Test: options render one card per returned option; selecting one enables Save
+  - [x] Test: save creates the schedule and one item per timeline entry, in order
+  - [x] Test: regimen apply calls `applyRegimen` with the chosen date
+  - [x] Test: generate error renders a retry, not a crash
 
 ### P8d.impl — Schedule screen
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract. Reuse `calendarUtils` for rounding and formatting.
 - **Acceptance Criteria:**
-  - [ ] All P8d.tests pass; tsc clean; export succeeds
+  - [x] All P8d.tests pass; tsc clean; export succeeds
 
 ### P8e.tests — Settings screen
 - **Status:** PENDING
