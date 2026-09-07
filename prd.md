@@ -216,15 +216,15 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
   - [x] All P8b.tests pass; tsc clean; export succeeds
 
 ### P8c.tests — Recordings screen
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** `mobile/src/__tests__/RecordingsScreen.test.tsx`, mocking `sessionAPI`.
 - **Contract:** `src/app/(tabs)/recordings.tsx`. List from `useQuery(['sessions'], sessionAPI.getAll)` newest first: name, duration, date, Activity name if attached. A search field filters by name client-side. A date-range control (two `datetimepicker`s) filters client-side. Entries queued offline appear with a "pending" marker. Source of truth for pending is the mutation cache — paused `createSession` mutations from `queryClient.getMutationCache()` — not only optimistic rows in the `['sessions']` cache, because a mutation restored after process death carries no optimistic row (P7.impl notes). Swipe or long-press → delete via `sessionAPI.delete`, invalidating `['sessions']`.
 - **Acceptance Criteria:**
-  - [ ] Test: list order, fields, and Activity name
-  - [ ] Test: search narrows the list; clearing restores it
-  - [ ] Test: date range excludes out-of-range items
-  - [ ] Test: delete calls the API and the row disappears
-  - [ ] Test: a paused `createSession` mutation in the mutation cache renders as a pending row even when no optimistic row exists in `['sessions']`
+  - [x] Test: list order, fields, and Activity name
+  - [x] Test: search narrows the list; clearing restores it
+  - [x] Test: date range excludes out-of-range items
+  - [x] Test: delete calls the API and the row disappears
+  - [x] Test: a paused `createSession` mutation in the mutation cache renders as a pending row even when no optimistic row exists in `['sessions']`
 
 ### P8c.impl — Recordings screen
 - **Status:** PENDING
