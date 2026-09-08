@@ -191,7 +191,7 @@ describe('useCreateSession while offline', () => {
     expect(client.getMutationCache().getAll()[0].state.isPaused).toBe(true);
   });
 
-  it('keeps the optimistic recording in the sessions cache', async () => {
+  it('leaves the sessions cache untouched so no partial row reaches the list', async () => {
     const client = newClient();
     client.setQueryData(['sessions'], [existing]);
     const view = await renderHook(() => useCreateSession(), { wrapper: wrap(client) });
@@ -202,12 +202,11 @@ describe('useCreateSession while offline', () => {
     });
     await waitFor(() => expect(view.result.current.isPaused).toBe(true));
 
+    // A create payload has no id or created_at; writing it into ['sessions']
+    // crashed the Recordings list. The paused mutation is the only record.
     const cached = client.getQueryData(['sessions']) as StopwatchSession[];
-    expect(cached).toHaveLength(2);
-    expect(cached[0].name).toBe('Gym');
-    expect(cached[0].duration).toBe(1800);
-    expect(cached[0].id).toBeUndefined();
-    expect(cached[1]).toEqual(existing);
+    expect(cached).toEqual([existing]);
+    cached.forEach((session) => expect(typeof session.created_at).toBe('string'));
   });
 });
 

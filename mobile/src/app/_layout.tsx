@@ -9,7 +9,7 @@ export default function RootLayout() {
   return (
     <PersistQueryClientProvider
       client={queryClient}
-      persistOptions={{ persister }}
+      persistOptions={{ persister, buster: 'v2-no-optimistic-sessions' }}
       onSuccess={() => queryClient.resumePausedMutations()}>
       <StatusBar style="light" />
       <Stack

@@ -193,4 +193,36 @@ describe('recordings pending marker', () => {
     qc.getMutationCache().getAll().forEach((m) => m.destroy());
     qc.clear();
   });
+
+  it('renders a live offline save once and does not crash on it', async () => {
+    const qc = createQueryClient();
+    mockedGetAll.mockResolvedValue([GYM_SESSION]);
+
+    const hook = await renderHook(() => useCreateSession(), {
+      wrapper: ({ children }) => wrapper({ children, queryClient: qc }),
+    });
+    onlineManager.setOnline(false);
+
+    await act(async () => {
+      hook.result.current.mutate({
+        name: 'Deep work',
+        duration: 600,
+        start_time: '2026-09-08T08:00:00.000Z',
+        end_time: '2026-09-08T08:10:00.000Z',
+      });
+    });
+    await waitFor(() => expect(hook.result.current.isPaused).toBe(true));
+
+    // The live offline state, left exactly as the mutation leaves it. An earlier
+    // version wrote a partial row into ['sessions'] here, which crashed this
+    // render on `created_at` and showed the recording twice.
+    await renderScreen(qc);
+
+    await screen.findByText('Deep work');
+    expect(screen.getAllByText('Deep work')).toHaveLength(1);
+    expect(screen.getAllByTestId(/^session-pending-/)).toHaveLength(1);
+
+    qc.getMutationCache().getAll().forEach((m) => m.destroy());
+    qc.clear();
+  });
 });
