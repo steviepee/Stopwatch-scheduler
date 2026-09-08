@@ -379,7 +379,7 @@ taken with the user on 2026-09-08:
   - [x] pytest covers all of the above
 
 ### P15.tests — Calendar day view
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** `mobile/src/__tests__/CalendarDayScreen.test.tsx`, mocking `sessionAPI` and
   `calendarImportAPI`.
 - **Contract:** New tab `src/app/(tabs)/calendar.tsx`, added to the tab bar after Schedule. A day
@@ -392,12 +392,12 @@ taken with the user on 2026-09-08:
   when the day is today. Google events from P12 render as read-only blocks, visually distinct,
   never draggable (D34). Day nav via `previousDay`/`nextDay`. Blocks are 44pt minimum.
 - **Acceptance Criteria:**
-  - [ ] Test: scheduled recordings render at the right offset and height for their times
-  - [ ] Test: dragging a block calls `sessionAPI.schedule` with 15-minute-snapped UTC `Z` times
-  - [ ] Test: resizing changes `scheduled_end` only
-  - [ ] Test: Google events render, and a drag gesture on one calls no API
-  - [ ] Test: day nav refetches for the new date
-  - [ ] Test: a Google fetch failure leaves the recordings visible, with a retry
+  - [x] Test: scheduled recordings render at the right offset and height for their times
+  - [x] Test: dragging a block calls `sessionAPI.schedule` with 15-minute-snapped UTC `Z` times
+  - [x] Test: resizing changes `scheduled_end` only
+  - [x] Test: Google events render, and a drag gesture on one calls no API
+  - [x] Test: day nav refetches for the new date
+  - [x] Test: a Google fetch failure leaves the recordings visible, with a retry
 
 ### P15.impl — Calendar day view
 - **Status:** PENDING

@@ -5,3 +5,5 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 jest.mock('@react-native-community/netinfo', () =>
   require('@react-native-community/netinfo/jest/netinfo-mock')
 );
+
+jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'));
