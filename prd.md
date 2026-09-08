@@ -267,12 +267,12 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
   - [x] All P8e.tests pass; tsc clean; export succeeds
 
 ### P9. App icon and identity
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Port the icon before the web app is deleted. Expo wants a 1024×1024 PNG icon, an adaptive-icon foreground, and a splash image. Generate them from `frontend/public/icon.svg` with `sharp` (already in `frontend/node_modules`; run the script with `node` from `frontend/`) into `mobile/assets/`, and point `app.json` `icon`, `android.adaptiveIcon`, and `splash` at them. Keep `frontend/scripts/generate-icons.js` as the reference; add `mobile/scripts/generate-icons.js` that does the same for the mobile sizes.
 - **Acceptance Criteria:**
-  - [ ] `mobile/assets/icon.png` (1024²), `adaptive-icon.png`, `splash.png` exist and are referenced in `app.json`
-  - [ ] `npx expo export --platform android` succeeds
-  - [ ] Script committed under `mobile/scripts/`
+  - [x] `mobile/assets/icon.png` (1024²), `adaptive-icon.png`, `splash.png` exist and are referenced in `app.json`
+  - [x] `npx expo export --platform android` succeeds
+  - [x] Script committed under `mobile/scripts/`
 
 ### P10. USER — Build 1 phone check (the gate to delete the web app)
 - **Status:** USER
