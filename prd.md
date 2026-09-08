@@ -261,10 +261,10 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
   - [x] Test: pending-save count reflects paused mutations
 
 ### P8e.impl — Settings screen
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
-  - [ ] All P8e.tests pass; tsc clean; export succeeds
+  - [x] All P8e.tests pass; tsc clean; export succeeds
 
 ### P9. App icon and identity
 - **Status:** PENDING
