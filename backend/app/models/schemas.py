@@ -1,6 +1,6 @@
 from pydantic import BaseModel, AfterValidator, PlainSerializer
 from datetime import datetime, timezone
-from typing import Optional, List, Annotated
+from typing import Optional, List, Annotated, Literal
 
 
 def _to_utc_naive(v: datetime) -> datetime:
@@ -241,3 +241,14 @@ class StrategyOption(BaseModel):
 
 class GenerateResponse(BaseModel):
     options: List[StrategyOption]
+
+
+# Export schemas
+class ExportRequest(BaseModel):
+    resource: Literal["sessions", "tasks"]
+    format: Literal["csv", "json"]
+
+
+class ExportLink(BaseModel):
+    url: str
+    expires_at: UTCDateTime

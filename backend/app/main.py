@@ -5,7 +5,7 @@ import os
 import hmac
 from dotenv import load_dotenv
 
-from app.routers import tasks, time_logs, calendar_auth, sessions, schedules, insights
+from app.routers import tasks, time_logs, calendar_auth, sessions, schedules, insights, exports
 import app.models.schedule
 
 load_dotenv()
@@ -32,6 +32,8 @@ app.add_middleware(
 async def bearer_gate(request: Request, call_next):
     if request.url.path in _EXEMPT_PATHS:
         return await call_next(request)
+    if request.method == 'GET' and request.url.path.startswith('/api/exports/'):
+        return await call_next(request)
     token = os.getenv('API_TOKEN')
     auth = request.headers.get('Authorization', '')
     if not hmac.compare_digest(auth, f'Bearer {token}'):
@@ -44,6 +46,7 @@ app.include_router(calendar_auth.router, prefix='/api/auth', tags=['auth'])
 app.include_router(sessions.router, prefix='/api/sessions', tags=['sessions'])
 app.include_router(schedules.router, prefix='/api/schedules', tags=['schedules'])
 app.include_router(insights.router, prefix='/api/insights', tags=['insights'])
+app.include_router(exports.router, prefix='/api/exports', tags=['exports'])
 
 @app.get('/')
 def read_root():

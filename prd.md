@@ -362,7 +362,7 @@ taken with the user on 2026-09-08:
   - [x] 401 when Google is not authorized; 404 for an unknown schedule
 
 ### P14. Backend — export recordings and activities
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** CSV/JSON export exists only in the web app and is lost with it. The phone
   cannot open an authorized URL in a browser (D37), so: `POST /api/exports` (bearer-gated) takes
   `{resource: "sessions"|"tasks", format: "csv"|"json"}` and returns `{url, expires_at}` carrying
@@ -371,12 +371,12 @@ taken with the user on 2026-09-08:
   single-process single-user app and a restart losing them is fine. Do **not** accept the bearer
   token in a query string.
 - **Acceptance Criteria:**
-  - [ ] POST requires the bearer token; GET with a valid token does not
-  - [ ] CSV has a header row; JSON is a list of objects; both cover every row of the resource
-  - [ ] A token works once; the second GET is 404
-  - [ ] An expired token is 404
-  - [ ] An unknown or malformed token is 404, never a stack trace
-  - [ ] pytest covers all of the above
+  - [x] POST requires the bearer token; GET with a valid token does not
+  - [x] CSV has a header row; JSON is a list of objects; both cover every row of the resource
+  - [x] A token works once; the second GET is 404
+  - [x] An expired token is 404
+  - [x] An unknown or malformed token is 404, never a stack trace
+  - [x] pytest covers all of the above
 
 ### P15.tests — Calendar day view
 - **Status:** PENDING
