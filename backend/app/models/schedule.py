@@ -30,6 +30,7 @@ class ScheduleItem(Base):
     position = Column(Integer, default=0)
     scheduled_time = Column(DateTime, nullable=True)
     is_frog = Column(Boolean, nullable=False, default=False)
+    calendar_event_id = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=utcnow)
 
     schedule = relationship("Schedule", back_populates="items")

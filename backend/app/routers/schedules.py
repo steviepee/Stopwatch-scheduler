@@ -8,8 +8,10 @@ from app.models.schedule import Schedule, ScheduleItem
 from app.models.task import Task
 from app.models import schemas
 from app.services.strategies import STRATEGY_REGISTRY, _build_timeline
+from app.services.google_calendar import GoogleCalendarService
 
 router = APIRouter()
+calendar_service = GoogleCalendarService()
 
 
 @router.get("/", response_model=List[schemas.Schedule])
@@ -163,6 +165,62 @@ def delete_item(schedule_id: int, item_id: int, db: Session = Depends(get_db)):
     db.delete(db_item)
     db.commit()
     return {"message": "Item deleted successfully"}
+
+
+@router.post("/{schedule_id}/calendar", response_model=schemas.Schedule)
+def push_schedule_to_calendar(schedule_id: int, db: Session = Depends(get_db)):
+    """Create a Google Calendar event for each scheduled item that doesn't have one yet"""
+    db_schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
+    if not db_schedule:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+
+    if not calendar_service.is_authenticated():
+        raise HTTPException(status_code=401, detail="Not authenticated with Google Calendar")
+
+    try:
+        for item in db_schedule.items:
+            if item.scheduled_time is None or item.calendar_event_id is not None:
+                continue
+
+            title = item.custom_name or (item.task.name if item.task else "Untitled")
+            event = calendar_service.create_event(
+                task_name=title,
+                duration_seconds=item.estimated_duration,
+                start_time=item.scheduled_time.isoformat()
+            )
+            item.calendar_event_id = event.get('id')
+
+        db.commit()
+        db.refresh(db_schedule)
+        return db_schedule
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/{schedule_id}/calendar")
+def remove_schedule_from_calendar(schedule_id: int, db: Session = Depends(get_db)):
+    """Remove every pushed item's Google Calendar event and clear its id"""
+    db_schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
+    if not db_schedule:
+        raise HTTPException(status_code=404, detail="Schedule not found")
+
+    if not calendar_service.is_authenticated():
+        raise HTTPException(status_code=401, detail="Not authenticated with Google Calendar")
+
+    try:
+        for item in db_schedule.items:
+            if item.calendar_event_id is None:
+                continue
+            calendar_service.service.events().delete(
+                calendarId='primary',
+                eventId=item.calendar_event_id
+            ).execute()
+            item.calendar_event_id = None
+
+        db.commit()
+        return {"message": "Schedule removed from calendar"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # --- Apply regimen to a date ---

@@ -344,7 +344,7 @@ taken with the user on 2026-09-08:
   - [x] pytest covers all of the above with the calendar service mocked
 
 ### P13. Backend — push a schedule to Google Calendar
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Recordings can already be pushed (`POST /api/sessions/{id}/calendar`), but
   regimens and plans cannot — they are Schedules with ScheduleItems, which have no calendar
   route. Add an Alembic revision adding `calendar_event_id VARCHAR(255) NULL` to
@@ -354,12 +354,12 @@ taken with the user on 2026-09-08:
   so a second push does not duplicate. `DELETE /api/schedules/{id}/calendar` removes those
   events and clears the ids.
 - **Acceptance Criteria:**
-  - [ ] Alembic revision present; `alembic check` clean; `test_migrations.py` passes
-  - [ ] POST creates one event per scheduled item and persists each `calendar_event_id`
-  - [ ] Items with no `scheduled_time` are skipped, not errored
-  - [ ] A second POST creates nothing new (idempotent)
-  - [ ] DELETE removes the events and nulls the ids
-  - [ ] 401 when Google is not authorized; 404 for an unknown schedule
+  - [x] Alembic revision present; `alembic check` clean; `test_migrations.py` passes
+  - [x] POST creates one event per scheduled item and persists each `calendar_event_id`
+  - [x] Items with no `scheduled_time` are skipped, not errored
+  - [x] A second POST creates nothing new (idempotent)
+  - [x] DELETE removes the events and nulls the ids
+  - [x] 401 when Google is not authorized; 404 for an unknown schedule
 
 ### P14. Backend — export recordings and activities
 - **Status:** PENDING
