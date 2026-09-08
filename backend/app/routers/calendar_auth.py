@@ -47,12 +47,15 @@ def auth_status():
 
 
 @router.get("/calendar/events")
-def get_calendar_events(date: str, tz_offset: int = 0):
-    """Fetch Google Calendar events for a given date (YYYY-MM-DD) in the caller's local day."""
+def get_calendar_events(date: str, end_date: str = None, tz_offset: int = 0):
+    """Fetch Google Calendar events for a date, or an inclusive date range if end_date is given."""
     if not calendar_service.is_authenticated():
         raise HTTPException(status_code=401, detail="Not authenticated with Google Calendar")
+    if end_date is not None and end_date < date:
+        raise HTTPException(status_code=400, detail="end_date precedes date")
     try:
-        events = calendar_service.get_events_for_date(date, tz_offset)
-        return events
+        if end_date is not None:
+            return calendar_service.get_events_for_range(date, end_date, tz_offset)
+        return calendar_service.get_events_for_date(date, tz_offset)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

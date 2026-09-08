@@ -114,6 +114,27 @@ class GoogleCalendarService:
         day = datetime.strptime(date_str, "%Y-%m-%d")
         start_utc = day + timedelta(minutes=tz_offset)
         end_utc = start_utc + timedelta(days=1)
+        return self._list_events(start_utc, end_utc)
+
+    def get_events_for_range(self, start_date_str: str, end_date_str: str, tz_offset: int = 0) -> list:
+        """Fetch all events from the primary calendar over an inclusive date range.
+
+        Same tz_offset convention as get_events_for_date. Each returned event is
+        tagged with the caller-local day (YYYY-MM-DD) it starts on.
+        """
+        if not self.is_authenticated():
+            raise Exception("Not authenticated with Google Calendar")
+
+        start_day = datetime.strptime(start_date_str, "%Y-%m-%d")
+        end_day = datetime.strptime(end_date_str, "%Y-%m-%d")
+        start_utc = start_day + timedelta(minutes=tz_offset)
+        end_utc = end_day + timedelta(minutes=tz_offset) + timedelta(days=1)
+        events = self._list_events(start_utc, end_utc)
+        for event in events:
+            event["day"] = self._local_day(event["start"], tz_offset)
+        return events
+
+    def _list_events(self, start_utc: datetime, end_utc: datetime) -> list:
         time_min = start_utc.isoformat() + "Z"
         time_max = end_utc.isoformat() + "Z"
 
@@ -130,11 +151,29 @@ class GoogleCalendarService:
             start = item.get("start", {})
             end = item.get("end", {})
             events.append({
+                "id": item.get("id"),
                 "summary": item.get("summary", ""),
                 "start": start.get("dateTime") or start.get("date"),
                 "end": end.get("dateTime") or end.get("date"),
             })
         return events
+
+    @staticmethod
+    def _local_day(start_value: str, tz_offset: int) -> str:
+        """The caller-local day (YYYY-MM-DD) a start value falls on.
+
+        All-day events carry a bare date with no time to convert. Timed events
+        carry their own offset from Google; convert to UTC then apply tz_offset
+        the same way get_events_for_date does (UTC = local + tz_offset).
+        """
+        if start_value is None or "T" not in start_value:
+            return start_value
+
+        dt = datetime.fromisoformat(start_value.replace("Z", "+00:00"))
+        if dt.tzinfo is not None:
+            dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+        local = dt - timedelta(minutes=tz_offset)
+        return local.strftime("%Y-%m-%d")
 
     def create_event(self, task_name: str, duration_seconds: float, start_time: str = None):
         """Create a calendar event"""

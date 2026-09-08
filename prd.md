@@ -6,8 +6,13 @@ session, in order. Mark tasks DONE when complete; add failure notes if a task fa
 behind every task are in `roadmap.md` (D6–D33) and ADR 0001; vocabulary is in `CONTEXT.md`.
 
 **What build 1 is:** an Android app that records, lists, and generates schedules against the
-existing backend. When it passes the phone check (task P10) the web app is deleted. Everything
-else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a later PRD.
+existing backend. Everything else — quadrant picker, frog, Pomodoro, insights — is build 2, a
+later PRD.
+
+**Build 1b (added 2026-09-08):** the calendar was pulled forward out of build 2. The web app is
+not deleted until the phone has a calendar, Google pull/push, and export. P11 therefore stays
+HOLD until P21 passes, not P10. Tasks P12–P21 and their amended rules are in the Build 1b
+section below.
 
 **Model:** run `./ralph.sh --model claude-opus-5` until P7.impl is DONE
 (native module, timer core, offline queue). Sonnet (the default) for P8 onward.
@@ -18,7 +23,8 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
 ## Rules for this PRD
 
 - **Only `mobile/` changes.** `frontend/` is frozen (roadmap D11) and `backend/` is done for now
-  (Phase 4 is archived at `docs/prd-phase4-completed.md`). The one exception is P11, which deletes `frontend/`.
+  (Phase 4 is archived at `docs/prd-phase4-completed.md`). Two exceptions: P11, which deletes
+  `frontend/`, and P12–P14, which add backend routes under the Build 1b rules below.
 - **No dependency changes.** `npm install`, `npx expo install`, and `npx create-*` are not
   available to the loop. Every dependency build 1 needs is installed in P1 by the user. If a
   task genuinely needs a package that is missing, mark it BLOCKED naming the package; do not
@@ -37,7 +43,8 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
 - **Stack is pinned** (D24): Expo Router for navigation, `StyleSheet` with a token file for
   styling, TanStack Query for server state and the offline mutation queue, axios for HTTP.
   Do not introduce NativeWind, React Navigation directly, Redux, or a second HTTP client.
-- **API is frozen.** Everything the app needs exists; see DIAGNOSTIC.md §5. Do not add routes.
+- **API is frozen for P1–P11.** Everything those tasks need exists; see DIAGNOSTIC.md §5. Do not
+  add routes. P12–P14 add the routes listed in their own tasks and nothing else.
   Collection endpoints need the trailing slash. All datetimes are UTC with a `Z` suffix.
 - **Phone-first**: 44pt minimum touch targets, no hover states, portrait, safe-area
   aware. No centiseconds anywhere.
@@ -281,13 +288,242 @@ else — quadrant picker, frog, Pomodoro, insights, calendar — is build 2, a l
   2. Start a recording, lock the screen for 10+ minutes, unlock, pause, save to an Activity. Duration matches wall time within 1s; the notification was visible while locked; the recording appears in Recordings and in MySQL; the Activity's average and count changed.
   3. Airplane mode on: record and save → pending marker in Recordings, count in Settings. Airplane mode off → it syncs; `GET /api/sessions/` shows it.
   4. Build a schedule from three Activities, pick an option, save it; it appears in `GET /api/schedules/`.
-  When all four pass, flip P11 to PENDING.
+  When all four pass, record it in `progress.md`. P11 is **not** unblocked by this task — the
+  calendar, Google sync, and export (P12–P20) ship first and are checked in P21.
 - **Acceptance Criteria:**
   - [ ] All four checks pass on a physical phone
   - [ ] Any failure recorded in `progress.md` with the task it reopens
 
+---
+
+## Build 1b — Calendar, Google sync, export, finish
+
+Added 2026-09-08. The calendar was pulled forward out of build 2 because the web app cannot be
+retired without it (roadmap D11 assumed the calendar was not load-bearing; it is). Decisions
+taken with the user on 2026-09-08:
+
+| # | Decision | Answer |
+|---|---|---|
+| D34 | Google events in the app | **Read-only overlay.** Fetched per visible day, rendered as non-draggable blocks, never stored locally. No dedupe rules, no two-way sync |
+| D35 | Pushing to Google | **Explicit only.** A recording or a whole schedule is pushed when the user taps push. Nothing is mirrored as a side effect of dragging |
+| D36 | Calendar layout | **Day view with gesture drag/resize; week is a read-only agenda** (confirms D16). No 7-column droppable grid on a phone |
+| D37 | Export transport | **One-time signed link.** `expo-web-browser` cannot attach the bearer token, and putting the token in a query string leaks it into logs and history. The app POSTs to get a short-lived token, then opens the GET |
+| D38 | Export file handling | Backend streams the file. `expo-file-system` / `expo-sharing` are **not** installed and would force an EAS rebuild — do not add them |
+
+### Rules for Build 1b (amend the rules above)
+
+- **Backend is open for P12–P14 only**, and only for the routes each task names. P15 onward are
+  `mobile/` only.
+- **Schema changes go through Alembic.** `create_all` is out of startup (Phase 4b) and MySQL will
+  not pick up a new column on its own — see GOTCHAS and the `schema-drift-mysql` note. Any model
+  field needs a revision in `backend/alembic/versions/`, and `backend/tests/test_migrations.py`
+  must still pass.
+- **No dependency changes, still.** Everything Build 1b needs is already in `mobile/package.json`:
+  `react-native-gesture-handler` (2.32), `react-native-reanimated` (4.5.1), `expo-image`,
+  `expo-glass-effect`, `expo-web-browser`. If a task appears to need anything else, mark it
+  BLOCKED rather than installing.
+- **Backend acceptance:** `cd backend && source venv/bin/activate && python -m pytest tests/`.
+- **Mobile acceptance is unchanged:** paired tests pass, `npx tsc --noEmit` clean,
+  `npx expo export --platform android` bundles.
+
+---
+
+### P12. Backend — Google Calendar range fetch
+- **Status:** DONE
+- **Description:** `GET /api/auth/calendar/events` currently takes a single `date` and returns
+  `{summary, start, end}` ([calendar_auth.py](backend/app/routers/calendar_auth.py)). A week
+  agenda would need seven round trips. Add an optional `end_date` so one call covers a range,
+  keeping the single-date form working unchanged. Add the Google event `id` to each returned
+  event — the overlay needs a stable React key and P13 needs it to avoid duplicate pushes.
+  Extend `GoogleCalendarService.get_events_for_date` or add `get_events_for_range` beside it.
+- **Acceptance Criteria:**
+  - [x] `?date=` alone behaves exactly as before, plus an `id` on each event
+  - [x] `?date=&end_date=` returns every event in the inclusive range, each tagged with its day
+  - [x] `tz_offset` is honoured for both forms
+  - [x] 401 when Google is not authorized; 400 when `end_date` precedes `date`
+  - [x] pytest covers all of the above with the calendar service mocked
+
+### P13. Backend — push a schedule to Google Calendar
+- **Status:** PENDING
+- **Description:** Recordings can already be pushed (`POST /api/sessions/{id}/calendar`), but
+  regimens and plans cannot — they are Schedules with ScheduleItems, which have no calendar
+  route. Add an Alembic revision adding `calendar_event_id VARCHAR(255) NULL` to
+  `schedule_items`, then `POST /api/schedules/{id}/calendar` creating one Google event per item
+  that has a `scheduled_time`, titled from `custom_name` or the Task's name and lasting
+  `estimated_duration`, storing each event id on its item. Skip items that already carry an id
+  so a second push does not duplicate. `DELETE /api/schedules/{id}/calendar` removes those
+  events and clears the ids.
+- **Acceptance Criteria:**
+  - [ ] Alembic revision present; `alembic check` clean; `test_migrations.py` passes
+  - [ ] POST creates one event per scheduled item and persists each `calendar_event_id`
+  - [ ] Items with no `scheduled_time` are skipped, not errored
+  - [ ] A second POST creates nothing new (idempotent)
+  - [ ] DELETE removes the events and nulls the ids
+  - [ ] 401 when Google is not authorized; 404 for an unknown schedule
+
+### P14. Backend — export recordings and activities
+- **Status:** PENDING
+- **Description:** CSV/JSON export exists only in the web app and is lost with it. The phone
+  cannot open an authorized URL in a browser (D37), so: `POST /api/exports` (bearer-gated) takes
+  `{resource: "sessions"|"tasks", format: "csv"|"json"}` and returns `{url, expires_at}` carrying
+  an opaque single-use token valid 60 seconds; `GET /api/exports/{token}` streams the file with
+  `Content-Disposition: attachment` and invalidates the token. Hold tokens in memory — this is a
+  single-process single-user app and a restart losing them is fine. Do **not** accept the bearer
+  token in a query string.
+- **Acceptance Criteria:**
+  - [ ] POST requires the bearer token; GET with a valid token does not
+  - [ ] CSV has a header row; JSON is a list of objects; both cover every row of the resource
+  - [ ] A token works once; the second GET is 404
+  - [ ] An expired token is 404
+  - [ ] An unknown or malformed token is 404, never a stack trace
+  - [ ] pytest covers all of the above
+
+### P15.tests — Calendar day view
+- **Status:** PENDING
+- **Description:** `mobile/src/__tests__/CalendarDayScreen.test.tsx`, mocking `sessionAPI` and
+  `calendarImportAPI`.
+- **Contract:** New tab `src/app/(tabs)/calendar.tsx`, added to the tab bar after Schedule. A day
+  time grid built with the already-salvaged
+  [calendarUtils.ts](mobile/src/utils/calendarUtils.ts) — `getTimeSlots`, `positionFromTime`,
+  `timeFromPosition`, `snapToSlot`, `heightFromDuration`. Scheduled recordings
+  (`sessionAPI.getScheduled`) render as blocks positioned by `scheduled_start`. Drag a block with
+  `react-native-gesture-handler` + `react-native-reanimated` to move it, snapping to 15 minutes;
+  drag its bottom edge to resize. Both commit via `sessionAPI.schedule`. A red current-time line
+  when the day is today. Google events from P12 render as read-only blocks, visually distinct,
+  never draggable (D34). Day nav via `previousDay`/`nextDay`. Blocks are 44pt minimum.
+- **Acceptance Criteria:**
+  - [ ] Test: scheduled recordings render at the right offset and height for their times
+  - [ ] Test: dragging a block calls `sessionAPI.schedule` with 15-minute-snapped UTC `Z` times
+  - [ ] Test: resizing changes `scheduled_end` only
+  - [ ] Test: Google events render, and a drag gesture on one calls no API
+  - [ ] Test: day nav refetches for the new date
+  - [ ] Test: a Google fetch failure leaves the recordings visible, with a retry
+
+### P15.impl — Calendar day view
+- **Status:** PENDING
+- **Description:** Implement to the contract.
+- **Acceptance Criteria:**
+  - [ ] All P15.tests pass; tsc clean; export succeeds
+
+### P16.tests — Session bank and week agenda
+- **Status:** PENDING
+- **Description:** `mobile/src/__tests__/CalendarBankScreen.test.tsx`.
+- **Contract:** On the Calendar tab, a collapsible bank of unscheduled recordings
+  (`sessionAPI.getUnscheduled`) with a search field. Dragging one onto the grid schedules it at
+  the drop time; a block dragged onto the bank calls `sessionAPI.unschedule`. A Day/Week toggle
+  switches to a **read-only** agenda (D36): each day of the week as a section, its scheduled
+  recordings and Google events listed in time order, tapping a day opening that day's view. No
+  drag targets in week mode.
+- **Acceptance Criteria:**
+  - [ ] Test: the bank lists only unscheduled recordings; search narrows it
+  - [ ] Test: dropping a bank item on the grid calls `schedule` with the drop time
+  - [ ] Test: dropping a block on the bank calls `unschedule`
+  - [ ] Test: week mode lists seven days in order with both sources merged
+  - [ ] Test: week mode renders no drag handles; tapping a day switches to it
+
+### P16.impl — Session bank and week agenda
+- **Status:** PENDING
+- **Description:** Implement to the contract.
+- **Acceptance Criteria:**
+  - [ ] All P16.tests pass; tsc clean; export succeeds
+
+### P17.tests — Google push actions
+- **Status:** PENDING
+- **Description:** `mobile/src/__tests__/GooglePush.test.tsx`.
+- **Contract:** Add `scheduleAPI.pushToCalendar(id)` / `removeFromCalendar(id)` (P13) and
+  `calendarImportAPI.getEventsInRange` (P12) to `services/api.ts`. A block on the day view gets a
+  push action calling `sessionAPI.addToCalendar`, and shows a marker when `is_on_calendar`. The
+  Schedule tab gains a push action on a saved schedule and on a regimen, calling the P13 route,
+  reporting how many events were created. Pushes are explicit only (D35) — nothing pushes on
+  drag, drop, resize, or save.
+- **Acceptance Criteria:**
+  - [ ] Test: pushing a recording calls the sessions calendar route and shows the marker
+  - [ ] Test: pushing a schedule calls the schedules calendar route once
+  - [ ] Test: a second push is offered as remove, not another create
+  - [ ] Test: a 401 from Google renders "authorize from a laptop" (D14), not a crash
+  - [ ] Test: dragging, resizing, and saving a schedule call no calendar route
+
+### P17.impl — Google push actions
+- **Status:** PENDING
+- **Description:** Implement to the contract.
+- **Acceptance Criteria:**
+  - [ ] All P17.tests pass; tsc clean; export succeeds
+
+### P18.tests — Export from Settings
+- **Status:** PENDING
+- **Description:** `mobile/src/__tests__/ExportSettings.test.tsx`, mocking `axios` and
+  `expo-web-browser`.
+- **Contract:** Settings gains an Export section: Recordings and Activities, each CSV or JSON.
+  Each button POSTs to `/api/exports` and opens the returned `url` with
+  `WebBrowser.openBrowserAsync`. No file is written by the app (D38).
+- **Acceptance Criteria:**
+  - [ ] Test: each of the four buttons POSTs the right resource and format
+  - [ ] Test: the returned url is what gets opened
+  - [ ] Test: a failed POST shows an error and opens nothing
+  - [ ] Test: offline shows "needs a connection" rather than a paused mutation
+
+### P18.impl — Export from Settings
+- **Status:** PENDING
+- **Description:** Implement to the contract.
+- **Acceptance Criteria:**
+  - [ ] All P18.tests pass; tsc clean; export succeeds
+
+### P19. Visual pass — background and glass
+- **Status:** PENDING
+- **Description:** The token file lifted the web palette but none of its effects, so every screen
+  is flat `#1a1a2e`. **Copy `frontend/public/cloth_mural.jpg` to `mobile/assets/` as the first
+  step of this task** — P11 deletes `frontend/` and the asset goes with it. Render it as a fixed
+  background behind the tab screens with `expo-image`, under a `colors.scrim` overlay, and give
+  cards the existing `glass` / `glassBorder` treatment. `expo-glass-effect` is already installed:
+  spike it for real blur, and if it no-ops on Android fall back to the flat translucent fill
+  rather than adding `expo-blur` (which is a native module and would force a rebuild). No test
+  pair — this is presentation; acceptance is the build plus the P21 phone check.
+- **Acceptance Criteria:**
+  - [ ] `mobile/assets/cloth_mural.jpg` committed
+  - [ ] Background renders behind all five tabs and Settings, text contrast preserved
+  - [ ] Blur either works or degrades to the flat fill; no new dependency
+  - [ ] tsc clean; `npx expo export --platform android` succeeds
+
+### P20.tests — Display options
+- **Status:** PENDING
+- **Description:** `mobile/src/__tests__/DisplayOptions.test.tsx`.
+- **Contract:** The web Options page let the user choose which duration hints to show. Add to
+  Settings three toggles — average, median, previous — persisted in AsyncStorage under
+  `userOptions`, defaulting to average on and the other two off. They control what
+  `activities.tsx`, `activity/[id].tsx`, and the Schedule tab's duration hints display. Nothing
+  server-side.
+- **Acceptance Criteria:**
+  - [ ] Test: defaults are average on, median and previous off
+  - [ ] Test: toggling persists and survives a remount
+  - [ ] Test: the Activities list and Activity detail show only enabled metrics
+  - [ ] Test: the Schedule tab's hints follow the same setting
+
+### P20.impl — Display options
+- **Status:** PENDING
+- **Description:** Implement to the contract.
+- **Acceptance Criteria:**
+  - [ ] All P20.tests pass; tsc clean; export succeeds
+
+### P21. USER — Build 1b phone check (the real gate to delete the web app)
+- **Status:** USER
+- **Description:** No native module was added, so `npx expo start --dev-client` should be enough;
+  rebuild only if the P19 spike forced a native change. On the phone, against the LAN backend:
+  1. Calendar tab: drag a recording from the bank onto the grid, move it, resize it. Reopen the
+     app — it is where you left it, and `GET /api/sessions/?scheduled=true` agrees.
+  2. Today's Google events appear on the day view and cannot be dragged.
+  3. Push a recording to Google, then a whole regimen. Both appear in Google Calendar, with the
+     regimen's items at their scheduled times. Push the regimen again — no duplicates.
+  4. Export recordings as CSV from Settings; the file opens and has every row.
+  5. The background renders and text stays readable on every tab.
+  When all five pass, flip P11 to PENDING and let the loop retire the web app.
+- **Acceptance Criteria:**
+  - [ ] All five checks pass on a physical phone
+  - [ ] Any failure recorded in `progress.md` with the task it reopens
+
+---
+
 ### P11. Retire the web app
-- **Status:** HOLD (see P10)
+- **Status:** HOLD (see P21) — runs last, after every Build 1b task
 - **Description:** The only task allowed outside `mobile/`. Delete `frontend/` entirely (`git rm -r frontend`). Remove `CORS_ORIGINS` handling from `backend/app/main.py` and `.env.example` — a native app sends no `Origin`. Update `CLAUDE.md` (Quick Start, Tech Stack, Project Structure), `DIAGNOSTIC.md` §2–4 and §8 (frontend rows and the 16-test suite are gone; mobile replaces them), and `AsIWasSaying.md` §2. `GOOGLE_REDIRECT_URI` and the Google flow stay: the user authorizes from a laptop (roadmap D14).
 - **Acceptance Criteria:**
   - [ ] `frontend/` gone; `git grep -n "frontend/"` returns only historical docs (`docs/`, `progress.md`, `roadmap.md`, ADRs, GOTCHAS)
