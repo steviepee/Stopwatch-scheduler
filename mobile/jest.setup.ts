@@ -7,3 +7,5 @@ jest.mock('@react-native-community/netinfo', () =>
 );
 
 jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'));
+
+require('react-native-gesture-handler/jestSetup');

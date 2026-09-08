@@ -400,10 +400,10 @@ taken with the user on 2026-09-08:
   - [x] Test: a Google fetch failure leaves the recordings visible, with a retry
 
 ### P15.impl — Calendar day view
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
-  - [ ] All P15.tests pass; tsc clean; export succeeds
+  - [x] All P15.tests pass; tsc clean; export succeeds
 
 ### P16.tests — Session bank and week agenda
 - **Status:** PENDING

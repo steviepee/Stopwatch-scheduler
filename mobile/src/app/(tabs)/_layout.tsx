@@ -32,6 +32,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="activities" options={{ title: 'Activities' }} />
       <Tabs.Screen name="recordings" options={{ title: 'Recordings' }} />
       <Tabs.Screen name="schedule" options={{ title: 'Schedule' }} />
+      <Tabs.Screen name="calendar" options={{ title: 'Calendar' }} />
     </Tabs>
   );
 }

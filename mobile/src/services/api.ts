@@ -206,7 +206,7 @@ export const scheduleAPI = {
 
 // Google Calendar import
 export const calendarImportAPI = {
-  getEvents: async (date: string): Promise<{ summary: string; start: string; end: string }[]> => {
+  getEvents: async (date: string): Promise<{ id?: string; summary: string; start: string; end: string }[]> => {
     const response = await api.get('/auth/calendar/events', { params: { date, tz_offset: new Date().getTimezoneOffset() } });
     return response.data;
   },
