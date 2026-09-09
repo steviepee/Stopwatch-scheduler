@@ -406,7 +406,7 @@ taken with the user on 2026-09-08:
   - [x] All P15.tests pass; tsc clean; export succeeds
 
 ### P16.tests — Session bank and week agenda
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** `mobile/src/__tests__/CalendarBankScreen.test.tsx`.
 - **Contract:** On the Calendar tab, a collapsible bank of unscheduled recordings
   (`sessionAPI.getUnscheduled`) with a search field. Dragging one onto the grid schedules it at
@@ -415,11 +415,11 @@ taken with the user on 2026-09-08:
   recordings and Google events listed in time order, tapping a day opening that day's view. No
   drag targets in week mode.
 - **Acceptance Criteria:**
-  - [ ] Test: the bank lists only unscheduled recordings; search narrows it
-  - [ ] Test: dropping a bank item on the grid calls `schedule` with the drop time
-  - [ ] Test: dropping a block on the bank calls `unschedule`
-  - [ ] Test: week mode lists seven days in order with both sources merged
-  - [ ] Test: week mode renders no drag handles; tapping a day switches to it
+  - [x] Test: the bank lists only unscheduled recordings; search narrows it
+  - [x] Test: dropping a bank item on the grid calls `schedule` with the drop time
+  - [x] Test: dropping a block on the bank calls `unschedule`
+  - [x] Test: week mode lists seven days in order with both sources merged
+  - [x] Test: week mode renders no drag handles; tapping a day switches to it
 
 ### P16.impl — Session bank and week agenda
 - **Status:** PENDING
