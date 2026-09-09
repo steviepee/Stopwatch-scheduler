@@ -1,6 +1,33 @@
 # Standing Orders — Phase 4 → 5
 
-Current as of 2026-09-07. Read this, then `prd.md`, then start on the first PENDING task.
+Current as of 2026-09-08. Read this, then `prd.md`, then start on the first PENDING task.
+
+## 0. Pick up here
+
+**Next action: run the loop from a Windows Terminal tab, not a VS Code terminal.**
+
+```
+./ralph.sh --max 9
+```
+
+9 PENDING tasks remain, all Build 1b, starting at **P16.tests** (session bank + week agenda).
+Everything through P15.impl is committed and green.
+
+This must run outside VS Code. A Claude session started in a VS Code terminal is a **child of
+`vscode-server`**, so it cannot free that memory by killing it — it would kill itself and the
+loop with it. On 2026-09-08 two runs were OOM-killed from inside VS Code, each losing an
+iteration; the tree was confirmed with `pstree -sp $$`. Close VS Code entirely (the window alone
+is not enough — check `pgrep -cf vscode-server`), and stop Metro if it is up:
+`kill -15 $(pgrep -f "expo start")`. The loop never needs Metro.
+
+**If an iteration is OOM-killed, the recovery drill is:**
+
+1. `git status --short` — the killed iteration's work is uncommitted; committed work is safe.
+2. Delete the orphaned `.tests` file it left untracked (GOTCHAS entry 2).
+3. `git checkout` any modified implementation file, and `git checkout prd.md` if the task was
+   marked DONE without a commit.
+4. Confirm clean: from `mobile/`, `npx jest` and `npx tsc --noEmit`.
+5. Re-run `./ralph.sh` with the number of tasks still PENDING. `prd.md` is the source of truth.
 
 **Before starting a long loop run, read the three loop entries at the top of `GOTCHAS.md`** —
 usage limits silently burn iterations, killed iterations leave orphaned test files, and
@@ -22,10 +49,11 @@ usage limits silently burn iterations, killed iterations leave orphaned test fil
 
 ## 2. State of the repo
 
-- Backend suite 91 passing; frontend 15; mobile 91. Backend on 8000, Vite on 3000 proxying `/api`. The mobile suite runs from `mobile/`: `npx jest --ci`, `npx tsc --noEmit`, `npx expo export --platform android`.
+- Backend suite **114** passing; frontend 15; mobile **117** across 12 suites. Backend on 8000, Vite on 3000 proxying `/api`. The mobile suite runs from `mobile/`: `npx jest --ci`, `npx tsc --noEmit`, `npx expo export --platform android`.
 - Google Calendar authenticated; credentials refresh on use.
-- Live MySQL schema matches the models, five tables, real recordings since February.
-- Phases 1–4 complete. Phase 5 build 1 in flight — task status lives in `prd.md`, per-task notes in `progress.md`. This file does not track it.
+- Live MySQL schema matches the models; `schedule_items.calendar_event_id` was added by P13's Alembic revision.
+- Phases 1–4 complete. Phase 5 build 1 is **done through P9** — all five screens, the icon, the offline queue. Build 1b (P12–P21) is in flight: P12–P15 committed, P16 onward PENDING. Task status lives in `prd.md`, per-task notes in `progress.md`. This file does not track it.
+- **Known unfixed bug:** `useCreateSession` invalidates `['sessions']` but not `['tasks']`, so an Activity's average is stale on screen after a Recording syncs. One line in [mutations.ts](mobile/src/services/mutations.ts); it will make the P10 average check look broken when it is not.
 
 ## 3. Decisions that shape day-to-day work
 
@@ -53,10 +81,21 @@ The loop never picks a `USER` status; it picks the first `PENDING`.
 
 ## 5. Phase 5 — build 1 is `prd.md`
 
-Run it with `./ralph.sh --model claude-opus-5` through P7.impl, then without `--model`. P1, P5, and P10 are USER tasks; P11 is HOLD until the user passes P10.
-Decisions D22–D33 in `roadmap.md` are the ones that shaped it.
+Run it with `./ralph.sh --model claude-opus-5` through P7.impl, then without `--model` (P7 is
+long done, so Sonnet is right for everything remaining). P1, P5, P10, and **P21** are USER tasks.
+Decisions D22–D33 in `roadmap.md` shaped build 1; **D34–D38 in `prd.md` shaped build 1b**.
 
-Build 2 gets its own PRD after P10 passes. Its outline, so it is not lost:
+**P11 (delete `frontend/`) is HOLD behind P21, not P10.** The calendar was pulled forward out of
+build 2 on 2026-09-08 because the web app cannot be retired without it — the user needs a
+drag/resize calendar on the phone, Google events pulled in as a read-only overlay, and regimens
+pushed out to Google. Build 1b also keeps CSV/JSON export (via one-time signed links, since
+`expo-web-browser` cannot carry the bearer token) and the display-metric options.
+
+Two ordering traps in build 1b: **P19 copies `cloth_mural.jpg` out of `frontend/public/` before
+P11 deletes it**, and P13's column needs an Alembic revision because `create_all` is out of
+startup and MySQL will not add it on its own.
+
+Build 2 gets its own PRD after P21 passes. Its outline, minus the calendar, so it is not lost:
 
 - Quadrant picker on the Activity screen → `PUT /api/tasks/{id}` with `is_urgent` / `is_important`.
 - Daily frog pick in the Schedule screen → `is_frog` on the schedule item.
@@ -64,8 +103,6 @@ Build 2 gets its own PRD after P10 passes. Its outline, so it is not lost:
 - Pomodoro as a mode of `timer/core.ts` (work/break intervals, notification on transition).
 - Stop button on the foreground notification.
 - Peak-hours (`GET /api/insights/peak-hours`) as the suggested start time in the Schedule screen.
-- Day-view calendar: `react-native-gesture-handler` + Reanimated for move and edge-resize in one
-  day column; agenda list for the week; Google Calendar import for the day, export/remove per block.
 
 ## 6. Phase 6 — deploy
 
@@ -80,8 +117,9 @@ cellular with Wi-Fi off.
 
 1. **Phase 4a:** `curl http://<lan-ip>:8000/api/tasks/` → 401; with `-H "Authorization: Bearer $API_TOKEN"` → 200. Web app at `localhost:3000` still lists recordings.
 2. **Phase 4b:** pytest green; add a throwaway column to a model with no revision → `test_migrations.py` fails; remove it → green. `alembic current` on MySQL shows head.
-3. **Build 1, the gate to delete the web app:** on a physical Android phone against the LAN backend — start recording, lock the screen 10+ minutes, unlock, stop; duration matches wall time within 1s; notification was visible while locked; save lands in MySQL. Airplane mode: record and save → queued; airplane off → appears in `GET /api/sessions/`.
-4. **Phase 6:** gate 3 from cellular with Wi-Fi off.
+3. **Build 1 (P10), no longer the gate on its own:** on a physical Android phone against the LAN backend — start recording, lock the screen 10+ minutes, unlock, stop; duration matches wall time within 1s; notification was visible while locked; save lands in MySQL. Airplane mode: record and save → queued; airplane off → appears in `GET /api/sessions/`.
+4. **Build 1b (P21), the real gate to delete the web app:** drag a recording onto the calendar, move and resize it, reopen the app and confirm it stuck; today's Google events show and cannot be dragged; push a recording and a whole regimen to Google, push the regimen twice and get no duplicates; export recordings as CSV from Settings; the background renders with text still readable.
+5. **Phase 6:** gate 3 from cellular with Wi-Fi off.
 
 ## 8. Traps
 

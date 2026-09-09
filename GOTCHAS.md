@@ -66,7 +66,16 @@ holds 2-3 GB across dozens of processes. Each loop iteration then wants a `claud
 **For a long loop run:** start it from a Windows Terminal tab rather than a VS Code terminal, so
 the editor is not in the picture at all.
 
-**Occurred:** 2026-09-07. One iteration lost to an OOM kill before the usage limit finished the job.
+**You cannot fix this from inside a VS Code terminal.** A Claude session started there is a
+*child* of `vscode-server` — confirmed with `pstree -sp $$`:
+`claude` → `bash --init-file /root/.vscode-server/bin/…` → `vscode-server/node`. Killing
+`vscode-server` therefore kills the session issuing the kill, and any loop it launched as a
+descendant. The memory can only be freed by closing the editor from Windows, or the loop must be
+started from a shell that was never under `vscode-server`.
+
+**Occurred:** 2026-09-07, one iteration lost before a usage limit finished the job. Again
+2026-09-08, twice in one afternoon during Build 1b — P16.tests killed both times, each leaving an
+orphaned test file and, once, 195 uncommitted lines of implementation.
 
 ---
 
