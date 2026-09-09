@@ -428,7 +428,7 @@ taken with the user on 2026-09-08:
   - [x] All P16.tests pass; tsc clean; export succeeds
 
 ### P17.tests — Google push actions
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** `mobile/src/__tests__/GooglePush.test.tsx`.
 - **Contract:** Add `scheduleAPI.pushToCalendar(id)` / `removeFromCalendar(id)` (P13) and
   `calendarImportAPI.getEventsInRange` (P12) to `services/api.ts`. A block on the day view gets a
@@ -437,11 +437,11 @@ taken with the user on 2026-09-08:
   reporting how many events were created. Pushes are explicit only (D35) — nothing pushes on
   drag, drop, resize, or save.
 - **Acceptance Criteria:**
-  - [ ] Test: pushing a recording calls the sessions calendar route and shows the marker
-  - [ ] Test: pushing a schedule calls the schedules calendar route once
-  - [ ] Test: a second push is offered as remove, not another create
-  - [ ] Test: a 401 from Google renders "authorize from a laptop" (D14), not a crash
-  - [ ] Test: dragging, resizing, and saving a schedule call no calendar route
+  - [x] Test: pushing a recording calls the sessions calendar route and shows the marker
+  - [x] Test: pushing a schedule calls the schedules calendar route once
+  - [x] Test: a second push is offered as remove, not another create
+  - [x] Test: a 401 from Google renders "authorize from a laptop" (D14), not a crash
+  - [x] Test: dragging, resizing, and saving a schedule call no calendar route
 
 ### P17.impl — Google push actions
 - **Status:** PENDING
