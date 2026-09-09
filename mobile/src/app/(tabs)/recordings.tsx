@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useMutation, useMutationState, useQuery, useQueryClient } from '@tanstack/react-query';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { GlassView } from 'expo-glass-effect';
 
 import { colors, radii, spacing, touchTarget, typography } from '@/theme/tokens';
 import { sessionAPI, taskAPI } from '@/services/api';
@@ -92,13 +93,14 @@ export default function RecordingsScreen() {
 
       <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
         {pendingSessions.map((mutation) => (
-          <View
+          <GlassView
             key={`pending-${mutation.mutationId}`}
+            glassEffectStyle="regular"
             testID={`session-pending-${mutation.mutationId}`}
             style={styles.row}>
             <Text style={styles.rowName}>{mutation.body.name}</Text>
             <Text style={styles.rowMetaText}>Pending</Text>
-          </View>
+          </GlassView>
         ))}
 
         {visibleSessions.map((session) => (
@@ -134,7 +136,7 @@ export default function RecordingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: 'transparent',
     padding: spacing.lg,
     gap: spacing.md,
   },

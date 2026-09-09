@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
+import { GlassView } from 'expo-glass-effect';
 
 import { colors, radii, spacing, touchTarget, typography } from '@/theme/tokens';
 import { taskAPI } from '@/services/api';
@@ -99,13 +100,13 @@ export default function StopwatchScreen() {
       )}
 
       {confirmation && (
-        <View testID="save-confirmation" style={styles.confirmation}>
+        <GlassView glassEffectStyle="regular" testID="save-confirmation" style={styles.confirmation}>
           <Text style={styles.confirmationText}>
             {confirmation.clockJumpDetected
               ? 'Saved — the clock moved during this recording'
               : 'Saved'}
           </Text>
-        </View>
+        </GlassView>
       )}
 
       {sheetOpen && (
@@ -163,7 +164,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.lg,
-    backgroundColor: colors.background,
+    backgroundColor: 'transparent',
     gap: spacing.lg,
   },
   elapsed: {

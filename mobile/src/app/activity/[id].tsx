@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
+import { GlassView } from 'expo-glass-effect';
 
 import { colors, radii, spacing, typography } from '@/theme/tokens';
 import { taskAPI, timeLogAPI } from '@/services/api';
@@ -36,24 +37,24 @@ export default function ActivityDetailScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {stats && (
         <View style={styles.statsRow}>
-          <View style={styles.statCard}>
+          <GlassView glassEffectStyle="regular" style={styles.statCard}>
             <Text style={styles.statLabel}>Average</Text>
             <Text testID="stat-average" style={styles.statValue}>
               {formatElapsed(stats.average * 1000)}
             </Text>
-          </View>
-          <View style={styles.statCard}>
+          </GlassView>
+          <GlassView glassEffectStyle="regular" style={styles.statCard}>
             <Text style={styles.statLabel}>Median</Text>
             <Text testID="stat-median" style={styles.statValue}>
               {statText(stats.median)}
             </Text>
-          </View>
-          <View style={styles.statCard}>
+          </GlassView>
+          <GlassView glassEffectStyle="regular" style={styles.statCard}>
             <Text style={styles.statLabel}>Previous</Text>
             <Text testID="stat-previous" style={styles.statValue}>
               {statText(stats.previous)}
             </Text>
-          </View>
+          </GlassView>
         </View>
       )}
 
@@ -71,7 +72,7 @@ export default function ActivityDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: 'transparent',
   },
   content: {
     padding: spacing.lg,

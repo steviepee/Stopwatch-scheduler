@@ -469,7 +469,7 @@ taken with the user on 2026-09-08:
   - [x] All P18.tests pass; tsc clean; export succeeds
 
 ### P19. Visual pass — background and glass
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** The token file lifted the web palette but none of its effects, so every screen
   is flat `#1a1a2e`. **Copy `frontend/public/cloth_mural.jpg` to `mobile/assets/` as the first
   step of this task** — P11 deletes `frontend/` and the asset goes with it. Render it as a fixed
@@ -479,10 +479,10 @@ taken with the user on 2026-09-08:
   rather than adding `expo-blur` (which is a native module and would force a rebuild). No test
   pair — this is presentation; acceptance is the build plus the P21 phone check.
 - **Acceptance Criteria:**
-  - [ ] `mobile/assets/cloth_mural.jpg` committed
-  - [ ] Background renders behind all five tabs and Settings, text contrast preserved
-  - [ ] Blur either works or degrades to the flat fill; no new dependency
-  - [ ] tsc clean; `npx expo export --platform android` succeeds
+  - [x] `mobile/assets/cloth_mural.jpg` committed
+  - [x] Background renders behind all five tabs and Settings, text contrast preserved
+  - [x] Blur either works or degrades to the flat fill; no new dependency
+  - [x] tsc clean; `npx expo export --platform android` succeeds
 
 ### P20.tests — Display options
 - **Status:** PENDING

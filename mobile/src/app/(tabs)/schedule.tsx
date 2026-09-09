@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { GlassView } from 'expo-glass-effect';
 
 import { colors, radii, spacing, touchTarget, typography } from '@/theme/tokens';
 import { taskAPI, scheduleAPI } from '@/services/api';
@@ -162,11 +163,11 @@ export default function ScheduleScreen() {
       <Text style={styles.heading}>Build a schedule</Text>
 
       {googleAuthError && (
-        <View style={styles.card}>
+        <GlassView glassEffectStyle="regular" style={styles.card}>
           <Text testID="google-auth-error" style={styles.caption}>
             Google Calendar needs to be reconnected — authorize from a laptop.
           </Text>
-        </View>
+        </GlassView>
       )}
 
       <TextInput
@@ -235,7 +236,11 @@ export default function ScheduleScreen() {
       )}
 
       {options.map((option) => (
-        <View key={option.strategy} testID={`option-card-${option.strategy}`} style={styles.card}>
+        <GlassView
+          key={option.strategy}
+          glassEffectStyle="regular"
+          testID={`option-card-${option.strategy}`}
+          style={styles.card}>
           <Text style={styles.rowLabel}>{option.label}</Text>
           <Text style={styles.caption}>{option.description}</Text>
           <Pressable
@@ -246,11 +251,11 @@ export default function ScheduleScreen() {
           >
             <Text style={styles.buttonLabel}>Select</Text>
           </Pressable>
-        </View>
+        </GlassView>
       ))}
 
       {selectedOption && (
-        <View style={styles.card}>
+        <GlassView glassEffectStyle="regular" style={styles.card}>
           <TextInput
             testID="input-schedule-name"
             style={styles.input}
@@ -269,11 +274,11 @@ export default function ScheduleScreen() {
           >
             <Text style={styles.buttonLabel}>Save</Text>
           </Pressable>
-        </View>
+        </GlassView>
       )}
 
       {savedSchedule && (
-        <View style={styles.card}>
+        <GlassView glassEffectStyle="regular" style={styles.card}>
           <Text style={styles.rowLabel}>{savedSchedule.name}</Text>
           {isSavedSchedulePushed ? (
             <>
@@ -299,7 +304,7 @@ export default function ScheduleScreen() {
               <Text style={styles.buttonLabel}>Push to Calendar</Text>
             </Pressable>
           )}
-        </View>
+        </GlassView>
       )}
 
       <Text style={styles.heading}>Regimens</Text>
@@ -308,7 +313,7 @@ export default function ScheduleScreen() {
         const regimenItems = regimenPush?.items ?? regimen.items;
         const isRegimenPushed = regimenItems.some((item) => item.calendar_event_id);
         return (
-        <View key={regimen.id} testID={`regimen-row-${regimen.id}`} style={styles.row}>
+        <GlassView key={regimen.id} glassEffectStyle="regular" testID={`regimen-row-${regimen.id}`} style={styles.row}>
           <Text style={styles.rowLabel}>{regimen.name}</Text>
           <Pressable
             testID={`btn-apply-${regimen.id}`}
@@ -350,7 +355,7 @@ export default function ScheduleScreen() {
               }}
             />
           )}
-        </View>
+        </GlassView>
         );
       })}
     </ScrollView>
@@ -360,7 +365,7 @@ export default function ScheduleScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: 'transparent',
   },
   content: {
     padding: spacing.lg,
