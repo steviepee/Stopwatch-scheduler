@@ -450,17 +450,17 @@ taken with the user on 2026-09-08:
   - [x] All P17.tests pass; tsc clean; export succeeds
 
 ### P18.tests — Export from Settings
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** `mobile/src/__tests__/ExportSettings.test.tsx`, mocking `axios` and
   `expo-web-browser`.
 - **Contract:** Settings gains an Export section: Recordings and Activities, each CSV or JSON.
   Each button POSTs to `/api/exports` and opens the returned `url` with
   `WebBrowser.openBrowserAsync`. No file is written by the app (D38).
 - **Acceptance Criteria:**
-  - [ ] Test: each of the four buttons POSTs the right resource and format
-  - [ ] Test: the returned url is what gets opened
-  - [ ] Test: a failed POST shows an error and opens nothing
-  - [ ] Test: offline shows "needs a connection" rather than a paused mutation
+  - [x] Test: each of the four buttons POSTs the right resource and format
+  - [x] Test: the returned url is what gets opened
+  - [x] Test: a failed POST shows an error and opens nothing
+  - [x] Test: offline shows "needs a connection" rather than a paused mutation
 
 ### P18.impl — Export from Settings
 - **Status:** PENDING
