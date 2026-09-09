@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import axios from 'axios';
 import Constants from 'expo-constants';
-import { useMutationState, useQueryClient } from '@tanstack/react-query';
+import * as WebBrowser from 'expo-web-browser';
+import { onlineManager, useMutationState, useQueryClient } from '@tanstack/react-query';
 
 import { colors, radii, spacing, touchTarget, typography } from '@/theme/tokens';
 import { getApiUrl, getToken, setApiUrl, setToken } from '@/services/auth';
@@ -10,6 +11,16 @@ import { CREATE_SESSION_KEY } from '@/services/queryClient';
 import { isNativeAvailable } from '@/timer/native';
 
 type ConnectionStatus = 'idle' | 'checking' | 'unreachable' | 'rejected' | 'ok';
+type ExportResource = 'sessions' | 'tasks';
+type ExportFormat = 'csv' | 'json';
+type ExportStatus = 'idle' | 'exporting' | 'failed' | 'offline';
+
+const EXPORT_STATUS_TEXT: Record<ExportStatus, string> = {
+  idle: '',
+  exporting: 'Exporting…',
+  failed: 'Export failed',
+  offline: 'Needs a connection',
+};
 
 const STATUS_TEXT: Record<ConnectionStatus, string> = {
   idle: '',
@@ -24,6 +35,7 @@ export default function SettingsScreen() {
   const [apiUrl, setApiUrlField] = useState('');
   const [token, setTokenField] = useState('');
   const [status, setStatus] = useState<ConnectionStatus>('idle');
+  const [exportStatus, setExportStatus] = useState<ExportStatus>('idle');
 
   useEffect(() => {
     (async () => {
@@ -57,6 +69,26 @@ export default function SettingsScreen() {
     await setApiUrl(apiUrl);
     await setToken(token);
     queryClient.invalidateQueries();
+  };
+
+  const runExport = async (resource: ExportResource, format: ExportFormat) => {
+    if (!onlineManager.isOnline()) {
+      setExportStatus('offline');
+      return;
+    }
+    setExportStatus('exporting');
+    try {
+      const response = await axios.post(
+        `${apiUrl}/exports`,
+        { resource, format },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const origin = apiUrl.replace(/\/api\/?$/, '');
+      await WebBrowser.openBrowserAsync(`${origin}${response.data.url}`);
+      setExportStatus('idle');
+    } catch {
+      setExportStatus('failed');
+    }
   };
 
   return (
@@ -97,6 +129,45 @@ export default function SettingsScreen() {
       <Pressable testID="btn-save" accessibilityRole="button" style={styles.button} onPress={save}>
         <Text style={styles.buttonText}>Save</Text>
       </Pressable>
+
+      <Text style={styles.label}>Export</Text>
+      <View style={styles.exportRow}>
+        <Pressable
+          testID="btn-export-sessions-csv"
+          accessibilityRole="button"
+          style={styles.exportButton}
+          onPress={() => runExport('sessions', 'csv')}>
+          <Text style={styles.buttonText}>Recordings CSV</Text>
+        </Pressable>
+        <Pressable
+          testID="btn-export-sessions-json"
+          accessibilityRole="button"
+          style={styles.exportButton}
+          onPress={() => runExport('sessions', 'json')}>
+          <Text style={styles.buttonText}>Recordings JSON</Text>
+        </Pressable>
+      </View>
+      <View style={styles.exportRow}>
+        <Pressable
+          testID="btn-export-tasks-csv"
+          accessibilityRole="button"
+          style={styles.exportButton}
+          onPress={() => runExport('tasks', 'csv')}>
+          <Text style={styles.buttonText}>Activities CSV</Text>
+        </Pressable>
+        <Pressable
+          testID="btn-export-tasks-json"
+          accessibilityRole="button"
+          style={styles.exportButton}
+          onPress={() => runExport('tasks', 'json')}>
+          <Text style={styles.buttonText}>Activities JSON</Text>
+        </Pressable>
+      </View>
+      {exportStatus !== 'idle' && (
+        <Text testID="text-export-status" style={styles.statusText}>
+          {EXPORT_STATUS_TEXT[exportStatus]}
+        </Text>
+      )}
 
       <View style={styles.infoRow}>
         <Text style={styles.infoLabel}>App version</Text>
@@ -156,6 +227,21 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textMuted,
     textAlign: 'center',
+  },
+  exportRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  exportButton: {
+    flex: 1,
+    minHeight: touchTarget,
+    borderRadius: radii.md,
+    backgroundColor: colors.glass,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.sm,
   },
   infoRow: {
     flexDirection: 'row',
