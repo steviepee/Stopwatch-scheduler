@@ -5,7 +5,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 
 import { colors, radii, spacing, touchTarget, typography } from '@/theme/tokens';
 import { taskAPI, scheduleAPI } from '@/services/api';
-import type { GenerateActivity, GenerateRequest, ScheduleItemCreate, StrategyOption, Task } from '@/types';
+import type { GenerateActivity, GenerateRequest, Schedule, ScheduleItemCreate, StrategyOption, Task } from '@/types';
 
 const STRATEGIES = ['your-order', 'shortest-first', 'longest-first', 'best-fit'];
 
@@ -39,6 +39,8 @@ export default function ScheduleScreen() {
   const [scheduleName, setScheduleName] = useState(defaultScheduleName);
   const [isRegimen, setIsRegimen] = useState(false);
   const [applyOpenId, setApplyOpenId] = useState<number | null>(null);
+  const [pushedById, setPushedById] = useState<Record<number, Schedule>>({});
+  const [googleAuthError, setGoogleAuthError] = useState(false);
 
   const filteredTasks = useMemo(() => {
     const list = tasks ?? [];
@@ -76,6 +78,34 @@ export default function ScheduleScreen() {
     mutationFn: ({ id, targetDate }: { id: number; targetDate: string }) =>
       scheduleAPI.applyRegimen(id, { target_date: targetDate }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['regimens'] }),
+  });
+
+  function onCalendarPushError(error: unknown) {
+    if ((error as { response?: { status?: number } })?.response?.status === 401) {
+      setGoogleAuthError(true);
+    }
+  }
+
+  const pushToCalendarMutation = useMutation({
+    mutationFn: (id: number) => scheduleAPI.pushToCalendar(id),
+    onSuccess: (data) => {
+      setPushedById((prev) => ({ ...prev, [data.id]: data }));
+      queryClient.invalidateQueries({ queryKey: ['regimens'] });
+    },
+    onError: onCalendarPushError,
+  });
+
+  const removeScheduleCalendarMutation = useMutation({
+    mutationFn: (id: number) => scheduleAPI.removeFromCalendar(id),
+    onSuccess: (_data, id) => {
+      setPushedById((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      queryClient.invalidateQueries({ queryKey: ['regimens'] });
+    },
+    onError: onCalendarPushError,
   });
 
   function toggleActivity(task: Task) {
@@ -122,10 +152,22 @@ export default function ScheduleScreen() {
 
   const options = generateMutation.data?.options ?? [];
   const selectedOption = options.find((option) => option.strategy === selectedStrategy) ?? null;
+  const savedSchedule = saveMutation.data;
+  const savedSchedulePush = savedSchedule ? pushedById[savedSchedule.id] : undefined;
+  const isSavedSchedulePushed = !!savedSchedulePush?.items.some((item) => item.calendar_event_id);
+  const savedScheduleEventsPushed = savedSchedulePush?.items.filter((item) => item.calendar_event_id).length ?? 0;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.heading}>Build a schedule</Text>
+
+      {googleAuthError && (
+        <View style={styles.card}>
+          <Text testID="google-auth-error" style={styles.caption}>
+            Google Calendar needs to be reconnected — authorize from a laptop.
+          </Text>
+        </View>
+      )}
 
       <TextInput
         testID="input-activity-search"
@@ -230,8 +272,42 @@ export default function ScheduleScreen() {
         </View>
       )}
 
+      {savedSchedule && (
+        <View style={styles.card}>
+          <Text style={styles.rowLabel}>{savedSchedule.name}</Text>
+          {isSavedSchedulePushed ? (
+            <>
+              <Text testID="text-events-pushed" style={styles.caption}>
+                {savedScheduleEventsPushed}
+              </Text>
+              <Pressable
+                testID="btn-remove-schedule-calendar"
+                accessibilityRole="button"
+                style={styles.button}
+                onPress={() => removeScheduleCalendarMutation.mutate(savedSchedule.id)}
+              >
+                <Text style={styles.buttonLabel}>Remove from Calendar</Text>
+              </Pressable>
+            </>
+          ) : (
+            <Pressable
+              testID="btn-push-schedule"
+              accessibilityRole="button"
+              style={styles.button}
+              onPress={() => pushToCalendarMutation.mutate(savedSchedule.id)}
+            >
+              <Text style={styles.buttonLabel}>Push to Calendar</Text>
+            </Pressable>
+          )}
+        </View>
+      )}
+
       <Text style={styles.heading}>Regimens</Text>
-      {(regimens ?? []).map((regimen) => (
+      {(regimens ?? []).map((regimen) => {
+        const regimenPush = pushedById[regimen.id];
+        const regimenItems = regimenPush?.items ?? regimen.items;
+        const isRegimenPushed = regimenItems.some((item) => item.calendar_event_id);
+        return (
         <View key={regimen.id} testID={`regimen-row-${regimen.id}`} style={styles.row}>
           <Text style={styles.rowLabel}>{regimen.name}</Text>
           <Pressable
@@ -242,6 +318,25 @@ export default function ScheduleScreen() {
           >
             <Text style={styles.buttonLabel}>Apply</Text>
           </Pressable>
+          {isRegimenPushed ? (
+            <Pressable
+              testID={`btn-remove-calendar-${regimen.id}`}
+              accessibilityRole="button"
+              style={styles.button}
+              onPress={() => removeScheduleCalendarMutation.mutate(regimen.id)}
+            >
+              <Text style={styles.buttonLabel}>Remove</Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              testID={`btn-push-${regimen.id}`}
+              accessibilityRole="button"
+              style={styles.button}
+              onPress={() => pushToCalendarMutation.mutate(regimen.id)}
+            >
+              <Text style={styles.buttonLabel}>Push</Text>
+            </Pressable>
+          )}
           {applyOpenId === regimen.id && (
             <DateTimePicker
               testID={`picker-apply-${regimen.id}`}
@@ -256,7 +351,8 @@ export default function ScheduleScreen() {
             />
           )}
         </View>
-      ))}
+        );
+      })}
     </ScrollView>
   );
 }

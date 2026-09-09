@@ -92,6 +92,7 @@ export interface ScheduleItem {
   estimated_duration: number;
   position: number;
   scheduled_time?: string;
+  calendar_event_id?: string;
   task?: Task;
   created_at: string;
 }

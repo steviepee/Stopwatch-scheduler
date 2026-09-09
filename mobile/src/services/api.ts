@@ -202,6 +202,15 @@ export const scheduleAPI = {
     const response = await api.post('/schedules/generate', request);
     return response.data;
   },
+
+  pushToCalendar: async (id: number): Promise<Schedule> => {
+    const response = await api.post(`/schedules/${id}/calendar`);
+    return response.data;
+  },
+
+  removeFromCalendar: async (id: number): Promise<void> => {
+    await api.delete(`/schedules/${id}/calendar`);
+  },
 };
 
 // Google Calendar import

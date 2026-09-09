@@ -45,6 +45,7 @@ export default function CalendarDayScreen() {
   const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
   const [bankExpanded, setBankExpanded] = useState(true);
   const [bankSearch, setBankSearch] = useState('');
+  const [googleAuthError, setGoogleAuthError] = useState(false);
 
   const { data: scheduled } = useQuery({
     queryKey: ['sessions', 'scheduled'],
@@ -89,6 +90,24 @@ export default function CalendarDayScreen() {
   const unscheduleMutation = useMutation({
     mutationFn: (id: number) => sessionAPI.unschedule(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sessions'] }),
+  });
+
+  function onCalendarPushError(error: unknown) {
+    if ((error as { response?: { status?: number } })?.response?.status === 401) {
+      setGoogleAuthError(true);
+    }
+  }
+
+  const addToCalendarMutation = useMutation({
+    mutationFn: (id: number) => sessionAPI.addToCalendar(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sessions'] }),
+    onError: onCalendarPushError,
+  });
+
+  const removeFromCalendarMutation = useMutation({
+    mutationFn: (id: number) => sessionAPI.removeFromCalendar(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sessions'] }),
+    onError: onCalendarPushError,
   });
 
   const dayItems = useMemo(
@@ -222,6 +241,12 @@ export default function CalendarDayScreen() {
         </Pressable>
       </View>
 
+      {googleAuthError && (
+        <View testID="google-auth-error" style={styles.errorBanner}>
+          <Text style={styles.errorText}>Google Calendar needs to be reconnected — authorize from a laptop.</Text>
+        </View>
+      )}
+
       {googleError && (
         <View testID="google-events-error" style={styles.errorBanner}>
           <Text style={styles.errorText}>Couldn't load Google events</Text>
@@ -294,6 +319,26 @@ export default function CalendarDayScreen() {
                   },
                 ]}>
                 <Text style={styles.sessionBlockText}>{item.name}</Text>
+                {item.is_on_calendar ? (
+                  <View style={styles.calendarControls}>
+                    <View testID={`session-block-${item.id}-calendar-marker`} style={styles.calendarMarker} />
+                    <Pressable
+                      testID={`session-block-${item.id}-remove-calendar`}
+                      accessibilityRole="button"
+                      style={styles.calendarButton}
+                      onPress={() => removeFromCalendarMutation.mutate(item.id)}>
+                      <Text style={styles.calendarButtonText}>Remove</Text>
+                    </Pressable>
+                  </View>
+                ) : (
+                  <Pressable
+                    testID={`session-block-${item.id}-push`}
+                    accessibilityRole="button"
+                    style={styles.calendarButton}
+                    onPress={() => addToCalendarMutation.mutate(item.id)}>
+                    <Text style={styles.calendarButtonText}>Push</Text>
+                  </Pressable>
+                )}
                 <GestureDetector gesture={resizeGesture}>
                   <View testID={`session-block-${item.id}-resize-handle`} style={styles.resizeHandle} />
                 </GestureDetector>
@@ -522,6 +567,29 @@ const styles = StyleSheet.create({
   },
   sessionBlockText: {
     ...typography.label,
+    color: colors.text,
+  },
+  calendarControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  calendarMarker: {
+    width: spacing.sm,
+    height: spacing.sm,
+    borderRadius: radii.pill,
+    backgroundColor: colors.green,
+  },
+  calendarButton: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.sm,
+    backgroundColor: colors.glassInner,
+    borderWidth: 1,
+    borderColor: colors.glassBorderInner,
+  },
+  calendarButtonText: {
+    ...typography.caption,
     color: colors.text,
   },
   resizeHandle: {

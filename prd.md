@@ -444,10 +444,10 @@ taken with the user on 2026-09-08:
   - [x] Test: dragging, resizing, and saving a schedule call no calendar route
 
 ### P17.impl — Google push actions
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
-  - [ ] All P17.tests pass; tsc clean; export succeeds
+  - [x] All P17.tests pass; tsc clean; export succeeds
 
 ### P18.tests — Export from Settings
 - **Status:** PENDING
