@@ -422,10 +422,10 @@ taken with the user on 2026-09-08:
   - [x] Test: week mode renders no drag handles; tapping a day switches to it
 
 ### P16.impl — Session bank and week agenda
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
-  - [ ] All P16.tests pass; tsc clean; export succeeds
+  - [x] All P16.tests pass; tsc clean; export succeeds
 
 ### P17.tests — Google push actions
 - **Status:** PENDING

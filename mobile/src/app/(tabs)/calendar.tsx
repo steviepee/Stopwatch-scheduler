@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 
@@ -8,14 +8,22 @@ import { colors, radii, spacing, touchTarget, typography } from '@/theme/tokens'
 import { sessionAPI, calendarImportAPI } from '@/services/api';
 import {
   formatDayLong,
+  formatDayShort,
+  getWeekDays,
   heightFromDuration,
   isSameDay,
   nextDay,
   positionFromTime,
   previousDay,
   snapToSlot,
+  timeFromPosition,
 } from '@/utils/calendarUtils';
 import type { StopwatchSession } from '@/types';
+
+type GoogleEvent = { id?: string; summary: string; start: string; end: string };
+type WeekAgendaItem =
+  | { type: 'session'; id: number; start: Date; name: string }
+  | { type: 'google'; id: string; start: Date; name: string };
 
 const START_HOUR = 0;
 const END_HOUR = 24;
@@ -34,10 +42,18 @@ function pxToMinutes(px: number): number {
 export default function CalendarDayScreen() {
   const queryClient = useQueryClient();
   const [day, setDay] = useState(() => new Date());
+  const [viewMode, setViewMode] = useState<'day' | 'week'>('day');
+  const [bankExpanded, setBankExpanded] = useState(true);
+  const [bankSearch, setBankSearch] = useState('');
 
   const { data: scheduled } = useQuery({
     queryKey: ['sessions', 'scheduled'],
     queryFn: sessionAPI.getScheduled,
+  });
+
+  const { data: unscheduled } = useQuery({
+    queryKey: ['sessions', 'unscheduled'],
+    queryFn: sessionAPI.getUnscheduled,
   });
 
   const {
@@ -49,9 +65,29 @@ export default function CalendarDayScreen() {
     queryFn: () => calendarImportAPI.getEvents(dayKey(day)),
   });
 
+  const weekDays = useMemo(() => getWeekDays(day), [day]);
+  const weekDayKeys = useMemo(() => weekDays.map(dayKey), [weekDays]);
+  const weekGoogleQueries = useQueries({
+    queries: weekDayKeys.map((key) => ({
+      queryKey: ['calendar-events', key],
+      queryFn: () => calendarImportAPI.getEvents(key),
+      enabled: viewMode === 'week',
+    })),
+  });
+
+  const filteredBank = useMemo(
+    () => (unscheduled ?? []).filter((item) => item.name.toLowerCase().includes(bankSearch.toLowerCase())),
+    [unscheduled, bankSearch]
+  );
+
   const scheduleMutation = useMutation({
     mutationFn: ({ id, body }: { id: number; body: { scheduled_start: string; scheduled_end: string } }) =>
       sessionAPI.schedule(id, body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sessions'] }),
+  });
+
+  const unscheduleMutation = useMutation({
+    mutationFn: (id: number) => sessionAPI.unschedule(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sessions'] }),
   });
 
@@ -78,6 +114,33 @@ export default function CalendarDayScreen() {
     });
   }
 
+  function commitUnschedule(item: StopwatchSession) {
+    unscheduleMutation.mutate(item.id);
+  }
+
+  function commitBankDrop(item: StopwatchSession, absoluteY: number) {
+    const rawStart = timeFromPosition(absoluteY, day, START_HOUR, HOUR_HEIGHT, INTERVAL_MIN);
+    const snappedStart = snapToSlot(rawStart, SNAP_MIN);
+    const snappedEnd = new Date(snappedStart.getTime() + item.duration * 1000);
+    scheduleMutation.mutate({
+      id: item.id,
+      body: { scheduled_start: snappedStart.toISOString(), scheduled_end: snappedEnd.toISOString() },
+    });
+  }
+
+  function buildWeekAgendaItems(dayDate: Date, googleForDay: GoogleEvent[]): WeekAgendaItem[] {
+    const daySessions: WeekAgendaItem[] = (scheduled ?? [])
+      .filter((s) => s.scheduled_start && isSameDay(new Date(s.scheduled_start), dayDate))
+      .map((s) => ({ type: 'session', id: s.id, start: new Date(s.scheduled_start!), name: s.name }));
+    const dayGoogle: WeekAgendaItem[] = googleForDay.map((e) => ({
+      type: 'google',
+      id: e.id ?? e.summary,
+      start: new Date(e.start),
+      name: e.summary,
+    }));
+    return [...daySessions, ...dayGoogle].sort((a, b) => a.start.getTime() - b.start.getTime());
+  }
+
   function commitResize(item: StopwatchSession, translationY: number) {
     if (!item.scheduled_start) return;
     const baseEnd = item.scheduled_end
@@ -93,6 +156,52 @@ export default function CalendarDayScreen() {
 
   return (
     <View style={styles.container}>
+      <View style={styles.viewToggleRow}>
+        <Pressable
+          testID="view-toggle-day"
+          accessibilityRole="button"
+          style={[styles.toggleButton, viewMode === 'day' && styles.toggleButtonActive]}
+          onPress={() => setViewMode('day')}>
+          <Text style={styles.buttonLabel}>Day</Text>
+        </Pressable>
+        <Pressable
+          testID="view-toggle-week"
+          accessibilityRole="button"
+          style={[styles.toggleButton, viewMode === 'week' && styles.toggleButtonActive]}
+          onPress={() => setViewMode('week')}>
+          <Text style={styles.buttonLabel}>Week</Text>
+        </Pressable>
+      </View>
+
+      {viewMode === 'week' && (
+        <ScrollView testID="week-agenda">
+          {weekDays.map((weekDay, index) => {
+            const key = dayKey(weekDay);
+            const items = buildWeekAgendaItems(weekDay, weekGoogleQueries[index]?.data ?? []);
+            return (
+              <Pressable
+                key={key}
+                testID={`week-day-${key}`}
+                accessibilityRole="button"
+                style={styles.weekDaySection}
+                onPress={() => {
+                  setDay(weekDay);
+                  setViewMode('day');
+                }}>
+                <Text style={styles.weekDayLabel}>{formatDayShort(weekDay)}</Text>
+                {items.map((item) => (
+                  <View key={`${item.type}-${item.id}`} testID={`week-${item.type}-${item.id}`} style={styles.weekItemRow}>
+                    <Text style={styles.weekItemText}>{item.name}</Text>
+                  </View>
+                ))}
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      )}
+
+      {viewMode === 'day' && (
+      <>
       <View style={styles.nav}>
         <Pressable
           testID="day-nav-prev"
@@ -162,7 +271,12 @@ export default function CalendarDayScreen() {
         {dayItems.map((item) => {
           const start = new Date(item.scheduled_start!);
           const dragGesture = Gesture.Pan().onEnd((event) => {
-            runOnJS(commitDrag)(item, event.translationY);
+            const droppedOnBank = (event as unknown as { droppedOnBank?: boolean }).droppedOnBank;
+            if (droppedOnBank) {
+              runOnJS(commitUnschedule)(item);
+            } else {
+              runOnJS(commitDrag)(item, event.translationY);
+            }
           });
           const resizeGesture = Gesture.Pan().onEnd((event) => {
             runOnJS(commitResize)(item, event.translationY);
@@ -188,6 +302,44 @@ export default function CalendarDayScreen() {
           );
         })}
       </ScrollView>
+
+      <View style={styles.bankPanel}>
+        <Pressable
+          testID="bank-toggle"
+          accessibilityRole="button"
+          style={styles.bankHeader}
+          onPress={() => setBankExpanded((current) => !current)}>
+          <Text style={styles.bankHeaderText}>Unscheduled ({filteredBank.length})</Text>
+        </Pressable>
+        {bankExpanded && (
+          <>
+            <TextInput
+              testID="bank-search"
+              style={styles.bankSearchInput}
+              placeholder="Search"
+              placeholderTextColor={colors.placeholder}
+              value={bankSearch}
+              onChangeText={setBankSearch}
+            />
+            <ScrollView horizontal style={styles.bankList}>
+              {filteredBank.map((item) => {
+                const bankGesture = Gesture.Pan().onEnd((event) => {
+                  runOnJS(commitBankDrop)(item, event.absoluteY);
+                });
+                return (
+                  <GestureDetector key={item.id} gesture={bankGesture}>
+                    <View testID={`bank-item-${item.id}`} style={styles.bankItem}>
+                      <Text style={styles.bankItemText}>{item.name}</Text>
+                    </View>
+                  </GestureDetector>
+                );
+              })}
+            </ScrollView>
+          </>
+        )}
+      </View>
+      </>
+      )}
     </View>
   );
 }
@@ -196,6 +348,91 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  viewToggleRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+  },
+  toggleButton: {
+    minHeight: touchTarget,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radii.pill,
+    backgroundColor: colors.glass,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toggleButtonActive: {
+    backgroundColor: colors.primary,
+  },
+  weekDaySection: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radii.md,
+    backgroundColor: colors.glass,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+  },
+  weekDayLabel: {
+    ...typography.label,
+    color: colors.text,
+    marginBottom: spacing.xs,
+  },
+  weekItemRow: {
+    paddingVertical: spacing.xs,
+  },
+  weekItemText: {
+    ...typography.caption,
+    color: colors.textMuted,
+  },
+  bankPanel: {
+    borderTopWidth: 1,
+    borderTopColor: colors.glassBorder,
+  },
+  bankHeader: {
+    minHeight: touchTarget,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  bankHeaderText: {
+    ...typography.label,
+    color: colors.text,
+  },
+  bankSearchInput: {
+    minHeight: touchTarget,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.sm,
+    backgroundColor: colors.glassInner,
+    borderWidth: 1,
+    borderColor: colors.glassBorderInner,
+    color: colors.text,
+  },
+  bankList: {
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  bankItem: {
+    minHeight: touchTarget,
+    minWidth: touchTarget,
+    marginRight: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.sm,
+    backgroundColor: colors.glass,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bankItemText: {
+    ...typography.label,
+    color: colors.text,
   },
   nav: {
     flexDirection: 'row',

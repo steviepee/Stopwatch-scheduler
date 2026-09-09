@@ -29,7 +29,12 @@ import type { StopwatchSession } from '../types';
 // P7 offline-queue tests — there is no way to simulate a native pan gesture
 // through `fireEvent`.
 jest.mock('../services/api', () => ({
-  sessionAPI: { getScheduled: jest.fn(), schedule: jest.fn() },
+  sessionAPI: {
+    getScheduled: jest.fn(),
+    getUnscheduled: jest.fn().mockResolvedValue([]),
+    schedule: jest.fn(),
+    unschedule: jest.fn(),
+  },
   calendarImportAPI: { getEvents: jest.fn() },
 }));
 
