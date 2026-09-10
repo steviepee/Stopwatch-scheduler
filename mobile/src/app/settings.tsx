@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import axios from 'axios';
 import Constants from 'expo-constants';
 import * as WebBrowser from 'expo-web-browser';
@@ -8,6 +8,7 @@ import { onlineManager, useMutationState, useQueryClient } from '@tanstack/react
 import { colors, radii, spacing, touchTarget, typography } from '@/theme/tokens';
 import { getApiUrl, getToken, setApiUrl, setToken } from '@/services/auth';
 import { CREATE_SESSION_KEY } from '@/services/queryClient';
+import { DEFAULT_USER_OPTIONS, getUserOptions, setUserOptions, type UserOptions } from '@/services/options';
 import { isNativeAvailable } from '@/timer/native';
 
 type ConnectionStatus = 'idle' | 'checking' | 'unreachable' | 'rejected' | 'ok';
@@ -36,13 +37,23 @@ export default function SettingsScreen() {
   const [token, setTokenField] = useState('');
   const [status, setStatus] = useState<ConnectionStatus>('idle');
   const [exportStatus, setExportStatus] = useState<ExportStatus>('idle');
+  const [options, setOptions] = useState<UserOptions>(DEFAULT_USER_OPTIONS);
 
   useEffect(() => {
     (async () => {
       setApiUrlField(await getApiUrl());
       setTokenField((await getToken()) ?? '');
+      setOptions(await getUserOptions());
     })();
   }, []);
+
+  const toggleOption = (key: keyof UserOptions) => (value: boolean) => {
+    setOptions((prev) => {
+      const next = { ...prev, [key]: value };
+      setUserOptions(next);
+      return next;
+    });
+  };
 
   const pendingCount = useMutationState({
     filters: { mutationKey: CREATE_SESSION_KEY },
@@ -129,6 +140,32 @@ export default function SettingsScreen() {
       <Pressable testID="btn-save" accessibilityRole="button" style={styles.button} onPress={save}>
         <Text style={styles.buttonText}>Save</Text>
       </Pressable>
+
+      <Text style={styles.label}>Duration hints</Text>
+      <View style={styles.infoRow}>
+        <Text style={styles.infoLabel}>Average</Text>
+        <Switch
+          testID="toggle-show-average"
+          value={options.showAverage}
+          onValueChange={toggleOption('showAverage')}
+        />
+      </View>
+      <View style={styles.infoRow}>
+        <Text style={styles.infoLabel}>Median</Text>
+        <Switch
+          testID="toggle-show-median"
+          value={options.showMedian}
+          onValueChange={toggleOption('showMedian')}
+        />
+      </View>
+      <View style={styles.infoRow}>
+        <Text style={styles.infoLabel}>Previous</Text>
+        <Switch
+          testID="toggle-show-previous"
+          value={options.showPrevious}
+          onValueChange={toggleOption('showPrevious')}
+        />
+      </View>
 
       <Text style={styles.label}>Export</Text>
       <View style={styles.exportRow}>

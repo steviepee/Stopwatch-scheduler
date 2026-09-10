@@ -6,6 +6,7 @@ import { GlassView } from 'expo-glass-effect';
 
 import { colors, radii, spacing, typography } from '@/theme/tokens';
 import { taskAPI, timeLogAPI } from '@/services/api';
+import { useUserOptions } from '@/services/options';
 import { formatElapsed } from '@/timer/format';
 
 function statText(value: number | null): string {
@@ -15,6 +16,7 @@ function statText(value: number | null): string {
 export default function ActivityDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const taskId = Number(id);
+  const options = useUserOptions();
 
   const { data: stats } = useQuery({
     queryKey: ['task-stats', taskId],
@@ -37,24 +39,30 @@ export default function ActivityDetailScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {stats && (
         <View style={styles.statsRow}>
-          <GlassView glassEffectStyle="regular" style={styles.statCard}>
-            <Text style={styles.statLabel}>Average</Text>
-            <Text testID="stat-average" style={styles.statValue}>
-              {formatElapsed(stats.average * 1000)}
-            </Text>
-          </GlassView>
-          <GlassView glassEffectStyle="regular" style={styles.statCard}>
-            <Text style={styles.statLabel}>Median</Text>
-            <Text testID="stat-median" style={styles.statValue}>
-              {statText(stats.median)}
-            </Text>
-          </GlassView>
-          <GlassView glassEffectStyle="regular" style={styles.statCard}>
-            <Text style={styles.statLabel}>Previous</Text>
-            <Text testID="stat-previous" style={styles.statValue}>
-              {statText(stats.previous)}
-            </Text>
-          </GlassView>
+          {options.showAverage && (
+            <GlassView glassEffectStyle="regular" style={styles.statCard}>
+              <Text style={styles.statLabel}>Average</Text>
+              <Text testID="stat-average" style={styles.statValue}>
+                {formatElapsed(stats.average * 1000)}
+              </Text>
+            </GlassView>
+          )}
+          {options.showMedian && (
+            <GlassView glassEffectStyle="regular" style={styles.statCard}>
+              <Text style={styles.statLabel}>Median</Text>
+              <Text testID="stat-median" style={styles.statValue}>
+                {statText(stats.median)}
+              </Text>
+            </GlassView>
+          )}
+          {options.showPrevious && (
+            <GlassView glassEffectStyle="regular" style={styles.statCard}>
+              <Text style={styles.statLabel}>Previous</Text>
+              <Text testID="stat-previous" style={styles.statValue}>
+                {statText(stats.previous)}
+              </Text>
+            </GlassView>
+          )}
         </View>
       )}
 

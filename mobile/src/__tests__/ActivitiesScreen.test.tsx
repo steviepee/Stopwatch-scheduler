@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
@@ -5,6 +6,7 @@ import ActivitiesScreen from '../app/(tabs)/activities';
 import ActivityDetailScreen from '../app/activity/[id]';
 import { formatElapsed } from '../timer/format';
 import { taskAPI, timeLogAPI } from '../services/api';
+import { USER_OPTIONS_KEY } from '../services/options';
 import type { Task, TaskStats, TimeLog } from '../types';
 
 // Both screens are exercised through the P8b contract: the tab list (name,
@@ -141,6 +143,15 @@ describe('activity detail', () => {
   function logAt(id: number, isoDate: string, duration = 300): TimeLog {
     return { id, task_id: 7, duration, created_at: isoDate };
   }
+
+  beforeEach(async () => {
+    // P20 defaults hide median/previous; this block predates that toggle and
+    // asserts all three stat cards, so seed all three on for these tests.
+    await AsyncStorage.setItem(
+      USER_OPTIONS_KEY,
+      JSON.stringify({ showAverage: true, showMedian: true, showPrevious: true })
+    );
+  });
 
   it('shows the three stats and the time logs', async () => {
     mockedGetStats.mockResolvedValue(STATS);

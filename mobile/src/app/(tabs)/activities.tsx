@@ -5,12 +5,14 @@ import { useRouter, type Href } from 'expo-router';
 
 import { colors, radii, spacing, touchTarget, typography } from '@/theme/tokens';
 import { taskAPI } from '@/services/api';
+import { useUserOptions } from '@/services/options';
 import { formatElapsed } from '@/timer/format';
 import type { TaskCreate } from '@/types';
 
 export default function ActivitiesScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const options = useUserOptions();
   const { data: tasks, isError } = useQuery({ queryKey: ['tasks'], queryFn: taskAPI.getAll });
 
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -56,9 +58,11 @@ export default function ActivitiesScreen() {
             onPress={() => router.push(`/activity/${task.id}` as Href)}>
             <Text style={styles.rowName}>{task.name}</Text>
             <View style={styles.rowMeta}>
-              <Text testID={`activity-average-${task.id}`} style={styles.rowMetaText}>
-                {formatElapsed(task.average_duration * 1000)}
-              </Text>
+              {options.showAverage && (
+                <Text testID={`activity-average-${task.id}`} style={styles.rowMetaText}>
+                  {formatElapsed(task.average_duration * 1000)}
+                </Text>
+              )}
               <Text testID={`activity-count-${task.id}`} style={styles.rowMetaText}>
                 {task.total_recordings}
               </Text>

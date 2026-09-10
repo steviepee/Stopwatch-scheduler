@@ -193,14 +193,14 @@ describe('Settings toggle persistence', () => {
     const { unmount } = await renderSettings();
     await waitFor(() => expect(screen.getByTestId('toggle-show-median')).toHaveProp('value', false));
 
-    fireEvent(screen.getByTestId('toggle-show-median'), 'valueChange', true);
+    await fireEvent(screen.getByTestId('toggle-show-median'), 'valueChange', true);
 
     await waitFor(async () => {
       const raw = await AsyncStorage.getItem(USER_OPTIONS_KEY);
       expect(raw && JSON.parse(raw).showMedian).toBe(true);
     });
 
-    unmount();
+    await unmount();
     await renderSettings();
 
     await waitFor(() => expect(screen.getByTestId('toggle-show-median')).toHaveProp('value', true));
@@ -284,7 +284,7 @@ describe('Schedule tab duration hints follow the same setting', () => {
     fireEvent.press(screen.getByTestId('activity-row-7'));
     await waitFor(() => expect(screen.getByTestId('hint-median-7')).toBeTruthy());
 
-    fireEvent.press(screen.getByTestId('activity-row-7'));
+    await fireEvent.press(screen.getByTestId('activity-row-7'));
     expect(screen.queryByTestId('hint-median-7')).toBeNull();
   });
 });

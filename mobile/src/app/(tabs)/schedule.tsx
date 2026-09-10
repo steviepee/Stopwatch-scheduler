@@ -6,9 +6,44 @@ import { GlassView } from 'expo-glass-effect';
 
 import { colors, radii, spacing, touchTarget, typography } from '@/theme/tokens';
 import { taskAPI, scheduleAPI } from '@/services/api';
+import { useUserOptions, type UserOptions } from '@/services/options';
+import { formatElapsed } from '@/timer/format';
 import type { GenerateActivity, GenerateRequest, Schedule, ScheduleItemCreate, StrategyOption, Task } from '@/types';
 
 const STRATEGIES = ['your-order', 'shortest-first', 'longest-first', 'best-fit'];
+
+function statText(value: number | null): string {
+  return value === null ? '—' : formatElapsed(value * 1000);
+}
+
+function DurationHints({ task, options }: { task: Task; options: UserOptions }) {
+  const needsStats = options.showMedian || options.showPrevious;
+  const { data: stats } = useQuery({
+    queryKey: ['task-stats', task.id],
+    queryFn: () => taskAPI.getStats(task.id),
+    enabled: needsStats,
+  });
+
+  return (
+    <>
+      {options.showAverage && (
+        <Text testID={`hint-average-${task.id}`} style={styles.caption}>
+          {formatElapsed(task.average_duration * 1000)}
+        </Text>
+      )}
+      {options.showMedian && stats && (
+        <Text testID={`hint-median-${task.id}`} style={styles.caption}>
+          {statText(stats.median)}
+        </Text>
+      )}
+      {options.showPrevious && stats && (
+        <Text testID={`hint-previous-${task.id}`} style={styles.caption}>
+          {statText(stats.previous)}
+        </Text>
+      )}
+    </>
+  );
+}
 
 function roundUpTo15(date: Date): Date {
   const ms = 15 * 60 * 1000;
@@ -27,6 +62,7 @@ function defaultScheduleName(): string {
 
 export default function ScheduleScreen() {
   const queryClient = useQueryClient();
+  const userOptions = useUserOptions();
   const { data: tasks } = useQuery({ queryKey: ['tasks'], queryFn: taskAPI.getAll });
   const { data: regimens } = useQuery({ queryKey: ['regimens'], queryFn: () => scheduleAPI.getAll(true) });
 
@@ -190,13 +226,16 @@ export default function ScheduleScreen() {
             <Text style={styles.rowLabel}>{task.name}</Text>
           </Pressable>
           {selectedIds.has(task.id) && (
-            <TextInput
-              testID={`input-duration-${task.id}`}
-              style={styles.input}
-              keyboardType="numeric"
-              value={durations[task.id] ?? String(task.average_duration)}
-              onChangeText={(text) => setDurations((prev) => ({ ...prev, [task.id]: text }))}
-            />
+            <>
+              <TextInput
+                testID={`input-duration-${task.id}`}
+                style={styles.input}
+                keyboardType="numeric"
+                value={durations[task.id] ?? String(task.average_duration)}
+                onChangeText={(text) => setDurations((prev) => ({ ...prev, [task.id]: text }))}
+              />
+              <DurationHints task={task} options={userOptions} />
+            </>
           )}
         </View>
       ))}

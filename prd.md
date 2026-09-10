@@ -493,16 +493,16 @@ taken with the user on 2026-09-08:
   `activities.tsx`, `activity/[id].tsx`, and the Schedule tab's duration hints display. Nothing
   server-side.
 - **Acceptance Criteria:**
-  - [ ] Test: defaults are average on, median and previous off
-  - [ ] Test: toggling persists and survives a remount
-  - [ ] Test: the Activities list and Activity detail show only enabled metrics
-  - [ ] Test: the Schedule tab's hints follow the same setting
+  - [x] Test: defaults are average on, median and previous off
+  - [x] Test: toggling persists and survives a remount
+  - [x] Test: the Activities list and Activity detail show only enabled metrics
+  - [x] Test: the Schedule tab's hints follow the same setting
 
 ### P20.impl — Display options
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
-  - [ ] All P20.tests pass; tsc clean; export succeeds
+  - [x] All P20.tests pass; tsc clean; export succeeds
 
 ### P21. USER — Build 1b phone check (the real gate to delete the web app)
 - **Status:** USER
