@@ -485,7 +485,7 @@ taken with the user on 2026-09-08:
   - [x] tsc clean; `npx expo export --platform android` succeeds
 
 ### P20.tests — Display options
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** `mobile/src/__tests__/DisplayOptions.test.tsx`.
 - **Contract:** The web Options page let the user choose which duration hints to show. Add to
   Settings three toggles — average, median, previous — persisted in AsyncStorage under
