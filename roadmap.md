@@ -37,7 +37,7 @@ the output surface. Single user by design.
 | D8 | Background timing | As stock Android: timestamp subtraction for truth, foreground service + ongoing notification for visibility |
 | D9 | Clock source | Monotonic and wall-clock both captured at start and stop. Monotonic → duration; wall → API timestamps; disagreement > ~2s flags a clock jump |
 | D10 | LAN exposure | Bind `0.0.0.0` at the start of Phase 5, only after the gate is on |
-| D11 | Existing web frontend | Frozen now; deleted once Android build 1 can record and list |
+| D11 | Existing web frontend | **Revised 2026-09-10** (was: frozen now, deleted once Android build 1 can record and list). User decided to keep both clients permanently — `frontend/` is not deleted. Future feature work (Build 2 onward) plans for both clients, not mobile-only; `CORS_ORIGINS` stays in the backend |
 | D12 | Salvage | `types/index.ts`, `services/api.ts`, `utils/calendarUtils.ts` move to `mobile/`. Nothing else |
 | D13 | Parity fixture | `generate_parity.json` frozen; generator deleted; intent kept as a comment in `test_generate.py` |
 | D14 | Google OAuth on phone | Never. Authorize once from a laptop; `token.pickle` is global by design |
@@ -76,7 +76,7 @@ Phase 5 will be written from it once 4a is done.
 
 **Prep:** freeze the parity fixture · scaffold `mobile/` as an Expo dev build · salvage the three files · add `scheduleAPI.generate()`.
 
-**Build 1, in order:** 5.4 native module spike (foreground service + `elapsedRealtime`, iOS stubs) → 5.5/5.6 timer core, tests first → 5.7 offline save queue → 5.8 screens (Stopwatch, Activities, Recordings, Schedule, Settings) → 5.10 icon port → 5.11 delete `frontend/`.
+**Build 1, in order:** 5.4 native module spike (foreground service + `elapsedRealtime`, iOS stubs) → 5.5/5.6 timer core, tests first → 5.7 offline save queue → 5.8 screens (Stopwatch, Activities, Recordings, Schedule, Settings) → 5.10 icon port. (5.11, deleting `frontend/`, is cancelled — see D11.)
 
 **Build 2:** quadrant picker → daily frog pick → expose the three API-only strategies → Pomodoro mode in the timer core → peak-hours as the suggested start time → day-view calendar with Google Calendar import/export.
 

@@ -9,10 +9,12 @@ behind every task are in `roadmap.md` (D6–D33) and ADR 0001; vocabulary is in 
 existing backend. Everything else — quadrant picker, frog, Pomodoro, insights — is build 2, a
 later PRD.
 
-**Build 1b (added 2026-09-08):** the calendar was pulled forward out of build 2. The web app is
-not deleted until the phone has a calendar, Google pull/push, and export. P11 therefore stays
-HOLD until P21 passes, not P10. Tasks P12–P21 and their amended rules are in the Build 1b
-section below.
+**Build 1b (added 2026-09-08):** the calendar was pulled forward out of build 2. Tasks P12–P21
+and their amended rules are in the Build 1b section below.
+
+**Update 2026-09-10:** P11 (delete `frontend/`) is cancelled. The user decided to keep the web
+app permanently as a second client alongside `mobile/` — see roadmap.md D11 (revised). Future
+feature work should plan for both clients, not mobile-only.
 
 **Model:** run `./ralph.sh --model claude-opus-5` until P7.impl is DONE
 (native module, timer core, offline queue). Sonnet (the default) for P8 onward.
@@ -22,9 +24,10 @@ section below.
 
 ## Rules for this PRD
 
-- **Only `mobile/` changes.** `frontend/` is frozen (roadmap D11) and `backend/` is done for now
-  (Phase 4 is archived at `docs/prd-phase4-completed.md`). Two exceptions: P11, which deletes
-  `frontend/`, and P12–P14, which add backend routes under the Build 1b rules below.
+- **Only `mobile/` changes.** `frontend/` is frozen for this PRD (roadmap D11 — kept
+  permanently, not deleted) and `backend/` is done for now (Phase 4 is archived at
+  `docs/prd-phase4-completed.md`). One exception: P12–P14, which add backend routes under the
+  Build 1b rules below.
 - **No dependency changes.** `npm install`, `npx expo install`, and `npx create-*` are not
   available to the loop. Every dependency build 1 needs is installed in P1 by the user. If a
   task genuinely needs a package that is missing, mark it BLOCKED naming the package; do not
@@ -515,7 +518,7 @@ taken with the user on 2026-09-08:
      regimen's items at their scheduled times. Push the regimen again — no duplicates.
   4. Export recordings as CSV from Settings; the file opens and has every row.
   5. The background renders and text stays readable on every tab.
-  When all five pass, flip P11 to PENDING and let the loop retire the web app.
+  When all five pass, Build 1b is complete. P11 is cancelled (roadmap D11) — the web app stays.
 - **Acceptance Criteria:**
   - [ ] All five checks pass on a physical phone
   - [ ] Any failure recorded in `progress.md` with the task it reopens
@@ -523,9 +526,11 @@ taken with the user on 2026-09-08:
 ---
 
 ### P11. Retire the web app
-- **Status:** HOLD (see P21) — runs last, after every Build 1b task
-- **Description:** The only task allowed outside `mobile/`. Delete `frontend/` entirely (`git rm -r frontend`). Remove `CORS_ORIGINS` handling from `backend/app/main.py` and `.env.example` — a native app sends no `Origin`. Update `CLAUDE.md` (Quick Start, Tech Stack, Project Structure), `DIAGNOSTIC.md` §2–4 and §8 (frontend rows and the 16-test suite are gone; mobile replaces them), and `AsIWasSaying.md` §2. `GOOGLE_REDIRECT_URI` and the Google flow stay: the user authorizes from a laptop (roadmap D14).
-- **Acceptance Criteria:**
+- **Status:** CANCELLED 2026-09-10 — the user decided to keep `frontend/` permanently as a
+  second client alongside `mobile/` (roadmap D11, revised). The loop never picks this up. Kept
+  below for history; do not resurrect without a new user decision.
+- **Description (historical — not happening):** The only task allowed outside `mobile/`. Delete `frontend/` entirely (`git rm -r frontend`). Remove `CORS_ORIGINS` handling from `backend/app/main.py` and `.env.example` — a native app sends no `Origin`. Update `CLAUDE.md` (Quick Start, Tech Stack, Project Structure), `DIAGNOSTIC.md` §2–4 and §8 (frontend rows and the 16-test suite are gone; mobile replaces them), and `AsIWasSaying.md` §2. `GOOGLE_REDIRECT_URI` and the Google flow stay: the user authorizes from a laptop (roadmap D14).
+- **Acceptance Criteria (historical — not happening):**
   - [ ] `frontend/` gone; `git grep -n "frontend/"` returns only historical docs (`docs/`, `progress.md`, `roadmap.md`, ADRs, GOTCHAS)
   - [ ] Backend pytest passes; `CORS_ORIGINS` absent from `main.py`
   - [ ] Docs updated as listed
