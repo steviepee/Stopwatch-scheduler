@@ -62,16 +62,26 @@ while [[ $# -gt 0 ]]; do
 done
 
 # --- Helpers ---
+# grep -c always prints a count (even "0") but exits 1 on zero matches, so
+# `grep -c ... || echo 0` used to run BOTH branches on a zero count, returning
+# "0\n0" and breaking numeric comparisons downstream. Capture the count first
+# and only fall back on truly empty output (e.g. the file itself is missing).
 pending_count() {
-  grep -c "Status:.*PENDING" "$PRD_FILE" 2>/dev/null || echo 0
+  local n
+  n=$(grep -c "Status:.*PENDING" "$PRD_FILE" 2>/dev/null)
+  echo "${n:-0}"
 }
 
 done_count() {
-  grep -c "Status:.*DONE" "$PRD_FILE" 2>/dev/null || echo 0
+  local n
+  n=$(grep -c "Status:.*DONE" "$PRD_FILE" 2>/dev/null)
+  echo "${n:-0}"
 }
 
 blocked_count() {
-  grep -c "Status:.*BLOCKED" "$PRD_FILE" 2>/dev/null || echo 0
+  local n
+  n=$(grep -c "Status:.*BLOCKED" "$PRD_FILE" 2>/dev/null)
+  echo "${n:-0}"
 }
 
 timestamp() {
