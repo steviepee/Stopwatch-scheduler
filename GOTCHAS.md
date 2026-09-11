@@ -5,6 +5,51 @@ Append new entries as they come up. Newest first.
 
 ---
 
+## Google refresh token dies every ~week — Testing-mode publishing status, not a bug
+
+**Symptom:** the Calendar tab shows an error/Retry state identically on both `frontend/` and
+`mobile/` — same backend, same failure. `GET /api/auth/calendar/events` returns 401
+`"Not authenticated with Google Calendar"`. `backend/token.pickle` exists, but this is **not**
+the in-memory-staleness bug below (that one self-heals on its own via `_refresh_if_needed`);
+this one does not.
+
+**Confirm it is this** — attempt an actual refresh against Google, not just the local pickle's flags:
+
+```bash
+cd backend && venv/bin/python -c "
+import pickle
+from google.auth.transport.requests import Request
+c = pickle.load(open('token.pickle','rb'))
+c.refresh(Request())
+"
+```
+
+`invalid_grant: Token has been expired or revoked.` means a genuinely dead refresh token — the
+"Google Auth Refresh" fix (`rm token.pickle`, reauthorize) is required; there is nothing to fix
+in the code.
+
+**Cause (evidence-based, not yet confirmed against the Cloud Console setting itself):** the
+OAuth consent screen is most likely still in **Testing** publishing status — evidenced by
+needing to manage a "Test users" list under the Audience tab in Google Cloud Console, which
+only exists for Testing-status apps. Google caps a Testing-status app's refresh tokens at about
+7 days, regardless of use. Observed: a token created/refreshed 2026-09-06 was already dead by
+2026-09-10 — 4 days.
+
+**Fix for one instance:** `rm backend/token.pickle`, then from a **laptop browser** — never the
+phone, roadmap D14 — visit `http://192.168.0.5:8000/api/auth/google/login` and reauthorize.
+Confirm with `curl -H "Authorization: Bearer <API_TOKEN>" http://localhost:8000/api/auth/status`
+→ `{"authenticated": true}`.
+
+**Fix for the recurring pattern:** Google Cloud Console → APIs & Services → OAuth consent
+screen → check Publishing status. If it says "Testing," switching to "In production" should
+remove the 7-day cap. Not yet confirmed whether this project's scopes require Google's
+verification review to make that switch — check when there.
+
+**Occurred:** 2026-09-10, discovered when the Calendar day view failed identically on both
+clients during P21 testing.
+
+---
+
 ## The Ralph loop burns its remaining iterations when you hit a usage limit
 
 **Symptom:** a `--max 10` run reports all ten iterations "finished", but only the first few
