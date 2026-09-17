@@ -5,7 +5,7 @@ Append new entries as they come up. Newest first.
 
 ---
 
-## Google refresh token dies every ~week — Testing-mode publishing status, not a bug
+## Google refresh token dies every ~week — Testing-mode publishing status (fixed 2026-09-16)
 
 **Symptom:** the Calendar tab shows an error/Retry state identically on both `frontend/` and
 `mobile/` — same backend, same failure. `GET /api/auth/calendar/events` returns 401
@@ -28,25 +28,54 @@ c.refresh(Request())
 "Google Auth Refresh" fix (`rm token.pickle`, reauthorize) is required; there is nothing to fix
 in the code.
 
-**Cause (evidence-based, not yet confirmed against the Cloud Console setting itself):** the
-OAuth consent screen is most likely still in **Testing** publishing status — evidenced by
-needing to manage a "Test users" list under the Audience tab in Google Cloud Console, which
-only exists for Testing-status apps. Google caps a Testing-status app's refresh tokens at about
-7 days, regardless of use. Observed: a token created/refreshed 2026-09-06 was already dead by
-2026-09-10 — 4 days.
+**Cause (confirmed 2026-09-16):** the OAuth consent screen was in **Testing** publishing
+status. Google caps a Testing-status app's refresh tokens at about 7 days regardless of use.
+Observed: a token created/refreshed 2026-09-06 was already dead by 2026-09-10 — 4 days.
 
-**Fix for one instance:** `rm backend/token.pickle`, then from a **laptop browser** — never the
-phone, roadmap D14 — visit `http://192.168.0.5:8000/api/auth/google/login` and reauthorize.
+**Fix for the recurring pattern (done 2026-09-16):** Google Auth Platform → **Audience** →
+Publishing status → **Publish app**, moving it to *In production*. Direct link:
+`https://console.cloud.google.com/auth/audience?project=540800112238`. The `.../auth/calendar`
+scope is *sensitive*, not restricted, so Google offers a verification submission but does not
+require one to publish — and the 7-day cap lifts on the status change alone, unverified.
+Verification (demo video, scope justification, Search Console domain proof, days-to-weeks
+review) buys only the removal of the warning screen and is not worth it for a single-user app.
+Durability check: re-run the `/api/auth/status` curl on or after **2026-09-24**; if it is still
+`true` past day 7, this is settled for good.
+
+**Fix for one instance** — `rm backend/token.pickle` (optional: `get_auth_url` passes
+`prompt='consent'`, so the callback issues a new refresh token and overwrites the file
+anyway), then start the backend and reauthorize from a **laptop browser** — never the phone,
+roadmap D14:
+
+```bash
+cd /root/Stopwatch-scheduler/backend
+./venv/bin/python -m uvicorn app.main:app --port 8000 --reload
+```
+
+Three things that cost time on 2026-09-16 and are not obvious:
+
+- **Use `localhost`, not the LAN IP.** `GOOGLE_REDIRECT_URI` is
+  `http://localhost:8000/api/auth/callback`, so starting the flow from `192.168.0.5:8000`
+  comes back to a mismatched URI. (WSL forwards `localhost` from the Windows browser.)
+- **Start uvicorn from `backend/`, and skip `activate`.** `main.py` calls bare `load_dotenv()`,
+  which resolves `.env` from the working directory — from the repo root every Google env var is
+  empty and the flow dies in a 500. `./venv/bin/python -m uvicorn` avoids needing `source`,
+  which this sandbox blocks.
+- **`/api/auth/google/login` returns JSON, it does not redirect.** It responds
+  `{"auth_url": "https://accounts.google.com/..."}`; open that URL yourself. `GOOGLE_AUTH_REFRESH.md`
+  and the `google-auth-refresh` memory both imply the browser carries you through. They are wrong.
+
+Since the production flip, the consent flow shows a **"Google hasn't verified this app"**
+interstitial. That is expected, not a failure: click **Advanced** (small, bottom-left) → **Go to
+… (unsafe)**. The hard block — no Advanced link, heading reads "Access blocked" — is a different
+screen and would mean the scope is being treated as restricted.
+
 Confirm with `curl -H "Authorization: Bearer <API_TOKEN>" http://localhost:8000/api/auth/status`
 → `{"authenticated": true}`.
 
-**Fix for the recurring pattern:** Google Cloud Console → APIs & Services → OAuth consent
-screen → check Publishing status. If it says "Testing," switching to "In production" should
-remove the 7-day cap. Not yet confirmed whether this project's scopes require Google's
-verification review to make that switch — check when there.
-
 **Occurred:** 2026-09-10, discovered when the Calendar day view failed identically on both
-clients during P21 testing.
+clients during P21 testing. **Resolved 2026-09-16** by publishing to production and
+reauthorizing; pending the 2026-09-24 durability check.
 
 ---
 
