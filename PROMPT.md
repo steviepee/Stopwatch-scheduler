@@ -35,31 +35,60 @@ Implement the task. Every acceptance criterion listed under your task in `prd.md
 - No error handling for impossible scenarios — validate only at system boundaries.
 - Follow existing code patterns. This is not a greenfield project.
 
+**Forward-compatibility (per-account multi-user is the end state — see `docs/multi-user-transition.md`):**
+Apply these only where they cost nothing. Never restructure existing code or change a task's
+approach for them; if a rule conflicts with your task's acceptance criteria, the criteria win.
+- No new module-level service singletons holding per-user state. Construct per request instead.
+- No new globally-unique constraints on user-owned data (`Task.name` is already one; do not add another).
+- No new credentials or tokens written to files on disk. Stored values only.
+- No new routes added to the bearer gate's exempt list in `backend/app/main.py`.
+- New tables get an ownership question asked at design time, and DB access stays in the
+  `db.query(Model)` idiom so a later owner-filter pass can find every call site.
+
 **Project-specific patterns to follow:**
-- Design system: glassmorphic. Use existing `glass-*` CSS classes from `frontend/src/index.css`. Do not invent new visual patterns.
-- Card hover effect: `hover:scale-105 hover:shadow-[0_12px_40px_rgba(0,0,0,0.4)] hover:bg-white/5 hover:backdrop-blur-sm transition-all duration-300 ease-out`
-- New TypeScript interfaces go in `frontend/src/types/index.ts`.
-- New API methods go in `frontend/src/services/api.ts`, following the existing `taskAPI` / `sessionAPI` pattern.
-- New components go in `frontend/src/components/`.
+
+The active client is `mobile/` (React Native + Expo Router). `frontend/` is the **frozen** web
+app — kept permanently as a second client (roadmap D11), but no features and no fixes unless a
+task says so explicitly. Read the PRD's own rules section; it is authoritative over this list.
+
+- Stack is pinned: Expo Router, `StyleSheet` + `src/theme/tokens.ts`, TanStack Query for server
+  state and the offline queue, axios for HTTP. Do not introduce NativeWind, React Navigation
+  directly, Redux, or a second HTTP client.
+- New TypeScript interfaces go in `mobile/src/types/index.ts`.
+- New API methods go in `mobile/src/services/api.ts`, following the existing `taskAPI` /
+  `sessionAPI` pattern. Collection endpoints keep their trailing slash; all datetimes are UTC
+  with a `Z` suffix.
+- Routes are files under `mobile/src/app/` (note: `src/app/`, not `app/`).
+- Phone-first: 44pt minimum touch targets, no hover states, portrait, safe-area aware.
 - Backend routes go in `backend/app/routers/`, registered in `backend/app/main.py`.
+- **No dependency changes.** `npm install`, `npx expo install`, and `npx create-*` are not
+  available to the loop. If a task genuinely needs a missing package, mark it BLOCKED naming the
+  package rather than working around it.
 
 ### Step 5 — Verify
 
 Do not skip verification. Do not mark a task DONE if verification fails.
 
-**For any frontend changes:**
+**For any `mobile/` changes — all three must pass:**
 ```
-cd frontend && npx tsc --noEmit
+cd mobile && npx jest --ci
+cd mobile && npx tsc --noEmit
+cd mobile && npx expo export --platform android
 ```
-All TypeScript errors must be resolved. Fix errors and re-run until it passes cleanly.
+`npx expo prebuild` is not available, and the loop cannot run an emulator or a phone — native
+and on-device correctness is verified by the PRD's USER tasks, not here.
 
-**For any backend changes (if a test suite exists):**
+**For any `backend/` changes:**
 ```
-cd backend && source venv/bin/activate && pytest
+cd backend && ./venv/bin/python -m pytest tests/
 ```
+Call the venv's Python by path. **Do not use `source venv/bin/activate`** — `source` is blocked
+in this sandbox. Same for any other venv tool: `./venv/bin/alembic`, `./venv/bin/python -m uvicorn`.
 
-**For task 5 (backend tests) and task 6 (frontend tests):**
-All written tests must pass. The test suite passing IS the acceptance criteria. Run tests after writing them and fix failures before proceeding.
+**For a `.tests` task:** the tests you write must fail against the un-implemented feature — that
+is the correct result, not a failure to fix. For an `.impl` task: its paired tests must pass, and
+you must not edit the `.tests` file except to add fixtures or mocks. If an assertion is wrong,
+mark BLOCKED and say why.
 
 If verification fails and you cannot resolve it within reasonable effort, follow the BLOCKED procedure below instead of marking the task DONE.
 
@@ -143,15 +172,23 @@ Do **not** attempt the next PENDING task. One task per session. Exit and let the
 | Backend models | `backend/app/models/` | SQLAlchemy ORM + Pydantic schemas in `schemas.py` |
 | Backend routers | `backend/app/routers/` | One file per resource |
 | Backend env | `backend/.env` | DB credentials + Google OAuth |
-| Frontend entry | `frontend/src/main.tsx` | |
-| Frontend pages | `frontend/src/pages/HomePage.tsx` | Tab layout lives here |
-| Frontend components | `frontend/src/components/` | |
-| Frontend types | `frontend/src/types/index.ts` | All TS interfaces |
-| Frontend API client | `frontend/src/services/api.ts` | Axios, follows taskAPI/sessionAPI pattern |
-| CSS design system | `frontend/src/index.css` | All `glass-*` classes defined here |
+| Backend migrations | `backend/alembic/versions/` | Every model change needs a revision |
+| Mobile routes | `mobile/src/app/` | Expo Router; tabs under `(tabs)/`, settings at `settings.tsx` |
+| Mobile types | `mobile/src/types/index.ts` | All TS interfaces |
+| Mobile API client | `mobile/src/services/api.ts` | Axios, follows taskAPI/sessionAPI pattern |
+| Mobile tests | `mobile/src/__tests__/` | jest-expo + @testing-library/react-native |
+| Mobile theme | `mobile/src/theme/tokens.ts` | Colours, spacing, radii, type scale |
+| Native timer module | `mobile/modules/timer-native/` | Kotlin foreground service; iOS stubs |
+| Web app (frozen) | `frontend/` | Second client, kept permanently (D11). Do not modify unless the task says to |
 
-**Database:** MySQL, `stopwatch_scheduler`. `Base.metadata.create_all` creates **missing tables only** — it never adds a column to an existing table. If a task adds or changes a column on an existing model, the live database will not have it and the endpoint will 500 while the suite stays green (see GOTCHAS.md, "Schema drift"). Until Alembic lands (Phase 4b in `roadmap.md`), record the exact `ALTER TABLE` needed in `progress.md` so it can be applied by hand. Once Alembic exists, every model change requires `alembic revision --autogenerate` and `tests/test_migrations.py` will fail without one.
+**Database:** MySQL, `stopwatch_scheduler`. **Alembic owns the schema** — `create_all` is out of
+startup, and MySQL will not pick up a new column on its own (see GOTCHAS.md, "Schema drift"). Any
+model field needs a revision in `backend/alembic/versions/`, generated with
+`./venv/bin/alembic revision --autogenerate`, and `backend/tests/test_migrations.py` fails on any
+model change without one. The test suite still uses `create_all` in `conftest.py` (roadmap D4).
 
-**Backend venv:** Always activate before running Python: `source backend/venv/bin/activate`
+**Backend venv:** call binaries by path — `./venv/bin/python`, `./venv/bin/pytest`,
+`./venv/bin/alembic`. `source` is blocked in this sandbox. Run from `backend/`: `main.py` calls
+bare `load_dotenv()`, which resolves `.env` from the working directory.
 
 **UI tab labels (display only, not DB values):** Calendar / Schedule / Recordings / Activities / Options
