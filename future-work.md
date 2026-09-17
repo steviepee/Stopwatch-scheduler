@@ -107,3 +107,62 @@ day being "full", and the rendering, not just one function.
 - `backend/app/models/task.py` — wherever an attention or passivity attribute would live
 - `frontend/src/components/ScheduleTimeline.tsx`
 - `frontend/src/components/calendar/CalendarGrid.tsx` and `SessionBlock.tsx`
+
+
+---
+
+## Multi-user: per-account users after the public deploy
+
+**Raised:** 2026-09-17. Detailed notes live in `docs/multi-user-transition.md`; this entry is
+the index card.
+
+The end state is other people using the app under their own accounts, with their own Google
+Calendars, after the Phase 6 deploy. That reverses the premise of
+`docs/adr/0002-single-bearer-gate-no-tenancy.md`, which rejected tenancy on the grounds that
+the app is single-user by design. The ADR is still right about today and still right about the
+cost; it is no longer right about the destination.
+
+**Why this is not a small change**
+
+There is no identity anywhere in the system. One static bearer token is compared in middleware,
+no table has an owner column, and the Google credential is a single `token.pickle` file held by
+three module-level service singletons. "Another user" currently means "the same dataset and the
+same Google account, accessed by someone else."
+
+It is also not as large as the ADR implies. Ownership only has to land on three roots — `Task`,
+`Schedule`, `StopwatchSession` — since `time_logs` and `schedule_items` reach an owner through
+their parent FK. The query-filtering pass is 40 `db.query()` call sites across 896 lines of
+routers, with ~114 backend tests as the net and Alembic already enforced by
+`tests/test_migrations.py`. Order of magnitude: one of the existing phases, not a rewrite.
+
+The expensive half is Google credentials — per-user encrypted storage, request-scoped services,
+OAuth state out of process memory — plus login flows in both clients, since the web app has
+never had a production auth path (its token is injected by the Vite dev proxy).
+
+**Questions to settle first**
+
+- Google Sign-In only, or email/password as well? Google-only is much less work and fits the
+  product, but couples every account to a Google account.
+- Open sign-up or invite-only? Invite-only keeps the unverified 100-user cap irrelevant and
+  defers Google's verification review indefinitely.
+- What happens to the existing year of recordings when they become "user 1's" rows?
+- Account deletion and credential revocation, neither of which exists.
+- Per-user hosting cost on Azure.
+
+**Sequencing**
+
+Finish single-user, deploy, then transition — deliberately. Steps 1-4 of the migration sketch
+(identity, owner columns, the `Task.name` composite unique, query filtering) are safe to do
+before a second user exists. The credential rework and verification review are the actual gate,
+and the transition must land before the second person does: with no tenancy, sharing the bearer
+token is not a limited preview, it is shared access to one dataset and one Google account.
+
+**Touch points**
+
+- `backend/app/main.py` — the bearer gate and the exempt-path list
+- `backend/app/models/task.py` — the global `unique=True` on `name`
+- `backend/app/models/` — owner columns on `Task`, `Schedule`, `StopwatchSession`
+- `backend/app/routers/` — 40 `db.query()` call sites
+- `backend/app/services/google_calendar.py` — `TOKEN_FILE`, `_pending_state`, `_save_credentials`
+- `backend/app/routers/{calendar_auth,sessions,schedules}.py` — the three service singletons
+- `frontend/vite.config.ts` and `mobile/src/services/auth.ts` — both clients' credential paths

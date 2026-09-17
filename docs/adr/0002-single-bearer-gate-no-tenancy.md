@@ -1,7 +1,12 @@
 ---
-status: accepted
+status: accepted; premise superseded 2026-09-17
 date: 2026-09-05
 ---
+
+> **2026-09-17:** the "single-user by design" premise no longer holds as an end state — the
+> user intends per-account public use after the Phase 6 deploy. This decision still stands for
+> the current build, and its cost analysis below is still the best one available. Plan against
+> `docs/multi-user-transition.md`; supersede this ADR properly when the work is scheduled.
 
 # One static bearer token, no user accounts, no tenancy
 
