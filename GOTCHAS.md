@@ -5,6 +5,31 @@ Append new entries as they come up. Newest first.
 
 ---
 
+## Piping a test run through `tail` or `grep` reports the pipe's exit code, not the suite's
+
+**Symptom:** a verification command like `npx jest --ci --forceExit | tail -8` reports success
+while the summary line above it says tests failed. Anything that gates on `$?` — a script, or an
+agent following PROMPT.md's "do not mark a task DONE if verification fails" — reads it as green.
+
+**Cause:** the shell reports the exit status of the **last** command in a pipeline. `tail`
+succeeds regardless of what jest did. This is not `--forceExit` doing anything; jest exits 1 on
+failure with or without it, verified 2026-09-17 against a deliberately failing test:
+
+```
+npx jest --ci --forceExit tmp-fail    -> exit 1
+npx jest --ci tmp-fail                -> exit 1
+npx jest --ci --forceExit tmp-fail | tail -3  -> exit 0
+```
+
+**Fix:** redirect instead of piping (`npx jest --ci > out.txt 2>&1; echo $?`), then read the file.
+If you must pipe, read the `Tests: N failed, M passed` summary line and trust that over the exit
+code. The same applies to `pytest | tail` and `tsc | head`.
+
+**Occurred:** 2026-09-17, during the P19 mural fix. A cold run with 9 failures was reported as
+passing, and the failure detail was lost with the discarded output.
+
+---
+
 ## Google refresh token dies every ~week — Testing-mode publishing status (fixed 2026-09-16)
 
 **Symptom:** the Calendar tab shows an error/Retry state identically on both `frontend/` and
