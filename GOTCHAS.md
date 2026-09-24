@@ -5,6 +5,42 @@ Append new entries as they come up. Newest first.
 
 ---
 
+## Airplane mode does not make the app offline when the backend is on the LAN
+
+**Symptom:** the P10 check 3 offline test passes straight through. With airplane mode on, a
+recording saves immediately, no pending marker appears in Recordings, no pending count appears in
+Settings, and the recording shows up in `GET /api/sessions/` and in the web app right away. The
+offline queue looks broken or looks like it silently sent anyway.
+
+**Cause:** the device was never offline. Offline is decided by exactly one thing — `queryClient.ts`
+sets `onlineManager` from NetInfo's `state.isConnected` — and Android lets Wi-Fi stay on (or come
+back on) while airplane mode is active, remembering that choice for later toggles. Airplane mode
+kills the cellular radio, which this test never used: the backend is at `192.168.0.5` on the LAN,
+so **Wi-Fi alone is a complete route to the API** with no internet involved. `isConnected` stays
+true, the mutation is never paused, and the save is an ordinary online save.
+
+A recording appearing in the **web app** is the decisive evidence: that client reads the backend,
+so the POST reached the server. It is not a marker-rendering bug.
+
+**Fix:** turn **Wi-Fi off explicitly**, not just airplane mode, with mobile data off too. Confirm
+before saving by tapping an **Export** button in Settings — `runExport` is the only place that
+reads `onlineManager.isOnline()` directly, so "Needs a connection" means the queue will engage.
+"Exporting…", a browser opening, or "Export failed" all mean it still thinks it is online.
+
+**Not a valid probe:** Settings' *Test connection*. It attempts the request and reports
+`unreachable` on any failure without ever consulting `onlineManager`, so it reads the same when
+the device is fine and uvicorn is merely stopped.
+
+**Do not substitute stopping the backend for this test.** With the device still on Wi-Fi, NetInfo
+reports connected, the mutation is not paused, and it fails and burns its 3 retries instead of
+queuing — a different code path that produces no pending marker either, while looking like the
+queue is broken.
+
+**Occurred:** 2026-09-23, first run at P10 check 3. Expect the same trap after deploy, where the
+API is reachable over cellular and Wi-Fi both.
+
+---
+
 ## Piping a test run through `tail` or `grep` reports the pipe's exit code, not the suite's
 
 **Symptom:** a verification command like `npx jest --ci --forceExit | tail -8` reports success
