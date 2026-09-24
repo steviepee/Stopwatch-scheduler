@@ -8,8 +8,11 @@ import type { GenerateResponse, Schedule, StrategyOption, Task } from '../types'
 // P8d contract: src/app/(tabs)/schedule.tsx is a three-step flow on one screen.
 //
 // Step 1 (setup): activities come from `['tasks']`; each selected row gets an
-// editable `input-duration-{id}` seeded from its average_duration (seconds,
-// matching the unit `estimated_duration` sends). A single `picker-start-time`
+// editable `input-duration-{id}` displaying its average_duration in whole
+// minutes. `durations` holds only what the user typed: an untouched row
+// sends its average rounded UP to the next whole minute (a cushion, and
+// it keeps the block on a minute boundary), an edited one sends minutes
+// x60. `estimated_duration` is always seconds, the unit the backend stores. A single `picker-start-time`
 // and `picker-day-end` (mocked datetime pickers, same convention as
 // RecordingsScreen's date-range pickers) supply the request's `start_time`
 // and `day_end`; this screen sends `day_start` equal to `start_time` since
@@ -135,15 +138,15 @@ describe('setup step', () => {
 
     await screen.findByTestId('activity-row-7');
     await selectActivity(7);
-    expect(screen.getByTestId('input-duration-7')).toHaveProp('value', '1800');
+    expect(screen.getByTestId('input-duration-7')).toHaveProp('value', '30');
 
-    await fireEvent.changeText(screen.getByTestId('input-duration-7'), '2400');
+    await fireEvent.changeText(screen.getByTestId('input-duration-7'), '40');
     await fireEvent.press(screen.getByTestId('btn-generate'));
 
     await waitFor(() => expect(mockedGenerate).toHaveBeenCalledTimes(1));
     const request = mockedGenerate.mock.calls[0][0];
     expect(request.activities).toEqual([
-      expect.objectContaining({ task_id: 7, name: 'Gym', estimated_duration: 2400 }),
+      expect.objectContaining({ task_id: 7, name: 'Gym', estimated_duration: 2400 }), // 40 min
     ]);
   });
 

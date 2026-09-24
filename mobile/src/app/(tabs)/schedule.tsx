@@ -12,6 +12,10 @@ import type { GenerateActivity, GenerateRequest, Schedule, ScheduleItemCreate, S
 
 const STRATEGIES = ['your-order', 'shortest-first', 'longest-first', 'best-fit'];
 
+// Rounds up, matching what an untouched row schedules: a cushion, and it
+// keeps the block on a minute boundary.
+const toMinutes = (seconds: number) => String(Math.ceil(seconds / 60));
+
 function statText(value: number | null): string {
   return value === null ? '—' : formatElapsed(value * 1000);
 }
@@ -152,9 +156,6 @@ export default function ScheduleScreen() {
       else next.add(task.id);
       return next;
     });
-    setDurations((prev) =>
-      prev[task.id] !== undefined ? prev : { ...prev, [task.id]: String(task.average_duration) }
-    );
   }
 
   function buildRequest(): GenerateRequest {
@@ -163,7 +164,10 @@ export default function ScheduleScreen() {
       .map((task) => ({
         task_id: task.id,
         name: task.name,
-        estimated_duration: Number(durations[task.id] ?? task.average_duration),
+        estimated_duration:
+          durations[task.id] !== undefined
+            ? Number(durations[task.id]) * 60
+            : Math.ceil(task.average_duration / 60) * 60,
       }));
 
     const startIso = startTime.toISOString();
@@ -227,11 +231,12 @@ export default function ScheduleScreen() {
           </Pressable>
           {selectedIds.has(task.id) && (
             <>
+              <Text style={styles.caption}>Minutes</Text>
               <TextInput
                 testID={`input-duration-${task.id}`}
                 style={styles.input}
                 keyboardType="numeric"
-                value={durations[task.id] ?? String(task.average_duration)}
+                value={durations[task.id] ?? toMinutes(task.average_duration)}
                 onChangeText={(text) => setDurations((prev) => ({ ...prev, [task.id]: text }))}
               />
               <DurationHints task={task} options={userOptions} />
