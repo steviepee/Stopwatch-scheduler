@@ -11,3 +11,6 @@ token.pickle
 credentials.json
 client_secret*.json
 token.json
+
+# frontend stuff
+frontend/dev-dist/sw.js
