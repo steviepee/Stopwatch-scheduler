@@ -53,7 +53,7 @@ usage limits silently burn iterations, killed iterations leave orphaned test fil
 - Google Calendar authenticated; credentials refresh on use.
 - Live MySQL schema matches the models; `schedule_items.calendar_event_id` was added by P13's Alembic revision.
 - Phases 1–4 complete. Phase 5 build 1 is **done through P9** — all five screens, the icon, the offline queue. Build 1b (P12–P21) is in flight: P12–P15 committed, P16 onward PENDING. Task status lives in `prd.md`, per-task notes in `progress.md`. This file does not track it.
-- **Known unfixed bug:** `useCreateSession` invalidates `['sessions']` but not `['tasks']`, so an Activity's average is stale on screen after a Recording syncs. One line in [mutations.ts](mobile/src/services/mutations.ts); it will make the P10 average check look broken when it is not.
+- **Fixed 2026-09-23:** `useCreateSession` invalidated `['sessions']` but not `['tasks']`, so an Activity's average was stale on screen after a Recording synced. [mutations.ts](mobile/src/services/mutations.ts) now invalidates both; the P10 average check reads true.
 
 ## 3. Decisions that shape day-to-day work
 

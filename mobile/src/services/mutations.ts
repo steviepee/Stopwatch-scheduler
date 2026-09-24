@@ -13,6 +13,9 @@ export function useCreateSession() {
     mutationKey: CREATE_SESSION_KEY,
     onSettled: () => {
       client.invalidateQueries({ queryKey: ['sessions'] });
+      // A recording with a task_id makes the backend recompute that Activity's
+      // average and count, so ['tasks'] is stale too.
+      client.invalidateQueries({ queryKey: ['tasks'] });
     },
   });
 }
