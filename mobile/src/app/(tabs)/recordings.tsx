@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useMutation, useMutationState, useQuery, useQueryClient } from '@tanstack/react-query';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { GlassView } from 'expo-glass-effect';
 
 import { colors, radii, spacing, touchTarget, typography } from '@/theme/tokens';
 import { sessionAPI, taskAPI } from '@/services/api';
 import { CREATE_SESSION_KEY } from '@/services/queryClient';
+import { PickerField } from '@/components/PickerField';
 import { formatElapsed } from '@/timer/format';
 import type { StopwatchSessionCreate } from '@/types';
 
@@ -73,20 +73,22 @@ export default function RecordingsScreen() {
       <View style={styles.dateRange}>
         <View style={styles.dateField}>
           <Text style={styles.dateLabel}>From {dateFrom ? dayOf(dateFrom.toISOString()) : '—'}</Text>
-          <DateTimePicker
+          <PickerField
             testID="picker-date-from"
+            label={dateFrom ? 'Change' : 'Pick date'}
             value={dateFrom ?? new Date()}
             mode="date"
-            onChange={(_event, date) => date && setDateFrom(date)}
+            onChange={setDateFrom}
           />
         </View>
         <View style={styles.dateField}>
           <Text style={styles.dateLabel}>To {dateTo ? dayOf(dateTo.toISOString()) : '—'}</Text>
-          <DateTimePicker
+          <PickerField
             testID="picker-date-to"
+            label={dateTo ? 'Change' : 'Pick date'}
             value={dateTo ?? new Date()}
             mode="date"
-            onChange={(_event, date) => date && setDateTo(date)}
+            onChange={setDateTo}
           />
         </View>
       </View>

@@ -5,6 +5,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { GlassView } from 'expo-glass-effect';
 
 import { colors, radii, spacing, touchTarget, typography } from '@/theme/tokens';
+import { PickerField } from '@/components/PickerField';
 import { taskAPI, scheduleAPI } from '@/services/api';
 import { useUserOptions, type UserOptions } from '@/services/options';
 import { formatElapsed } from '@/timer/format';
@@ -58,6 +59,10 @@ function defaultDayEnd(base: Date): Date {
   const result = new Date(base);
   result.setHours(23, 0, 0, 0);
   return result;
+}
+
+function formatTime(date: Date): string {
+  return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
 function defaultScheduleName(): string {
@@ -247,20 +252,22 @@ export default function ScheduleScreen() {
 
       <View style={styles.row}>
         <Text style={styles.rowLabel}>Start time</Text>
-        <DateTimePicker
+        <PickerField
           testID="picker-start-time"
+          label={formatTime(startTime)}
           value={startTime}
           mode="time"
-          onChange={(_event, date) => date && setStartTime(date)}
+          onChange={setStartTime}
         />
       </View>
       <View style={styles.row}>
         <Text style={styles.rowLabel}>Day end</Text>
-        <DateTimePicker
+        <PickerField
           testID="picker-day-end"
+          label={formatTime(dayEnd)}
           value={dayEnd}
           mode="time"
-          onChange={(_event, date) => date && setDayEnd(date)}
+          onChange={setDayEnd}
         />
       </View>
 
@@ -284,7 +291,7 @@ export default function ScheduleScreen() {
           key={option.strategy}
           glassEffectStyle="regular"
           testID={`option-card-${option.strategy}`}
-          style={styles.card}>
+          style={[styles.card, option.strategy === selectedStrategy && styles.rowSelected]}>
           <Text style={styles.rowLabel}>{option.label}</Text>
           <Text style={styles.caption}>{option.description}</Text>
           <Pressable
@@ -293,7 +300,7 @@ export default function ScheduleScreen() {
             style={styles.button}
             onPress={() => setSelectedStrategy(option.strategy)}
           >
-            <Text style={styles.buttonLabel}>Select</Text>
+            <Text style={styles.buttonLabel}>{option.strategy === selectedStrategy ? 'Selected' : 'Select'}</Text>
           </Pressable>
         </GlassView>
       ))}
@@ -391,10 +398,10 @@ export default function ScheduleScreen() {
               testID={`picker-apply-${regimen.id}`}
               value={new Date()}
               mode="date"
-              onChange={(_event, date) => {
-                if (date) {
+              onChange={(event, date) => {
+                setApplyOpenId(null);
+                if (event.type === 'set' && date) {
                   applyRegimenMutation.mutate({ id: regimen.id, targetDate: date.toISOString() });
-                  setApplyOpenId(null);
                 }
               }}
             />

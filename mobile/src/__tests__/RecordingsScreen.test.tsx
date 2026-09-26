@@ -129,8 +129,10 @@ describe('recordings date range', () => {
     await screen.findByTestId('session-row-2');
 
     mockPickerValue = new Date('2026-01-02T00:00:00.000Z');
+    await fireEvent.press(screen.getByTestId('picker-date-from-open'));
     await fireEvent.press(screen.getByTestId('picker-date-from'));
     mockPickerValue = new Date('2026-01-03T00:00:00.000Z');
+    await fireEvent.press(screen.getByTestId('picker-date-to-open'));
     await fireEvent.press(screen.getByTestId('picker-date-to'));
 
     expect(screen.getByTestId('session-row-2')).toBeTruthy();

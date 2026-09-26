@@ -663,3 +663,11 @@ Each iteration appends its results here so the next session knows what worked, w
   - The Start time / Day end pickers were dead on Android — fixed on-device, see the next entry.
   - The dev client opened a remembered server (`192.168.12.133`, a previous network) and timed out on a white screen; entering `http://192.168.0.5:8081` manually fixed it.
 
+## P8c/P8d (reopened). Date/time pickers dead on Android; strategy Select had no visible state
+- **Date:** 2026-09-26 (found and fixed on-device during P10.4)
+- **Status:** DONE
+- **Summary:** `@react-native-community/datetimepicker` (9.1.0) renders `null` on Android and opens its dialog the moment it mounts. The Schedule tab's Start time / Day end and the Recordings tab's From / To pickers were mounted unconditionally, so they fired dialogs on screen load and left nothing tappable. New `mobile/src/components/PickerField.tsx`: a button showing the current value (`{testID}-open`) that mounts the picker only when tapped and unmounts it on any result. Both screens use it. The regimen Apply picker (already mounted on demand) applied the regimen on **cancel**, because Android's dismiss calls `onChange` with the original value and type `'dismissed'`; it and `PickerField` now act only on `event.type === 'set'`. Strategy option cards now show the chosen one: highlighted border (`rowSelected`) and the button reads "Selected".
+- **Files changed:** mobile/src/components/PickerField.tsx (new), mobile/src/app/(tabs)/schedule.tsx, mobile/src/app/(tabs)/recordings.tsx, mobile/src/__tests__/ScheduleScreen.test.tsx, mobile/src/__tests__/RecordingsScreen.test.tsx, progress.md
+- **Verification:** from `mobile/`: `npx jest --ci` — 16 suites / 143 pass; `npx tsc --noEmit` clean. Verified on the phone by the user: Start time, Day end and Select all work.
+- **Gotchas:**
+  - **The jest mocks replace the picker with a `Pressable` that fires `onChange` on press, so they cannot see this bug** — an always-mounted picker passes every test. The two existing tests gained one `{testID}-open` press each; no assertion changed. Any new picker must be mounted on demand and check `event.type === 'set'`.

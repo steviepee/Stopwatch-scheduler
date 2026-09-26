@@ -158,8 +158,10 @@ describe('setup step', () => {
     await selectActivity(7);
 
     mockPickerValue = new Date('2026-02-03T08:00:00.000Z');
+    await fireEvent.press(screen.getByTestId('picker-start-time-open'));
     await fireEvent.press(screen.getByTestId('picker-start-time'));
     mockPickerValue = new Date('2026-02-03T23:00:00.000Z');
+    await fireEvent.press(screen.getByTestId('picker-day-end-open'));
     await fireEvent.press(screen.getByTestId('picker-day-end'));
 
     await fireEvent.press(screen.getByTestId('btn-generate'));
