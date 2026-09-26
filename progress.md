@@ -653,3 +653,13 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Gotchas:**
   - **A transparent screen container is not enough to show something painted behind a navigator.** React Navigation's own scene wrapper sits between the two, and its background is opaque by default. P19's verification (`expo export` listing `cloth_mural.jpg` in the asset manifest) proved the image was *bundled*, not that it was *visible* — the asset resolving and the pixel reaching the screen are two different claims. Any future "it renders" acceptance criterion on this app needs a device or a screenshot, not a green build.
   - The tab icons are emoji `Text`, not an icon font. Glyph rendering is the platform's, so they will not look identical across Android versions or on iOS. If that becomes a problem the replacement is `@expo/vector-icons`, already available transitively via Expo.
+
+## P10. USER — Build 1 phone check
+- **Date:** 2026-09-23 (checks 1–3) and 2026-09-26 (check 4)
+- **Status:** DONE
+- **Summary:** All four checks passed on the physical phone against the LAN backend: token + Test connection; a locked-screen recording saved to an Activity with duration, notification, MySQL row and average all correct; an airplane-mode save queued and synced; a schedule built from three Activities, saved, and returned by `GET /api/schedules/` (it was also pushed to Google Calendar and showed on the phone's calendar). The 2026-09-23 session produced three fixes, all committed: stale Activity average after a sync (6b52470), schedule durations shown in seconds (bb4e60e), and the GOTCHAS entry on airplane mode not proving offline (f6106fd). No task reopened.
+- **Gotchas:**
+  - **Save on the Schedule tab gives no feedback until the saved-schedule card appears, and shows nothing on failure** (`saveMutation` has no error UI). The user tapped Save five times; duplicates 5–8 were deleted, #9 (the pushed one) kept.
+  - The Start time / Day end pickers were dead on Android — fixed on-device, see the next entry.
+  - The dev client opened a remembered server (`192.168.12.133`, a previous network) and timed out on a white screen; entering `http://192.168.0.5:8081` manually fixed it.
+

@@ -285,7 +285,7 @@ feature work should plan for both clients, not mobile-only.
   - [x] Script committed under `mobile/scripts/`
 
 ### P10. USER — Build 1 phone check (the gate to delete the web app)
-- **Status:** USER
+- **Status:** DONE 2026-09-26
 - **Description:** Phase 4 task 8 is done and migrated, so the Activities screen's averages update from recordings. Rebuild only if native code changed since P5; otherwise `npx expo start --dev-client` is enough. On the phone, against the LAN backend:
   1. Settings: paste the token, Test connection → OK.
   2. Start a recording, lock the screen for 10+ minutes, unlock, pause, save to an Activity. Duration matches wall time within 1s; the notification was visible while locked; the recording appears in Recordings and in MySQL; the Activity's average and count changed.
@@ -294,8 +294,8 @@ feature work should plan for both clients, not mobile-only.
   When all four pass, record it in `progress.md`. P11 is **not** unblocked by this task — the
   calendar, Google sync, and export (P12–P20) ship first and are checked in P21.
 - **Acceptance Criteria:**
-  - [ ] All four checks pass on a physical phone
-  - [ ] Any failure recorded in `progress.md` with the task it reopens
+  - [x] All four checks pass on a physical phone
+  - [x] Any failure recorded in `progress.md` with the task it reopens
 
 ---
 
