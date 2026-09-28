@@ -93,7 +93,7 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] All B1.tests pass; the full pytest suite passes; `alembic check` clean
 
 ### B2.tests — Day Schedules: find-or-create, placement, frog
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** `backend/tests/test_day_schedules.py`.
 - **Contract:**
   - `GET /api/schedules/?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD` returns the non-Regimen
@@ -108,12 +108,12 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - Setting `is_frog: true` on an Item (create, place, or `PUT .../items/{item_id}`) clears
     `is_frog` on every other Item in the same Schedule.
 - **Acceptance Criteria:**
-  - [ ] Test: the range filter returns only day Schedules in range, in date order
-  - [ ] Test: placing on an empty date creates exactly one Schedule; placing again reuses it
-  - [ ] Test: seeding — average used when present; 600 when the Activity has no history; explicit value wins
-  - [ ] Test: the same Activity placed twice on one date yields two Items
-  - [ ] Test: `POST /api/schedules/` on an occupied date appends; the Schedule count for that date stays 1
-  - [ ] Test: a second frog clears the first, via each of the three routes
+  - [x] Test: the range filter returns only day Schedules in range, in date order
+  - [x] Test: placing on an empty date creates exactly one Schedule; placing again reuses it
+  - [x] Test: seeding — average used when present; 600 when the Activity has no history; explicit value wins
+  - [x] Test: the same Activity placed twice on one date yields two Items
+  - [x] Test: `POST /api/schedules/` on an occupied date appends; the Schedule count for that date stays 1
+  - [x] Test: a second frog clears the first, via each of the three routes
 
 ### B2.impl — Day Schedules: find-or-create, placement, frog
 - **Status:** PENDING
