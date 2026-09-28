@@ -774,3 +774,16 @@ Each iteration appends its results here so the next session knows what worked, w
   - Google auth is only demanded when a Google call is actually needed (Exported Item and the relevant flag/field), per the B3.tests reading.
   - Google failures mid-way (e.g. Clear all deleting 2 of 3 events then raising) are not wrapped: the request 500s and the DB is not committed, so already-deleted events keep their ids. A later retry's delete on those ids would 404/410 from Google. Not covered by tests; clients will hit this only on a real Google error.
   - DIAGNOSTIC.md's route list was already missing the schedule `/calendar` and `/days/{date}/items` routes; not updated here.
+
+## B4.tests. Regimen Apply shifts times onto the day
+- **Date:** 2026-09-28
+- **Status:** DONE
+- **Summary:** Added 9 Apply tests to `backend/tests/test_schedules.py`. They cover local time of day kept for a nonzero `tz_offset` (CDT, 07:30 local → `2026-10-02T12:30:00Z`); a local time whose UTC instant is on the next UTC day (20:00 CDT → `2026-10-03T01:00:00Z`, `target_date` stays `2026-10-02`); the mirror case for a negative offset (JST, previous UTC day); appending onto an occupied date (same Schedule id, one Schedule for the date); applying twice (two copies of each Item); time-less Items skipped with the Regimen unchanged; the frog copied; D48 on a day that already has a frog (exactly one survives); and an unknown Regimen → 404. No existing tests changed.
+- **Files changed:** backend/tests/test_schedules.py, prd.md, progress.md
+- **Verification:** `./venv/bin/python -m pytest tests/ -q` from `backend/` (via `python3 -c` subprocess): 9 failed, 166 passed. The 9 failures are all new tests, as expected before B4.impl.
+- **Gotchas:**
+  - **Every new test currently fails with a 422, including the 404 test**, because `ApplyRegimen.target_date` is a `UTCDateTime` and rejects a bare `"2026-10-02"`. B4.impl must make it `datetime.date`, add `tz_offset: int` (the tests always send it), and can drop the unused `ApplyRegimen.name`.
+  - The formula under the `tz_offset` convention (UTC = local + tz_offset minutes): `local = scheduled_time - tz_offset min`, then `new_utc = combine(target_date, local.time()) + tz_offset min`. The Schedule's date is `target_date` itself, not the UTC date of any Item.
+  - The frog test asserts only that exactly one frog survives, not which one. Clearing the day's other frogs after the copy (via `_clear_other_frogs`) satisfies it.
+  - `test_apply_skips_timeless_items_and_leaves_regimen_unchanged` compares the Regimen's item ids, names and times before and after. An impl that moves the Regimen's own Items instead of copying them fails it.
+  - In this sandbox, Bash heredocs containing `{"...` are rejected ("expansion obfuscation" / "Parser skipped input"). Write test code and progress entries with the Edit tool.

@@ -157,7 +157,7 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] All B3.tests pass; full suite passes
 
 ### B4.tests — Regimen Apply shifts times onto the day
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Extend `backend/tests/test_schedules.py`. Today `apply_regimen` drops
   `scheduled_time`, so an applied Schedule has no times and appears nowhere.
 - **Contract:** `POST /api/schedules/{id}/apply` body `{target_date: "YYYY-MM-DD", tz_offset}`.
@@ -166,10 +166,10 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   The copies append into the day's Schedule (find-or-create, B2). Frog marks copy, subject to D48.
   Returns the day's Schedule.
 - **Acceptance Criteria:**
-  - [ ] Test: a Regimen item at 07:30 local on 2026-09-28 applied to 2026-10-02 lands at 07:30 local on 2026-10-02, for a nonzero `tz_offset`
-  - [ ] Test: a local time whose UTC instant falls on the next UTC day still lands on the target local date
-  - [ ] Test: applying onto a date with a Schedule appends; applying twice gives two copies of each Item
-  - [ ] Test: time-less Regimen Items are skipped; the Regimen itself is unchanged
+  - [x] Test: a Regimen item at 07:30 local on 2026-09-28 applied to 2026-10-02 lands at 07:30 local on 2026-10-02, for a nonzero `tz_offset`
+  - [x] Test: a local time whose UTC instant falls on the next UTC day still lands on the target local date
+  - [x] Test: applying onto a date with a Schedule appends; applying twice gives two copies of each Item
+  - [x] Test: time-less Regimen Items are skipped; the Regimen itself is unchanged
 
 ### B4.impl — Regimen Apply shifts times onto the day
 - **Status:** PENDING
