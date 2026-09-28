@@ -201,7 +201,7 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [ ] `curl -H "Authorization: Bearer $API_TOKEN" "http://localhost:8000/api/schedules/?start_date=2026-09-20&end_date=2026-10-10"` returns 200
 
 ### B6.tests — Mobile: Activity Bank and day view on Schedule Items
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Rewrite `mobile/src/__tests__/CalendarDayScreen.test.tsx` and
   `CalendarBankScreen.test.tsx` for the new model, keeping their gesture-registry mock. Remove
   tests of recording scheduling.
@@ -222,13 +222,13 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
     call.
   - The week agenda lists each day's Items from one `getRange` call plus Google events, read-only.
 - **Acceptance Criteria:**
-  - [ ] Test: Blocks render from Schedule Items at the right offset and height
-  - [ ] Test: the Bank lists all Activities, search narrows it, the no-history marker shows, and a drop leaves the Activity listed
-  - [ ] Test: a drop calls `placeActivity` with the local date and a snapped UTC `Z` time, no duration
-  - [ ] Test: moving a Block calls `updateItem` with the snapped time only
-  - [ ] Test: drop-to-Bank for plain and Exported Blocks, each confirm choice
-  - [ ] Test: week agenda merges Items and Google events per day, no drag targets
-  - [ ] Test: Google events still render read-only and a drag on one calls no API
+  - [x] Test: Blocks render from Schedule Items at the right offset and height
+  - [x] Test: the Bank lists all Activities, search narrows it, the no-history marker shows, and a drop leaves the Activity listed
+  - [x] Test: a drop calls `placeActivity` with the local date and a snapped UTC `Z` time, no duration
+  - [x] Test: moving a Block calls `updateItem` with the snapped time only
+  - [x] Test: drop-to-Bank for plain and Exported Blocks, each confirm choice
+  - [x] Test: week agenda merges Items and Google events per day, no drag targets
+  - [x] Test: Google events still render read-only and a drag on one calls no API
 
 ### B6.impl — Mobile: Activity Bank and day view on Schedule Items
 - **Status:** PENDING

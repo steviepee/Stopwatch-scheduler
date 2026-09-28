@@ -1,43 +1,41 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
+import { Alert } from 'react-native';
 
 import CalendarDayScreen from '../app/(tabs)/calendar';
-import { sessionAPI, calendarImportAPI } from '../services/api';
+import { scheduleAPI, taskAPI, calendarImportAPI } from '../services/api';
 import { getWeekDays } from '../utils/calendarUtils';
-import type { StopwatchSession } from '../types';
+import type { ScheduleItem, Task } from '../types';
 
-// P16 contract: the Calendar tab (`src/app/(tabs)/calendar.tsx`, already built in P15)
-// gains a collapsible session bank and a Day/Week toggle. No prior art for either,
-// so — same as P15.tests — the testIDs and gesture-event shapes defined here ARE
-// the contract:
+// B6 contract: the Bank is an Activity Bank (D40) and the week agenda reads Schedule Items.
 //
-//   - `bank-search` — text input filtering the bank by name (case-insensitive substring)
-//   - `bank-item-{id}` — one draggable row per unscheduled recording (`sessionAPI.getUnscheduled`)
-//   - `view-toggle-day` / `view-toggle-week` — mode switch buttons
-//   - `week-day-{YYYY-MM-DD}` — one pressable section per day of the week, in order,
-//     Sunday-first (matches `calendarUtils.getWeekDays`); pressing it switches back to
-//     Day mode showing that date
-//   - `week-session-{id}` / `week-google-{id}` — read-only rows inside a week-day section,
-//     in time order, no gesture attached
-//
-// Two gesture behaviours have no real on-screen geometry to hook into under RNTL (there
-// is no layout engine, so `onLayout`-based hit-testing can't be exercised meaningfully),
-// so — same invariant-based approach P15.tests took for drag/resize — the mocked pan
-// event carries the *already-decided* signal directly instead of raw coordinates a real
-// gesture would need bounds-checked against:
-//   - dragging a `bank-item-{id}` ends with `{ absoluteY }`, the y position (in the
-//     grid's own coordinate space) where the finger lifted; the impl converts it to a
-//     time the same way the existing grid does and calls `sessionAPI.schedule`
-//   - dragging a `session-block-{id}` onto the bank ends with `{ translationY, absoluteY }`;
-//     when `absoluteY` is at or below the top of `bank-panel` (from its onLayout) the impl
-//     calls `sessionAPI.unschedule` instead of rescheduling (reopened 2026-09-26: the old
-//     contract passed a `droppedOnBank` flag no real gesture event carries)
+//   - The Bank lists EVERY Activity (`taskAPI.getAll`), filtered by `bank-search`
+//     (case-insensitive substring). One draggable `bank-item-{taskId}` per Activity. An
+//     Activity with no history (`average_duration` 0 / `total_recordings` 0) carries a
+//     `bank-item-{taskId}-no-history` marker. Placing never removes an Activity.
+//   - Dropping a Bank item on the grid ends with `{ absoluteY }` and calls
+//     `scheduleAPI.placeActivity(localDate, { task_id, scheduled_time })` — the shown day's
+//     local `YYYY-MM-DD`, a 15-minute-snapped UTC `Z` time, and NO `estimated_duration`
+//     (the server seeds it, B2).
+//   - Dropping a Block (`item-block-{itemId}`) on the Bank: `absoluteY` at or below the
+//     top of `bank-panel` (its onLayout, as in P16-reopened). Not Exported →
+//     `deleteItem(scheduleId, itemId, false)` with no dialog. Exported (has a
+//     `calendar_event_id`) → `Alert.alert` with buttons "Also delete from Google" /
+//     "Keep on Google" / "Cancel", mapping to `true` / `false` / no call (D45).
+//   - Week mode: one `getRange(weekStart, weekEnd)` call (local keys, Sunday-first per
+//     `getWeekDays`) plus Google events per day. `week-day-{YYYY-MM-DD}` sections hold
+//     `week-item-{itemId}` / `week-google-{id}` rows in time order, read-only.
 jest.mock('../services/api', () => ({
-  sessionAPI: {
-    getScheduled: jest.fn(),
-    getUnscheduled: jest.fn(),
-    schedule: jest.fn(),
-    unschedule: jest.fn(),
+  taskAPI: { getAll: jest.fn() },
+  scheduleAPI: {
+    getRange: jest.fn(),
+    placeActivity: jest.fn(),
+    updateItem: jest.fn(),
+    deleteItem: jest.fn(),
+    removeItemFromCalendar: jest.fn(),
+    clearDay: jest.fn(),
+    pushToCalendar: jest.fn(),
+    removeFromCalendar: jest.fn(),
   },
   calendarImportAPI: { getEvents: jest.fn() },
 }));
@@ -82,40 +80,68 @@ jest.mock('react-native-gesture-handler', () => {
   };
 });
 
-const mockedGetScheduled = sessionAPI.getScheduled as jest.Mock;
-const mockedGetUnscheduled = sessionAPI.getUnscheduled as jest.Mock;
-const mockedSchedule = sessionAPI.schedule as jest.Mock;
-const mockedUnschedule = sessionAPI.unschedule as jest.Mock;
+// The new scheduleAPI methods do not exist on the real type until B6.impl adds them.
+const mockedScheduleAPI = scheduleAPI as unknown as Record<string, jest.Mock>;
+const mockedGetRange = mockedScheduleAPI.getRange;
+const mockedPlaceActivity = mockedScheduleAPI.placeActivity;
+const mockedUpdateItem = mockedScheduleAPI.updateItem;
+const mockedDeleteItem = mockedScheduleAPI.deleteItem;
+const mockedTasksGetAll = taskAPI.getAll as jest.Mock;
 const mockedGetEvents = calendarImportAPI.getEvents as jest.Mock;
+
+type DaySchedule = { id: number; target_date: string; is_regimen: false; items: ScheduleItem[] };
+let schedules: DaySchedule[] = [];
+let alertSpy: jest.SpyInstance;
 
 function gestureRegistry(): Record<string, { onEnd: (e: Record<string, unknown>) => void }> {
   return (require('react-native-gesture-handler') as any).__registry;
 }
 
-function session(overrides: Partial<StopwatchSession>): StopwatchSession {
+function localKey(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function at(base: Date, hour: number, minute = 0): string {
+  const d = new Date(base);
+  d.setHours(hour, minute, 0, 0);
+  return d.toISOString();
+}
+
+function task(overrides: Partial<Task>): Task {
   return {
     id: 1,
-    name: 'Session',
-    duration: 1800,
-    is_on_calendar: false,
+    name: 'Activity',
+    average_duration: 1800,
+    total_recordings: 3,
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
     ...overrides,
   };
 }
 
+function item(overrides: Partial<ScheduleItem>): ScheduleItem {
+  return {
+    id: 1,
+    schedule_id: 50,
+    task_id: 1,
+    estimated_duration: 900,
+    position: 0,
+    scheduled_time: at(new Date(), 9),
+    task: task({ id: overrides.task_id ?? 1 }),
+    created_at: '2026-01-01T00:00:00.000Z',
+    ...overrides,
+  };
+}
+
+function daySchedule(id: number, date: Date, items: ScheduleItem[]): DaySchedule {
+  return { id, target_date: localKey(date), is_regimen: false, items };
+}
+
 function client() {
   return new QueryClient({ defaultOptions: { queries: { retry: false } } });
-}
-
-function todayAt(hour: number, minute = 0): string {
-  const d = new Date();
-  d.setHours(hour, minute, 0, 0);
-  return d.toISOString();
-}
-
-function dayKeyOf(date: Date): string {
-  return date.toISOString().slice(0, 10);
 }
 
 async function renderScreen() {
@@ -126,34 +152,55 @@ async function renderScreen() {
   );
 }
 
+async function layoutBank() {
+  await fireEvent(screen.getByTestId('bank-panel'), 'layout', {
+    nativeEvent: { layout: { x: 0, y: 600, width: 400, height: 200 } },
+  });
+}
+
+function pressAlertButton(text: string) {
+  const buttons = alertSpy.mock.calls[alertSpy.mock.calls.length - 1][2] as { text: string; onPress?: () => void }[];
+  const button = buttons.find((b) => b.text === text);
+  if (!button) throw new Error(`No "${text}" button in ${JSON.stringify(buttons.map((b) => b.text))}`);
+  button.onPress?.();
+}
+
 beforeEach(() => {
-  mockedGetScheduled.mockReset();
-  mockedGetUnscheduled.mockReset();
-  mockedSchedule.mockReset();
-  mockedUnschedule.mockReset();
+  for (const mock of Object.values(mockedScheduleAPI)) mock.mockReset();
+  mockedTasksGetAll.mockReset();
   mockedGetEvents.mockReset();
-  mockedGetScheduled.mockResolvedValue([]);
-  mockedGetUnscheduled.mockResolvedValue([]);
+  schedules = [];
+  mockedGetRange.mockImplementation((start: string, end: string) =>
+    Promise.resolve(schedules.filter((s) => s.target_date >= start && s.target_date <= end))
+  );
+  mockedTasksGetAll.mockResolvedValue([]);
   mockedGetEvents.mockResolvedValue([]);
+  mockedDeleteItem.mockResolvedValue(undefined);
+  alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   for (const key of Object.keys(gestureRegistry())) delete gestureRegistry()[key];
 });
 
-describe('session bank', () => {
-  it('lists only unscheduled recordings, and search narrows it', async () => {
-    mockedGetUnscheduled.mockResolvedValue([
-      session({ id: 1, name: 'Reading' }),
-      session({ id: 2, name: 'Gym' }),
+afterEach(() => {
+  alertSpy.mockRestore();
+});
+
+describe('Activity Bank', () => {
+  it('lists every Activity, marks the ones with no history, and search narrows it', async () => {
+    mockedTasksGetAll.mockResolvedValue([
+      task({ id: 1, name: 'Reading', average_duration: 900, total_recordings: 4 }),
+      task({ id: 2, name: 'Gym', average_duration: 0, total_recordings: 0 }),
     ]);
-    mockedGetScheduled.mockResolvedValue([
-      session({ id: 99, name: 'Already on the grid', scheduled_start: todayAt(9) }),
-    ]);
+    // An Activity already placed today is still in the Bank.
+    schedules = [daySchedule(50, new Date(), [item({ id: 9, task_id: 1, task: task({ id: 1, name: 'Reading' }) })])];
     await renderScreen();
 
     await screen.findByTestId('bank-item-1');
+    await screen.findByTestId('item-block-9');
     expect(screen.getByTestId('bank-item-2')).toBeTruthy();
-    expect(screen.queryByTestId('bank-item-99')).toBeNull();
+    expect(screen.getByTestId('bank-item-2-no-history')).toBeTruthy();
+    expect(screen.queryByTestId('bank-item-1-no-history')).toBeNull();
 
-    await fireEvent.changeText(screen.getByTestId('bank-search'), 'gym');
+    await fireEvent.changeText(screen.getByTestId('bank-search'), 'GYM');
     expect(screen.getByTestId('bank-item-2')).toBeTruthy();
     expect(screen.queryByTestId('bank-item-1')).toBeNull();
 
@@ -162,114 +209,136 @@ describe('session bank', () => {
   });
 });
 
-describe('dropping a bank item on the grid', () => {
-  it('calls sessionAPI.schedule with a 15-minute-snapped UTC Z time and the item’s duration', async () => {
-    const item = session({ id: 7, name: 'Deep work', duration: 1800 });
-    mockedGetUnscheduled.mockResolvedValue([item]);
-    mockedSchedule.mockResolvedValue({ ...item, scheduled_start: todayAt(10) });
+describe('dropping a Bank Activity on the grid', () => {
+  it('calls placeActivity with the local date and a snapped UTC Z time, no duration, and the Activity stays listed', async () => {
+    const deepWork = task({ id: 7, name: 'Deep work', average_duration: 1800 });
+    mockedTasksGetAll.mockResolvedValue([deepWork]);
+    mockedPlaceActivity.mockImplementation((date: string, body: { task_id: number; scheduled_time: string }) => {
+      const placed = item({ id: 70, schedule_id: 50, task_id: 7, task: deepWork, scheduled_time: body.scheduled_time, estimated_duration: 1800 });
+      schedules = [{ id: 50, target_date: date, is_regimen: false, items: [placed] }];
+      return Promise.resolve(placed);
+    });
     await renderScreen();
 
     await screen.findByTestId('bank-item-7');
+    await layoutBank();
     gestureRegistry()['bank-item-7'].onEnd({ absoluteY: 540 });
 
-    await waitFor(() => expect(mockedSchedule).toHaveBeenCalledTimes(1));
-    const [id, body] = mockedSchedule.mock.calls[0];
-    expect(id).toBe(7);
-    expect(body.scheduled_start).toMatch(/Z$/);
-    expect(body.scheduled_end).toMatch(/Z$/);
+    await waitFor(() => expect(mockedPlaceActivity).toHaveBeenCalledTimes(1));
+    const [date, body] = mockedPlaceActivity.mock.calls[0];
+    expect(date).toBe(localKey(new Date()));
+    expect(body.task_id).toBe(7);
+    expect(body).not.toHaveProperty('estimated_duration');
+    expect(body.scheduled_time).toMatch(/Z$/);
 
-    const start = new Date(body.scheduled_start);
-    const end = new Date(body.scheduled_end);
+    const start = new Date(body.scheduled_time);
     expect(start.getUTCMinutes() % 15).toBe(0);
     expect(start.getUTCSeconds()).toBe(0);
-    expect(end.getTime() - start.getTime()).toBe(item.duration * 1000);
+    expect(localKey(start)).toBe(localKey(new Date()));
+
+    await screen.findByTestId('item-block-70');
+    expect(screen.getByTestId('bank-item-7')).toBeTruthy();
   });
 });
 
-describe('dropping a scheduled block on the bank', () => {
-  it('calls sessionAPI.unschedule instead of rescheduling', async () => {
-    const item = session({ id: 8, name: 'Standup', scheduled_start: todayAt(9), duration: 900 });
-    mockedGetScheduled.mockResolvedValue([item]);
-    mockedUnschedule.mockResolvedValue({ ...item, scheduled_start: undefined });
+describe('dropping a Block on the Bank', () => {
+  it('deletes a non-Exported Item with deleteEvent false and no dialog', async () => {
+    schedules = [daySchedule(50, new Date(), [item({ id: 8 })])];
     await renderScreen();
 
-    await screen.findByTestId('session-block-8');
-    await fireEvent(screen.getByTestId('bank-panel'), 'layout', {
-      nativeEvent: { layout: { x: 0, y: 600, width: 400, height: 200 } },
-    });
-    gestureRegistry()['session-block-8'].onEnd({ translationY: 0, absoluteY: 700 });
+    await screen.findByTestId('item-block-8');
+    await layoutBank();
+    gestureRegistry()['item-block-8'].onEnd({ translationY: 0, absoluteY: 700 });
 
-    await waitFor(() => expect(mockedUnschedule).toHaveBeenCalledWith(8));
-    expect(mockedSchedule).not.toHaveBeenCalled();
+    await waitFor(() => expect(mockedDeleteItem).toHaveBeenCalledWith(50, 8, false));
+    expect(alertSpy).not.toHaveBeenCalled();
+    expect(mockedUpdateItem).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['Also delete from Google', true],
+    ['Keep on Google', false],
+  ])('an Exported Item asks first; "%s" deletes with deleteEvent %s', async (choice, deleteEvent) => {
+    schedules = [daySchedule(50, new Date(), [item({ id: 8, calendar_event_id: 'evt-8' })])];
+    await renderScreen();
+
+    await screen.findByTestId('item-block-8');
+    await layoutBank();
+    gestureRegistry()['item-block-8'].onEnd({ translationY: 0, absoluteY: 700 });
+
+    await waitFor(() => expect(alertSpy).toHaveBeenCalledTimes(1));
+    expect(mockedDeleteItem).not.toHaveBeenCalled();
+
+    pressAlertButton(choice);
+
+    await waitFor(() => expect(mockedDeleteItem).toHaveBeenCalledWith(50, 8, deleteEvent));
+    expect(mockedDeleteItem).toHaveBeenCalledTimes(1);
+    expect(mockedUpdateItem).not.toHaveBeenCalled();
+  });
+
+  it('an Exported Item: "Cancel" makes no call', async () => {
+    schedules = [daySchedule(50, new Date(), [item({ id: 8, calendar_event_id: 'evt-8' })])];
+    await renderScreen();
+
+    await screen.findByTestId('item-block-8');
+    await layoutBank();
+    gestureRegistry()['item-block-8'].onEnd({ translationY: 0, absoluteY: 700 });
+
+    await waitFor(() => expect(alertSpy).toHaveBeenCalledTimes(1));
+    pressAlertButton('Cancel');
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(mockedDeleteItem).not.toHaveBeenCalled();
+    expect(mockedUpdateItem).not.toHaveBeenCalled();
+    expect(screen.getByTestId('item-block-8')).toBeTruthy();
   });
 });
 
 describe('week mode', () => {
-  it('lists seven days in order with recordings and Google events merged in time order', async () => {
+  it('fetches the week with one getRange call and merges Items and Google events per day in time order', async () => {
     const weekDays = getWeekDays(new Date());
-    const dayKeys = weekDays.map(dayKeyOf);
-    const targetIndex = 2;
-    const targetKey = dayKeys[targetIndex];
+    const dayKeys = weekDays.map(localKey);
+    const targetDay = weekDays[2];
+    const targetKey = dayKeys[2];
 
-    const targetDay = weekDays[targetIndex];
-    const scheduledOn = (base: Date, hour: number, minute = 0) => {
-      const d = new Date(base);
-      d.setHours(hour, minute, 0, 0);
-      return d.toISOString();
-    };
-
-    const scheduledSession = session({
-      id: 21,
-      name: 'Focus block',
-      scheduled_start: scheduledOn(targetDay, 9),
-      duration: 1800,
-    });
-    const googleEvent = {
-      id: 'g5',
-      summary: 'Standup',
-      start: scheduledOn(targetDay, 8),
-      end: scheduledOn(targetDay, 8.25),
-    };
-
-    mockedGetScheduled.mockResolvedValue([scheduledSession]);
+    const focus = item({ id: 21, schedule_id: 60, task_id: 3, task: task({ id: 3, name: 'Focus block' }), scheduled_time: at(targetDay, 9) });
+    const googleEvent = { id: 'g5', summary: 'Standup', start: at(targetDay, 8), end: at(targetDay, 8, 15) };
+    schedules = [daySchedule(60, targetDay, [focus])];
     mockedGetEvents.mockImplementation((date: string) =>
-      Promise.resolve(date === targetKey ? [googleEvent] : [])
+      Promise.resolve(date.slice(0, 10) === targetKey ? [googleEvent] : [])
     );
 
     await renderScreen();
     await fireEvent.press(screen.getByTestId('view-toggle-week'));
 
-    await waitFor(() => expect(screen.getByTestId(`week-google-${googleEvent.id}`)).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('week-google-g5')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('week-item-21')).toBeTruthy());
 
-    const allSections = screen.getAllByTestId(/^week-day-/);
-    expect(allSections.map((s) => s.props.testID)).toEqual(dayKeys.map((k) => `week-day-${k}`));
+    const weekCalls = mockedGetRange.mock.calls.filter(([start, end]) => start !== end);
+    expect(weekCalls).toEqual([[dayKeys[0], dayKeys[6]]]);
 
-    const targetSection = screen.getByTestId(`week-day-${targetKey}`);
-    const items = within(targetSection).getAllByTestId(/^week-(session|google)-/);
-    expect(items.map((i) => i.props.testID)).toEqual([`week-google-${googleEvent.id}`, `week-session-${scheduledSession.id}`]);
+    const sections = screen.getAllByTestId(/^week-day-/);
+    expect(sections.map((s) => s.props.testID)).toEqual(dayKeys.map((k) => `week-day-${k}`));
+
+    const rows = within(screen.getByTestId(`week-day-${targetKey}`)).getAllByTestId(/^week-(item|google)-/);
+    expect(rows.map((r) => r.props.testID)).toEqual(['week-google-g5', 'week-item-21']);
+    expect(within(screen.getByTestId('week-item-21')).getByText(/Focus block/)).toBeTruthy();
   });
 
-  it('renders no drag handles, and tapping a day switches back to Day mode for that date', async () => {
+  it('has no drag targets, and tapping a day switches back to Day mode for that date', async () => {
     const weekDays = getWeekDays(new Date());
-    const dayKeys = weekDays.map(dayKeyOf);
-    const targetIndex = 1;
-    const targetKey = dayKeys[targetIndex];
-    const targetDay = weekDays[targetIndex];
-
-    const d = new Date(targetDay);
-    d.setHours(9, 0, 0, 0);
-    const scheduledSession = session({ id: 31, name: 'Reading', scheduled_start: d.toISOString(), duration: 900 });
-
-    mockedGetScheduled.mockResolvedValue([scheduledSession]);
+    const targetDay = weekDays[1];
+    const targetKey = localKey(targetDay);
+    schedules = [daySchedule(61, targetDay, [item({ id: 31, schedule_id: 61, scheduled_time: at(targetDay, 9) })])];
     await renderScreen();
     await fireEvent.press(screen.getByTestId('view-toggle-week'));
 
-    await waitFor(() => expect(screen.getByTestId(`week-day-${targetKey}`)).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('week-item-31')).toBeTruthy());
     expect(Object.keys(gestureRegistry()).some((key) => key.startsWith('week-'))).toBe(false);
 
     await fireEvent.press(screen.getByTestId(`week-day-${targetKey}`));
 
-    await waitFor(() => expect(screen.getByTestId(`session-block-${scheduledSession.id}`)).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('item-block-31')).toBeTruthy());
     expect(screen.queryByTestId(`week-day-${targetKey}`)).toBeNull();
   });
 });

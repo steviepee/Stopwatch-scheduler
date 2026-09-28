@@ -143,6 +143,81 @@ describe('collection endpoints keep their trailing slash', () => {
   });
 });
 
+// B6: the calendar plans Schedule Items. The new methods are reached through a cast
+// until B6.impl adds them to the real type.
+describe('B6 schedule item routes', () => {
+  const scheduleApi = (api: ApiModule) => api.scheduleAPI as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>;
+
+  it('getRange lists day Schedules at /schedules/ with start_date and end_date', async () => {
+    const { api } = loadClient();
+    nextResponse = [];
+
+    await scheduleApi(api).getRange('2026-09-27', '2026-10-03');
+
+    expect(requests[0].method).toBe('get');
+    expect(fullUrl(requests[0])).toBe(`${ENV_URL}/schedules/`);
+    expect(requests[0].params).toEqual({ start_date: '2026-09-27', end_date: '2026-10-03' });
+  });
+
+  it('placeActivity posts the body unchanged to /schedules/days/{date}/items', async () => {
+    const { api } = loadClient();
+    const body = { task_id: 7, scheduled_time: '2026-09-29T14:00:00.000Z' };
+
+    await scheduleApi(api).placeActivity('2026-09-29', body);
+
+    expect(requests[0].method).toBe('post');
+    expect(fullUrl(requests[0])).toBe(`${ENV_URL}/schedules/days/2026-09-29/items`);
+    expect(JSON.parse(requests[0].data)).toEqual(body);
+  });
+
+  it('updateItem puts to /schedules/{id}/items/{itemId}', async () => {
+    const { api } = loadClient();
+
+    await scheduleApi(api).updateItem(50, 5, { scheduled_time: '2026-09-29T14:15:00.000Z' });
+
+    expect(requests[0].method).toBe('put');
+    expect(fullUrl(requests[0])).toBe(`${ENV_URL}/schedules/50/items/5`);
+    expect(JSON.parse(requests[0].data)).toEqual({ scheduled_time: '2026-09-29T14:15:00.000Z' });
+  });
+
+  it.each([true, false])('deleteItem sends delete_event=%s', async (deleteEvent) => {
+    const { api } = loadClient();
+
+    await scheduleApi(api).deleteItem(50, 5, deleteEvent);
+
+    expect(requests[0].method).toBe('delete');
+    expect(fullUrl(requests[0])).toBe(`${ENV_URL}/schedules/50/items/5`);
+    expect(requests[0].params).toEqual({ delete_event: deleteEvent });
+  });
+
+  it('removeItemFromCalendar deletes /schedules/{id}/items/{itemId}/calendar', async () => {
+    const { api } = loadClient();
+
+    await scheduleApi(api).removeItemFromCalendar(50, 5);
+
+    expect(requests[0].method).toBe('delete');
+    expect(fullUrl(requests[0])).toBe(`${ENV_URL}/schedules/50/items/5/calendar`);
+  });
+
+  it.each([true, false])('clearDay deletes the Schedule with delete_events=%s', async (deleteEvents) => {
+    const { api } = loadClient();
+
+    await scheduleApi(api).clearDay(50, deleteEvents);
+
+    expect(requests[0].method).toBe('delete');
+    expect(fullUrl(requests[0])).toBe(`${ENV_URL}/schedules/50`);
+    expect(requests[0].params).toEqual({ delete_events: deleteEvents });
+  });
+
+  it('sessionAPI no longer offers Recording scheduling or push', () => {
+    const { api } = loadClient();
+
+    for (const name of ['schedule', 'unschedule', 'getScheduled', 'getUnscheduled', 'addToCalendar', 'removeFromCalendar']) {
+      expect(api.sessionAPI).not.toHaveProperty(name);
+    }
+  });
+});
+
 describe('scheduleAPI.generate', () => {
   const request = {
     start_time: '2026-09-06T08:00:00Z',
