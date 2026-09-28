@@ -217,3 +217,26 @@ class GoogleCalendarService:
 
         created_event = self.service.events().insert(calendarId='primary', body=event).execute()
         return created_event
+
+    def update_event(self, event_id: str, start_time: str, duration_seconds: float):
+        """Move or resize an event: patch its start and end"""
+        if not self.is_authenticated():
+            raise Exception("Not authenticated with Google Calendar")
+
+        start = datetime.fromisoformat(start_time.replace("Z", "+00:00"))
+        if start.tzinfo is not None:
+            start = start.astimezone(timezone.utc).replace(tzinfo=None)
+        end = start + timedelta(seconds=duration_seconds)
+
+        body = {
+            'start': {
+                'dateTime': start.isoformat(),
+                'timeZone': 'UTC',
+            },
+            'end': {
+                'dateTime': end.isoformat(),
+                'timeZone': 'UTC',
+            },
+        }
+
+        return self.service.events().patch(calendarId='primary', eventId=event_id, body=body).execute()

@@ -762,3 +762,15 @@ Each iteration appends its results here so the next session knows what worked, w
   - `_update_values` accepts `update_event` args positionally or by keyword, and `start_time` as a Z/naive string or a datetime, so B3.impl can pass `item.scheduled_time.isoformat()` like the push route. The unit test calls `update_event("evt-1", "2026-09-08T10:00:00Z", 900)` and expects `events().patch(calendarId=, eventId=, body=)` with a naive-UTC isoformat `dateTime` and `timeZone: 'UTC'`, mirroring `create_event`.
   - Contract read literally: no Google auth is needed when no Google call is required. Item delete without `delete_event`, `delete_event=true` on a non-Exported Item, Clear all with nothing Exported, and edits of non-Exported Items all succeed while unauthenticated.
   - `test_item_calendar_removal_unknown_item_404` already passes (the route doesn't exist yet, so FastAPI 404s).
+
+## B3.impl. Editing and removing Items with Google kept in step
+- **Date:** 2026-09-28
+- **Status:** DONE
+- **Summary:** `GoogleCalendarService.update_event(event_id, start_time, duration_seconds)` patches an event's start/end, mirroring `create_event`. In `routers/schedules.py`, `_require_google()` (401) and `_delete_event(id)` (through `calendar_service.service.events().delete`) back the new behaviour: `PUT .../items/{item_id}` calls `update_event` when an Exported Item's `scheduled_time` or `estimated_duration` is in the body (auth checked before anything is set); `DELETE .../items/{item_id}?delete_event=` deletes the event first; new `DELETE .../items/{item_id}/calendar` removes one event and nulls the id; `DELETE /{id}?delete_events=` deletes every stored event, then the Schedule.
+- **Files changed:** backend/app/services/google_calendar.py, backend/app/routers/schedules.py, prd.md, progress.md
+- **Verification:** `./venv/bin/python -m pytest tests/ -q` from `backend/` (via `python3 -c` subprocess) — 166 passed.
+- **Gotchas:**
+  - "Changes" is read as "the field is present in the PUT body", not "the value differs": sending an unchanged `scheduled_time` on an Exported Item still patches Google and still needs auth. Clients should send only what moved.
+  - Google auth is only demanded when a Google call is actually needed (Exported Item and the relevant flag/field), per the B3.tests reading.
+  - Google failures mid-way (e.g. Clear all deleting 2 of 3 events then raising) are not wrapped: the request 500s and the DB is not committed, so already-deleted events keep their ids. A later retry's delete on those ids would 404/410 from Google. Not covered by tests; clients will hit this only on a real Google error.
+  - DIAGNOSTIC.md's route list was already missing the schedule `/calendar` and `/days/{date}/items` routes; not updated here.

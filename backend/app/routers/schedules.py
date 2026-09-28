@@ -27,6 +27,15 @@ def _day_schedule(db: Session, target_date: date) -> Schedule:
     return schedule
 
 
+def _require_google():
+    if not calendar_service.is_authenticated():
+        raise HTTPException(status_code=401, detail="Not authenticated with Google Calendar")
+
+
+def _delete_event(event_id: str):
+    calendar_service.service.events().delete(calendarId='primary', eventId=event_id).execute()
+
+
 def _clear_other_frogs(db: Session, item: ScheduleItem):
     db.query(ScheduleItem).filter(
         ScheduleItem.schedule_id == item.schedule_id,
@@ -120,10 +129,16 @@ def update_schedule(
 
 
 @router.delete("/{schedule_id}")
-def delete_schedule(schedule_id: int, db: Session = Depends(get_db)):
+def delete_schedule(schedule_id: int, delete_events: bool = False, db: Session = Depends(get_db)):
     db_schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
     if not db_schedule:
         raise HTTPException(status_code=404, detail="Schedule not found")
+    if delete_events:
+        exported = [item for item in db_schedule.items if item.calendar_event_id is not None]
+        if exported:
+            _require_google()
+            for item in exported:
+                _delete_event(item.calendar_event_id)
     db.delete(db_schedule)
     db.commit()
     return {"message": "Schedule deleted successfully"}
@@ -219,10 +234,23 @@ def update_item(
         raise HTTPException(status_code=404, detail="Item not found")
 
     update_data = item.model_dump(exclude_unset=True)
+    sync_google = db_item.calendar_event_id is not None and (
+        "scheduled_time" in update_data or "estimated_duration" in update_data
+    )
+    if sync_google:
+        _require_google()
+
     for field, value in update_data.items():
         setattr(db_item, field, value)
     if db_item.is_frog:
         _clear_other_frogs(db, db_item)
+
+    if sync_google:
+        calendar_service.update_event(
+            db_item.calendar_event_id,
+            db_item.scheduled_time.isoformat(),
+            db_item.estimated_duration
+        )
 
     db.commit()
     db.refresh(db_item)
@@ -230,16 +258,41 @@ def update_item(
 
 
 @router.delete("/{schedule_id}/items/{item_id}")
-def delete_item(schedule_id: int, item_id: int, db: Session = Depends(get_db)):
+def delete_item(
+    schedule_id: int,
+    item_id: int,
+    delete_event: bool = False,
+    db: Session = Depends(get_db)
+):
     db_item = db.query(ScheduleItem).filter(
         ScheduleItem.id == item_id,
         ScheduleItem.schedule_id == schedule_id
     ).first()
     if not db_item:
         raise HTTPException(status_code=404, detail="Item not found")
+    if delete_event and db_item.calendar_event_id is not None:
+        _require_google()
+        _delete_event(db_item.calendar_event_id)
     db.delete(db_item)
     db.commit()
     return {"message": "Item deleted successfully"}
+
+
+@router.delete("/{schedule_id}/items/{item_id}/calendar", response_model=schemas.ScheduleItem)
+def remove_item_from_calendar(schedule_id: int, item_id: int, db: Session = Depends(get_db)):
+    db_item = db.query(ScheduleItem).filter(
+        ScheduleItem.id == item_id,
+        ScheduleItem.schedule_id == schedule_id
+    ).first()
+    if not db_item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    if db_item.calendar_event_id is not None:
+        _require_google()
+        _delete_event(db_item.calendar_event_id)
+        db_item.calendar_event_id = None
+        db.commit()
+        db.refresh(db_item)
+    return db_item
 
 
 @router.post("/{schedule_id}/calendar", response_model=schemas.Schedule)

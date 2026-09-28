@@ -150,11 +150,11 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] Test: no route calls Google's delete or update with an id not stored on an Item
 
 ### B3.impl — Editing and removing Items with Google kept in step
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract. `update_event` goes beside `create_event` in
   `services/google_calendar.py`.
 - **Acceptance Criteria:**
-  - [ ] All B3.tests pass; full suite passes
+  - [x] All B3.tests pass; full suite passes
 
 ### B4.tests — Regimen Apply shifts times onto the day
 - **Status:** PENDING
