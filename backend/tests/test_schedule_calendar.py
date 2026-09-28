@@ -4,7 +4,7 @@ from app.routers.schedules import calendar_service
 
 
 def _make_schedule(client, items):
-    payload = {"name": "Push me", "items": items}
+    payload = {"target_date": "2026-09-08", "items": items}
     return client.post("/api/schedules/", json=payload).json()
 
 

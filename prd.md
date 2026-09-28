@@ -64,7 +64,7 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
 ## Tasks — Build 2a
 
 ### B1.tests — Schema: dated Schedules, Recordings lose scheduling
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Backend tests for the model change. Update `test_sessions.py` and
   `test_timezones.py`: delete the tests for `PUT /sessions/{id}/schedule`, `/unschedule`,
   `POST|DELETE /sessions/{id}/calendar`, and the `scheduled` query param. Add tests in
@@ -78,10 +78,10 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - `POST /api/schedules/` with `is_regimen: false` requires `target_date` (422 without) and
     ignores `name`; with `is_regimen: true` requires `name` and rejects a `target_date` (422).
 - **Acceptance Criteria:**
-  - [ ] Test: the removed Recording routes no longer exist, and a Recording response has none of the four fields
-  - [ ] Test: a day Schedule round-trips `target_date` as `"2026-09-29"`
-  - [ ] Test: day Schedule without a date → 422; Regimen without a name → 422; Regimen with a date → 422
-  - [ ] Test: `test_migrations.py` still exercises `alembic check` (unchanged)
+  - [x] Test: the removed Recording routes no longer exist, and a Recording response has none of the four fields
+  - [x] Test: a day Schedule round-trips `target_date` as `"2026-09-29"`
+  - [x] Test: day Schedule without a date → 422; Regimen without a name → 422; Regimen with a date → 422
+  - [x] Test: `test_migrations.py` still exercises `alembic check` (unchanged)
 
 ### B1.impl — Schema: dated Schedules, Recordings lose scheduling
 - **Status:** PENDING

@@ -4,7 +4,6 @@ def test_create_session(client):
     data = resp.json()
     assert data["name"] == "Morning Run"
     assert data["duration"] == 3600
-    assert data["is_on_calendar"] is False
 
 
 def test_get_all_sessions(client):
@@ -42,22 +41,47 @@ def test_session_not_found(client):
     assert resp.status_code == 404
 
 
-def test_schedule_session(client):
-    created = client.post("/api/sessions/", json={"name": "Scheduled", "duration": 1800}).json()
-    resp = client.put(f"/api/sessions/{created['id']}/schedule", json={
-        "scheduled_start": "2026-03-06T09:00:00",
-        "scheduled_end": "2026-03-06T09:30:00",
-    })
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["scheduled_start"] is not None
+REMOVED_FIELDS = ("scheduled_start", "scheduled_end", "calendar_event_id", "is_on_calendar")
 
 
-def test_unschedule_session(client):
-    created = client.post("/api/sessions/", json={"name": "To Unschedule", "duration": 300}).json()
-    client.put(f"/api/sessions/{created['id']}/schedule", json={
-        "scheduled_start": "2026-03-06T10:00:00",
+def test_session_response_has_no_scheduling_fields(client):
+    created = client.post("/api/sessions/", json={"name": "History", "duration": 60}).json()
+    fetched = client.get(f"/api/sessions/{created['id']}").json()
+    listed = client.get("/api/sessions/").json()[0]
+    updated = client.put(f"/api/sessions/{created['id']}", json={"name": "Renamed"}).json()
+    for data in (created, fetched, listed, updated):
+        for field in REMOVED_FIELDS:
+            assert field not in data
+
+
+def test_session_create_ignores_scheduling_fields(client):
+    resp = client.post("/api/sessions/", json={
+        "name": "Sneaky",
+        "duration": 60,
+        "scheduled_start": "2026-09-29T09:00:00Z",
+        "scheduled_end": "2026-09-29T09:01:00Z",
     })
-    resp = client.put(f"/api/sessions/{created['id']}/unschedule")
     assert resp.status_code == 200
-    assert resp.json()["scheduled_start"] is None
+    for field in REMOVED_FIELDS:
+        assert field not in resp.json()
+
+
+def test_removed_recording_routes_gone(client):
+    sid = client.post("/api/sessions/", json={"name": "Gone routes", "duration": 60}).json()["id"]
+    responses = [
+        client.put(f"/api/sessions/{sid}/schedule", json={"scheduled_start": "2026-09-29T09:00:00Z"}),
+        client.put(f"/api/sessions/{sid}/unschedule"),
+        client.post(f"/api/sessions/{sid}/calendar"),
+        client.delete(f"/api/sessions/{sid}/calendar"),
+    ]
+    for resp in responses:
+        assert resp.status_code in (404, 405)
+
+
+def test_scheduled_filter_ignored(client):
+    client.post("/api/sessions/", json={"name": "A", "duration": 60})
+    client.post("/api/sessions/", json={"name": "B", "duration": 60})
+    for value in ("true", "false"):
+        resp = client.get("/api/sessions/", params={"scheduled": value})
+        assert resp.status_code == 200
+        assert len(resp.json()) == 2
