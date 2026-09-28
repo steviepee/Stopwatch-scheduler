@@ -671,3 +671,10 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Verification:** from `mobile/`: `npx jest --ci` — 16 suites / 143 pass; `npx tsc --noEmit` clean. Verified on the phone by the user: Start time, Day end and Select all work.
 - **Gotchas:**
   - **The jest mocks replace the picker with a `Pressable` that fires `onChange` on press, so they cannot see this bug** — an always-mounted picker passes every test. The two existing tests gained one `{testID}-open` press each; no assertion changed. Any new picker must be mounted on demand and check `event.type === 'set'`.
+
+## Backend: Google client crashed the server under concurrent calendar requests
+- **Date:** 2026-09-27 (found during the P21 phone check)
+- **Status:** DONE
+- **Summary:** uvicorn died twice with `Aborted (core dumped)` and once with a segfault after the Calendar tab was used. `GoogleCalendarService` shared one `httplib2.Http` across FastAPI's thread pool; the week view's seven parallel `calendar/events` requests corrupted it. `_build_service()` now gives every request a fresh `AuthorizedHttp` via `requestBuilder`. This also explains the failed Remove on recording 11.
+- **Files changed:** backend/app/services/google_calendar.py, progress.md
+- **Verification:** seven parallel event requests against a spare port, before: 500s and hung requests; after: 35/35 returned 200. `pytest` 114 passed. Full write-up in GOTCHAS.md.

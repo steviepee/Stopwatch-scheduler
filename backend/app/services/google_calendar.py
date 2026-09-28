@@ -3,7 +3,10 @@ from datetime import datetime, timedelta, timezone
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
+from googleapiclient.http import HttpRequest
 from google.auth.transport.requests import Request
+from google_auth_httplib2 import AuthorizedHttp
+import httplib2
 import pickle
 import secrets
 
@@ -43,7 +46,16 @@ class GoogleCalendarService:
                 return
 
         if self.creds and self.creds.valid and self.service is None:
-            self.service = build('calendar', 'v3', credentials=self.creds)
+            self.service = self._build_service()
+
+    def _build_service(self):
+        # httplib2 is not thread-safe and FastAPI runs these sync routes on a thread pool,
+        # so concurrent calls on one shared Http corrupt its SSL state (500s, hangs, segfaults).
+        # A fresh Http per request is the client library's documented fix.
+        def build_request(_http, *args, **kwargs):
+            return HttpRequest(AuthorizedHttp(self.creds, http=httplib2.Http()), *args, **kwargs)
+
+        return build('calendar', 'v3', credentials=self.creds, requestBuilder=build_request)
 
     def _save_credentials(self):
         """Save credentials to file"""
@@ -94,7 +106,7 @@ class GoogleCalendarService:
         flow.fetch_token(code=code)
         self.creds = flow.credentials
         self._save_credentials()
-        self.service = build('calendar', 'v3', credentials=self.creds)
+        self.service = self._build_service()
 
     def is_authenticated(self):
         """Check if user is authenticated"""
