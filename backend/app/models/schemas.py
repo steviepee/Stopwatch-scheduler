@@ -135,6 +135,12 @@ class ScheduleItemUpdate(BaseModel):
     scheduled_time: Optional[UTCDateTime] = None
     is_frog: Optional[bool] = None
 
+class ScheduleItemPlace(BaseModel):
+    task_id: int
+    scheduled_time: UTCDateTime
+    estimated_duration: Optional[float] = None
+    is_frog: bool = False
+
 class ScheduleItem(ScheduleItemBase):
     id: int
     schedule_id: int

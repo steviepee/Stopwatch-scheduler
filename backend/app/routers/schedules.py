@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import datetime
+from datetime import date, datetime
 
 from app.database import get_db
 from app.models.schedule import Schedule, ScheduleItem
@@ -14,14 +14,43 @@ router = APIRouter()
 calendar_service = GoogleCalendarService()
 
 
+def _day_schedule(db: Session, target_date: date) -> Schedule:
+    """The one Schedule for a date, created if the date has none."""
+    schedule = db.query(Schedule).filter(
+        Schedule.is_regimen == False,
+        Schedule.target_date == target_date
+    ).first()
+    if not schedule:
+        schedule = Schedule(target_date=target_date, is_regimen=False)
+        db.add(schedule)
+        db.flush()
+    return schedule
+
+
+def _clear_other_frogs(db: Session, item: ScheduleItem):
+    db.query(ScheduleItem).filter(
+        ScheduleItem.schedule_id == item.schedule_id,
+        ScheduleItem.id != item.id
+    ).update({ScheduleItem.is_frog: False})
+
+
 @router.get("/", response_model=List[schemas.Schedule])
 def get_schedules(
     is_regimen: Optional[bool] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
     db: Session = Depends(get_db)
 ):
     query = db.query(Schedule)
     if is_regimen is not None:
         query = query.filter(Schedule.is_regimen == is_regimen)
+    if start_date is not None or end_date is not None:
+        query = query.filter(Schedule.is_regimen == False)
+        if start_date is not None:
+            query = query.filter(Schedule.target_date >= start_date)
+        if end_date is not None:
+            query = query.filter(Schedule.target_date <= end_date)
+        return query.order_by(Schedule.target_date).all()
     return query.order_by(Schedule.created_at.desc()).all()
 
 
@@ -35,27 +64,36 @@ def get_schedule(schedule_id: int, db: Session = Depends(get_db)):
 
 @router.post("/", response_model=schemas.Schedule)
 def create_schedule(schedule: schemas.ScheduleCreate, db: Session = Depends(get_db)):
-    db_schedule = Schedule(
-        name=schedule.name,
-        schedule_type=schedule.schedule_type,
-        target_date=schedule.target_date,
-        notes=schedule.notes,
-        is_regimen=schedule.is_regimen,
-    )
-    db.add(db_schedule)
-    db.flush()  # get id before adding items
+    if schedule.is_regimen:
+        db_schedule = Schedule(
+            name=schedule.name,
+            schedule_type=schedule.schedule_type,
+            target_date=schedule.target_date,
+            notes=schedule.notes,
+            is_regimen=schedule.is_regimen,
+        )
+        db.add(db_schedule)
+        db.flush()  # get id before adding items
+    else:
+        db_schedule = _day_schedule(db, schedule.target_date)
+        if schedule.notes is not None and db_schedule.notes is None:
+            db_schedule.notes = schedule.notes
 
+    offset = len(db_schedule.items)
     for i, item in enumerate(schedule.items):
         db_item = ScheduleItem(
             schedule_id=db_schedule.id,
             task_id=item.task_id,
             custom_name=item.custom_name,
             estimated_duration=item.estimated_duration,
-            position=item.position if item.position else i,
+            position=item.position if item.position else offset + i,
             scheduled_time=item.scheduled_time,
             is_frog=item.is_frog,
         )
         db.add(db_item)
+        if item.is_frog:
+            db.flush()
+            _clear_other_frogs(db, db_item)
 
     db.commit()
     db.refresh(db_schedule)
@@ -126,6 +164,41 @@ def add_item(
         is_frog=item.is_frog,
     )
     db.add(db_item)
+    db.flush()
+    if db_item.is_frog:
+        _clear_other_frogs(db, db_item)
+    db.commit()
+    db.refresh(db_item)
+    return db_item
+
+
+@router.post("/days/{target_date}/items", response_model=schemas.ScheduleItem)
+def place_item(
+    target_date: date,
+    item: schemas.ScheduleItemPlace,
+    db: Session = Depends(get_db)
+):
+    task = db.query(Task).filter(Task.id == item.task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    estimated_duration = item.estimated_duration
+    if estimated_duration is None:
+        estimated_duration = task.average_duration or 600
+
+    db_schedule = _day_schedule(db, target_date)
+    db_item = ScheduleItem(
+        schedule_id=db_schedule.id,
+        task_id=item.task_id,
+        estimated_duration=estimated_duration,
+        position=len(db_schedule.items),
+        scheduled_time=item.scheduled_time,
+        is_frog=item.is_frog,
+    )
+    db.add(db_item)
+    db.flush()
+    if db_item.is_frog:
+        _clear_other_frogs(db, db_item)
     db.commit()
     db.refresh(db_item)
     return db_item
@@ -148,6 +221,8 @@ def update_item(
     update_data = item.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(db_item, field, value)
+    if db_item.is_frog:
+        _clear_other_frogs(db, db_item)
 
     db.commit()
     db.refresh(db_item)
@@ -239,15 +314,7 @@ def apply_regimen(
     if not regimen:
         raise HTTPException(status_code=404, detail="Regimen not found")
 
-    new_schedule = Schedule(
-        name=body.name or regimen.name,
-        schedule_type=regimen.schedule_type,
-        target_date=body.target_date.date(),
-        notes=regimen.notes,
-        is_regimen=False,
-    )
-    db.add(new_schedule)
-    db.flush()
+    new_schedule = _day_schedule(db, body.target_date.date())
 
     for item in regimen.items:
         db_item = ScheduleItem(

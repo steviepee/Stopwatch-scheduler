@@ -116,11 +116,11 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] Test: a second frog clears the first, via each of the three routes
 
 ### B2.impl — Day Schedules: find-or-create, placement, frog
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract in `routers/schedules.py`. One helper does
   find-or-create by date; every path that creates a day Schedule goes through it.
 - **Acceptance Criteria:**
-  - [ ] All B2.tests pass; full suite passes
+  - [x] All B2.tests pass; full suite passes
 
 ### B3.tests — Editing and removing Items with Google kept in step
 - **Status:** PENDING
