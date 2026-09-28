@@ -497,3 +497,24 @@ now gitignored.
 
 **Occurred:** it was committed to the public repo and stayed in history. Resolved 2026-09-02
 by deleting the leaked OAuth client outright, which revokes every token it issued.
+
+---
+
+## Backend dies with "Aborted (core dumped)" or "Segmentation fault" after using the calendar
+
+**Symptom:** uvicorn exits with no traceback, printing only `Aborted (core dumped)` or
+`Segmentation fault`, usually shortly after opening the Calendar tab's week view. Before it dies,
+Google-backed routes return 500 or hang, and Push/Remove appear to do nothing on the phone.
+
+**Cause:** `GoogleCalendarService` built one `googleapiclient` service per router module and
+shared it across requests. Its `httplib2.Http` is not thread-safe, and FastAPI runs the sync
+routes on a thread pool, so concurrent Google calls corrupt the shared SSL connection. The week
+view fires seven `calendar/events` requests at once, which is enough.
+
+**Fix (2026-09-27):** `_build_service()` passes a `requestBuilder` that gives every request a
+fresh `AuthorizedHttp(creds, http=httplib2.Http())` — the client library's documented
+thread-safety pattern. Reproduce or verify by firing seven parallel
+`GET /api/auth/calendar/events?date=...` at a spare port: before the fix, 500s and hung requests;
+after, all 200.
+
+**Remember:** the backend has no `--reload`, so a fix is not live until uvicorn is restarted.

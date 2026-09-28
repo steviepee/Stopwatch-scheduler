@@ -105,6 +105,23 @@ paired `.tests`/`.impl` tasks (D20). Outline:
 - Stop button on the foreground notification.
 - Peak-hours (`GET /api/insights/peak-hours`) as the suggested start time in the Schedule screen.
 
+Added 2026-09-27 from the P21 phone check (user-approved):
+
+- **First task: the calendar bank holds Activities, not Recordings.** An Activity can be placed
+  on any number of days; a Recording is one past run and leaves the bank once placed, which is
+  wrong for how the user plans. Placements become Schedule Items on a per-date Schedule (the
+  existing model: Schedule = Activities against a date). Block length = the Activity's average
+  duration, not editable by drag. One-time events live in Google Calendar, not this app.
+  Needs design before the PRD: how a date's Schedule is found or created, what happens to the
+  current recording-scheduling fields and routes, and how Regimens (dateless Schedules) apply
+  onto a calendar day.
+- **Push day / Remove day** on the Calendar tab. Falls out of the item above: a day is a
+  Schedule, so it is the existing `POST/DELETE /api/schedules/{id}/calendar` (no duplicates).
+- **Feedback on Save and Push.** Schedule-tab Save shows nothing until the saved card appears
+  and nothing on failure (the user saved five duplicates); calendar Push/Remove handle only 401
+  and fail silently otherwise.
+- Deferred, not Build 2: a per-week list of needed Activities — see `future-work.md`.
+
 The user also wants per-account users after deploy (memory: multi-user intent), which supersedes
 ADR 0002's premise. Not scheduled; prefer transition-friendly choices only when they cost nothing.
 
@@ -122,7 +139,7 @@ cellular with Wi-Fi off.
 1. **Phase 4a:** `curl http://<lan-ip>:8000/api/tasks/` → 401; with `-H "Authorization: Bearer $API_TOKEN"` → 200. Web app at `localhost:3000` still lists recordings.
 2. **Phase 4b:** pytest green; add a throwaway column to a model with no revision → `test_migrations.py` fails; remove it → green. `alembic current` on MySQL shows head.
 3. **Build 1 (P10):** on a physical Android phone against the LAN backend — start recording, lock the screen 10+ minutes, unlock, stop; duration matches wall time within 1s; notification was visible while locked; save lands in MySQL. Airplane mode: record and save → queued; airplane off → appears in `GET /api/sessions/`.
-4. **Build 1b (P21), the gate to Build 2:** drag a recording onto the calendar, move and resize it, reopen the app and confirm it stuck; today's Google events show and cannot be dragged; push a recording and a whole regimen to Google, push the regimen twice and get no duplicates; export recordings as CSV from Settings; the background renders with text still readable.
+4. **Build 1b (P21), the gate to Build 2:** drag a recording onto the calendar, move it, reopen the app and confirm it stuck; today's Google events show and cannot be dragged; push a recording and a whole regimen to Google, push the regimen twice and get no duplicates; export recordings as CSV from Settings; the background renders with text still readable.
 5. **Phase 6:** gate 3 from cellular with Wi-Fi off.
 
 ## 8. Traps

@@ -511,7 +511,8 @@ taken with the user on 2026-09-08:
 - **Status:** USER
 - **Description:** No native module was added, so `npx expo start --dev-client` should be enough;
   rebuild only if the P19 spike forced a native change. On the phone, against the LAN backend:
-  1. Calendar tab: drag a recording from the bank onto the grid, move it, resize it. Reopen the
+  1. Calendar tab: drag a recording from the bank onto the grid, move it (resize removed
+     2026-09-27 — block length is the measured duration). Reopen the
      app — it is where you left it, and `GET /api/sessions/?scheduled=true` agrees.
   2. Today's Google events appear on the day view and cannot be dragged.
   3. Push a recording to Google, then a whole regimen. Both appear in Google Calendar, with the

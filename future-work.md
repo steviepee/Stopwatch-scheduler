@@ -166,3 +166,25 @@ token is not a limited preview, it is shared access to one dataset and one Googl
 - `backend/app/services/google_calendar.py` — `TOKEN_FILE`, `_pending_state`, `_save_credentials`
 - `backend/app/routers/{calendar_auth,sessions,schedules}.py` — the three service singletons
 - `frontend/vite.config.ts` and `mobile/src/services/auth.ts` — both clients' credential paths
+
+---
+
+## A per-week list of needed Activities
+
+**Raised:** 2026-09-27, during the P21 phone check. Deferred by the user; not the default mode.
+
+By default the calendar bank holds repeatable Activities that can be placed on any number of
+days. The idea here is an opt-in list of the Activities a *specific* week needs — "this week I
+must fit in three runs and one dentist trip" — that shrinks as they are placed, so an empty list
+means the week is covered.
+
+**Why it is not small.** Nothing in the model scopes an Activity to a week. It needs either a
+week entity (a dated container of required Activities with counts) or a filter over Schedule
+Items by ISO week, plus a way to show "placed 2 of 3".
+
+**Questions to settle**
+
+- Count per Activity ("run ×3"), or a plain checklist?
+- Does placing an item on the calendar tick it off, or does recording it?
+- Does an unfinished week roll over, or reset?
+- Is this what a Regimen should grow into, or a separate thing beside it?
