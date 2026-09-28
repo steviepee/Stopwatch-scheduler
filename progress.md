@@ -750,3 +750,15 @@ Each iteration appends its results here so the next session knows what worked, w
   - `POST /api/schedules/` on an occupied date sets `notes` only if the existing Schedule has none.
   - Placement 404s on an unknown `task_id`.
   - In this sandbox, `cd <dir> && git ...` and `cd ... && ... > file` both need approval; run git from the repo root without `cd`.
+
+## B3.tests. Editing and removing Items with Google kept in step
+- **Date:** 2026-09-28
+- **Status:** DONE
+- **Summary:** New `backend/tests/test_item_google_sync.py` (21 tests): `update_event` patches start/end (unit test on the router's `calendar_service`); move, resize, and both together on an Exported Item each call `update_event` once; non-Exported edits call nothing and need no auth; 401-with-nothing-saved for Exported edits; item delete with `delete_event` true/false/default, plus 401; per-item `DELETE .../items/{id}/calendar` keeps the Item; Clear all (`DELETE /{id}?delete_events=true`) deletes exactly the stored ids then the Schedule and Items, 401 with nothing deleted, default leaves events; `DELETE /{id}/calendar` unchanged; a cross-Schedule test that no route touches an id not stored on its Item. No existing tests changed.
+- **Files changed:** backend/tests/test_item_google_sync.py, prd.md, progress.md
+- **Verification:** `./venv/bin/python -m pytest tests/ -q` from `backend/` (via `python3 -c` subprocess): 12 failed, 154 passed. All 12 failures are in the new file and are the expected pre-implementation ones (no `update_event`, no new routes/params, no 401s).
+- **Gotchas:**
+  - Tests patch `calendar_service.update_event` (with `create=True`) and mock `calendar_service.service`; deletes are asserted on `service.events().delete(calendarId='primary', eventId=...)`, the same idiom as `remove_schedule_from_calendar`. B3.impl must delete through `calendar_service.service.events().delete(...)` (directly or via a helper that uses it), not a new client.
+  - `_update_values` accepts `update_event` args positionally or by keyword, and `start_time` as a Z/naive string or a datetime, so B3.impl can pass `item.scheduled_time.isoformat()` like the push route. The unit test calls `update_event("evt-1", "2026-09-08T10:00:00Z", 900)` and expects `events().patch(calendarId=, eventId=, body=)` with a naive-UTC isoformat `dateTime` and `timeZone: 'UTC'`, mirroring `create_event`.
+  - Contract read literally: no Google auth is needed when no Google call is required. Item delete without `delete_event`, `delete_event=true` on a non-Exported Item, Clear all with nothing Exported, and edits of non-Exported Items all succeed while unauthenticated.
+  - `test_item_calendar_removal_unknown_item_404` already passes (the route doesn't exist yet, so FastAPI 404s).

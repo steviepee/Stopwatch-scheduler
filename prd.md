@@ -123,7 +123,7 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] All B2.tests pass; full suite passes
 
 ### B3.tests — Editing and removing Items with Google kept in step
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** `backend/tests/test_item_google_sync.py`, Google service mocked as in
   `test_schedule_calendar.py`.
 - **Contract:**
@@ -142,12 +142,12 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
     Item is Exported and Google is not authorized.
   - The existing `DELETE /api/schedules/{id}/calendar` (Remove from Google only) is unchanged.
 - **Acceptance Criteria:**
-  - [ ] Test: moving and resizing an Exported Item each call `update_event` once with the new start/duration
-  - [ ] Test: editing a non-Exported Item calls no Google method
-  - [ ] Test: item delete with and without `delete_event`; per-item calendar removal keeps the Item
-  - [ ] Test: Clear all deletes exactly the stored event ids, then the Schedule and its Items
-  - [ ] Test: every Google-touching route above is 401 unauthenticated and changes nothing
-  - [ ] Test: no route calls Google's delete or update with an id not stored on an Item
+  - [x] Test: moving and resizing an Exported Item each call `update_event` once with the new start/duration
+  - [x] Test: editing a non-Exported Item calls no Google method
+  - [x] Test: item delete with and without `delete_event`; per-item calendar removal keeps the Item
+  - [x] Test: Clear all deletes exactly the stored event ids, then the Schedule and its Items
+  - [x] Test: every Google-touching route above is 401 unauthenticated and changes nothing
+  - [x] Test: no route calls Google's delete or update with an id not stored on an Item
 
 ### B3.impl — Editing and removing Items with Google kept in step
 - **Status:** PENDING
