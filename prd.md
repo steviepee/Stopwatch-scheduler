@@ -172,10 +172,10 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] Test: time-less Regimen Items are skipped; the Regimen itself is unchanged
 
 ### B4.impl — Regimen Apply shifts times onto the day
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
-  - [ ] All B4.tests pass; full suite passes
+  - [x] All B4.tests pass; full suite passes
 
 ### B5. USER — Migrate the live database
 - **Status:** USER

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from app.database import get_db
 from app.models.schedule import Schedule, ScheduleItem
@@ -359,7 +359,7 @@ def apply_regimen(
     body: schemas.ApplyRegimen,
     db: Session = Depends(get_db)
 ):
-    """Create a new schedule from a regimen template applied to a specific date."""
+    """Copy a regimen's timed items onto a date's schedule, keeping each item's local time of day."""
     regimen = db.query(Schedule).filter(
         Schedule.id == schedule_id,
         Schedule.is_regimen == True
@@ -367,18 +367,28 @@ def apply_regimen(
     if not regimen:
         raise HTTPException(status_code=404, detail="Regimen not found")
 
-    new_schedule = _day_schedule(db, body.target_date.date())
+    new_schedule = _day_schedule(db, body.target_date)
+    offset = timedelta(minutes=body.tz_offset)
+    position = len(new_schedule.items)
 
     for item in regimen.items:
+        if item.scheduled_time is None:
+            continue
+        local_time = (item.scheduled_time - offset).time()
         db_item = ScheduleItem(
             schedule_id=new_schedule.id,
             task_id=item.task_id,
             custom_name=item.custom_name,
             estimated_duration=item.estimated_duration,
-            position=item.position,
+            position=position,
+            scheduled_time=datetime.combine(body.target_date, local_time) + offset,
             is_frog=item.is_frog,
         )
         db.add(db_item)
+        position += 1
+        if item.is_frog:
+            db.flush()
+            _clear_other_frogs(db, db_item)
 
     db.commit()
     db.refresh(new_schedule)

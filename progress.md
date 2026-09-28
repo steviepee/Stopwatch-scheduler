@@ -787,3 +787,14 @@ Each iteration appends its results here so the next session knows what worked, w
   - The frog test asserts only that exactly one frog survives, not which one. Clearing the day's other frogs after the copy (via `_clear_other_frogs`) satisfies it.
   - `test_apply_skips_timeless_items_and_leaves_regimen_unchanged` compares the Regimen's item ids, names and times before and after. An impl that moves the Regimen's own Items instead of copying them fails it.
   - In this sandbox, Bash heredocs containing `{"...` are rejected ("expansion obfuscation" / "Parser skipped input"). Write test code and progress entries with the Edit tool.
+
+## B4.impl. Regimen Apply shifts times onto the day
+- **Date:** 2026-09-28
+- **Status:** DONE
+- **Summary:** `ApplyRegimen` is now `{target_date: date, tz_offset: int}` (unused `name` dropped). `apply_regimen` copies only timed Regimen Items, placing each one's local time of day (`scheduled_time - tz_offset`) on `target_date` and converting back to UTC, appends them after the day's existing Items with positions continuing on, and runs `_clear_other_frogs` for a copied frog (D48). The Regimen is untouched.
+- **Files changed:** backend/app/models/schemas.py, backend/app/routers/schedules.py, prd.md, progress.md
+- **Verification:** `./venv/bin/python -m pytest tests/ -q` from `backend/` (via `python3 -c` subprocess) — 175 passed.
+- **Gotchas:**
+  - **Both clients' `applyRegimen` still send the old body** (`target_date` as a datetime, optional `name`, no `tz_offset`) and will now get a 422. Fixing the callers is B8 (mobile) and B11 (web) — they must send `target_date` as `YYYY-MM-DD` and `tz_offset: new Date().getTimezoneOffset()`.
+  - When a day already has a frog and the Regimen copies one in, the copied frog wins (it clears the day's existing one).
+  - The offset is applied to every Item from the single `tz_offset` sent, so a Regimen built on one side of a DST change and applied on the other keeps the wall-clock time the *current* offset gives, not the original.

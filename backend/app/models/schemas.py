@@ -197,8 +197,8 @@ class Schedule(ScheduleBase):
 
 # For applying a regimen to a date
 class ApplyRegimen(BaseModel):
-    target_date: UTCDateTime
-    name: Optional[str] = None
+    target_date: date
+    tz_offset: int
 
 
 class GenerateActivity(BaseModel):
