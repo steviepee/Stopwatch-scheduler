@@ -242,7 +242,7 @@ def apply_regimen(
     new_schedule = Schedule(
         name=body.name or regimen.name,
         schedule_type=regimen.schedule_type,
-        target_date=body.target_date,
+        target_date=body.target_date.date(),
         notes=regimen.notes,
         is_regimen=False,
     )

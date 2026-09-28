@@ -1,5 +1,5 @@
-from pydantic import BaseModel, AfterValidator, PlainSerializer
-from datetime import datetime, timezone
+from pydantic import BaseModel, AfterValidator, PlainSerializer, model_validator
+from datetime import date, datetime, timezone
 from typing import Optional, List, Annotated, Literal
 
 
@@ -81,8 +81,6 @@ class StopwatchSessionBase(BaseModel):
     notes: Optional[str] = None
     start_time: Optional[UTCDateTime] = None
     end_time: Optional[UTCDateTime] = None
-    scheduled_start: Optional[UTCDateTime] = None
-    scheduled_end: Optional[UTCDateTime] = None
 
 class StopwatchSessionCreate(StopwatchSessionBase):
     pass
@@ -94,24 +92,14 @@ class StopwatchSessionUpdate(BaseModel):
     notes: Optional[str] = None
     start_time: Optional[UTCDateTime] = None
     end_time: Optional[UTCDateTime] = None
-    scheduled_start: Optional[UTCDateTime] = None
-    scheduled_end: Optional[UTCDateTime] = None
-    is_on_calendar: Optional[bool] = None
-    calendar_event_id: Optional[str] = None
 
 class StopwatchSession(StopwatchSessionBase):
     id: int
-    calendar_event_id: Optional[str] = None
-    is_on_calendar: bool
     created_at: UTCDateTime
     updated_at: UTCDateTime
 
     class Config:
         from_attributes = True
-
-class StopwatchSessionSchedule(BaseModel):
-    scheduled_start: UTCDateTime
-    scheduled_end: Optional[UTCDateTime] = None
 
 class StopwatchSessionWithTask(StopwatchSession):
     task: Optional[Task] = None
@@ -160,19 +148,32 @@ class ScheduleItem(ScheduleItemBase):
 
 # Schedule schemas
 class ScheduleBase(BaseModel):
-    name: str
+    name: Optional[str] = None
     schedule_type: str = "day"
-    target_date: Optional[UTCDateTime] = None
+    target_date: Optional[date] = None
     notes: Optional[str] = None
     is_regimen: bool = False
 
 class ScheduleCreate(ScheduleBase):
     items: List[ScheduleItemCreate] = []
 
+    @model_validator(mode="after")
+    def check_kind(self):
+        if self.is_regimen:
+            if not self.name:
+                raise ValueError("A Regimen needs a name")
+            if self.target_date is not None:
+                raise ValueError("A Regimen has no date")
+        else:
+            if self.target_date is None:
+                raise ValueError("A day Schedule needs a target_date")
+            self.name = None
+        return self
+
 class ScheduleUpdate(BaseModel):
     name: Optional[str] = None
     schedule_type: Optional[str] = None
-    target_date: Optional[UTCDateTime] = None
+    target_date: Optional[date] = None
     rating: Optional[int] = None
     notes: Optional[str] = None
     is_regimen: Optional[bool] = None

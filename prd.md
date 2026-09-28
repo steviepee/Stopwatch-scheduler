@@ -84,13 +84,13 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] Test: `test_migrations.py` still exercises `alembic check` (unchanged)
 
 ### B1.impl — Schema: dated Schedules, Recordings lose scheduling
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Model, schema, router and one Alembic revision: drop the four
   `stopwatch_sessions` columns; `schedules.target_date` DATETIME → DATE; `schedules.name`
   nullable. Remove the four Recording routes and the `scheduled` filter. Do not backfill data —
   B5 does that by hand. Update DIAGNOSTIC.md §5 for the removed routes.
 - **Acceptance Criteria:**
-  - [ ] All B1.tests pass; the full pytest suite passes; `alembic check` clean
+  - [x] All B1.tests pass; the full pytest suite passes; `alembic check` clean
 
 ### B2.tests — Day Schedules: find-or-create, placement, frog
 - **Status:** PENDING

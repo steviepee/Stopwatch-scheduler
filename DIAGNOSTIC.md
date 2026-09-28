@@ -108,7 +108,7 @@ restart**, never just a save.
 | `models/schemas.py` | All Pydantic schemas; `UTCDateTime` enforces the UTC contract |
 | `routers/tasks.py` | Activity CRUD and `/stats` |
 | `routers/time_logs.py` | Time log CRUD, updates the parent average on write |
-| `routers/sessions.py` | Recording CRUD, calendar add/remove, schedule/unschedule |
+| `routers/sessions.py` | Recording CRUD |
 | `routers/schedules.py` | Schedule CRUD, items, rating, regimen apply, generation |
 | `routers/insights.py` | Peak-hours aggregation |
 | `routers/calendar_auth.py` | Google OAuth login, callback with state validation, status |
@@ -148,8 +148,6 @@ DELETE /api/time-logs/{id}
 GET    /api/sessions/                       POST   /api/sessions/
 GET    /api/sessions/{id}                   PUT    /api/sessions/{id}
 DELETE /api/sessions/{id}
-POST   /api/sessions/{id}/calendar          DELETE /api/sessions/{id}/calendar
-PUT    /api/sessions/{id}/schedule          PUT    /api/sessions/{id}/unschedule
 
 GET    /api/schedules/                      POST   /api/schedules/
 GET    /api/schedules/{id}                  PUT    /api/schedules/{id}
@@ -166,7 +164,11 @@ POST   /api/auth/calendar/event
 ```
 
 **UTC contract:** every datetime crossing the API is UTC with an explicit `Z` suffix, enforced
-by `UTCDateTime` in `models/schemas.py`. Local times are never stored or emitted.
+by `UTCDateTime` in `models/schemas.py`. Local times are never stored or emitted. The one
+exception is `Schedule.target_date`, a plain local calendar date (`YYYY-MM-DD`).
+
+Recordings are history only (D46): the Recording calendar and schedule/unschedule routes and the
+`scheduled` / `on_calendar` filters on `GET /api/sessions/` were removed in Build 2a.
 
 ---
 

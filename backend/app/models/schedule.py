@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Boolean, Text
+from sqlalchemy import Column, Integer, String, Float, Date, DateTime, ForeignKey, Boolean, Text
 from sqlalchemy.orm import relationship
 from app.database import Base, utcnow
 
@@ -7,9 +7,9 @@ class Schedule(Base):
     __tablename__ = "schedules"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(255), nullable=False)
+    name = Column(String(255), nullable=True)
     schedule_type = Column(String(20), default="day")  # day | week | month
-    target_date = Column(DateTime, nullable=True)
+    target_date = Column(Date, nullable=True)
     rating = Column(Integer, nullable=True)  # 1-5
     notes = Column(Text, nullable=True)
     is_regimen = Column(Boolean, default=False)
