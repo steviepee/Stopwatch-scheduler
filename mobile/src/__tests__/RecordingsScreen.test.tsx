@@ -52,7 +52,6 @@ function session(overrides: Partial<StopwatchSession>): StopwatchSession {
     id: 1,
     name: 'Session',
     duration: 300,
-    is_on_calendar: false,
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
     ...overrides,

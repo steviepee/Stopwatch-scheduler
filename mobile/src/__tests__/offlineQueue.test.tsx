@@ -72,7 +72,6 @@ const created: StopwatchSession = {
   name: 'Gym',
   duration: 1800,
   task_id: 3,
-  is_on_calendar: false,
   start_time: '2026-09-06T08:00:00Z',
   end_time: '2026-09-06T08:30:00Z',
   created_at: '2026-09-06T08:30:01Z',
@@ -83,7 +82,6 @@ const existing: StopwatchSession = {
   id: 7,
   name: 'Reading',
   duration: 900,
-  is_on_calendar: false,
   created_at: '2026-09-05T20:00:00Z',
   updated_at: '2026-09-05T20:00:00Z',
 };

@@ -1,11 +1,11 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Gesture, GestureDetector, ScrollView } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, type SharedValue } from 'react-native-reanimated';
 
 import { colors, radii, spacing, touchTarget, typography } from '@/theme/tokens';
-import { sessionAPI, calendarImportAPI } from '@/services/api';
+import { scheduleAPI, taskAPI, calendarImportAPI } from '@/services/api';
 import {
   formatDayLong,
   formatDayShort,
@@ -19,12 +19,13 @@ import {
   snapToSlot,
   timeFromPosition,
 } from '@/utils/calendarUtils';
-import type { StopwatchSession } from '@/types';
+import type { Schedule, ScheduleItem, Task } from '@/types';
 
 type GoogleEvent = { id?: string; summary: string; start: string; end: string };
 type WeekAgendaItem =
-  | { type: 'session'; id: number; start: Date; name: string }
+  | { type: 'item'; id: number; start: Date; name: string }
   | { type: 'google'; id: string; start: Date; name: string };
+type DragPayload = { key: string; name: string; seconds: number };
 
 const START_HOUR = 0;
 const END_HOUR = 24;
@@ -36,16 +37,22 @@ const MIN_BLOCK_HEIGHT = 44;
 const INITIAL_SCROLL_HOUR = 8;
 // Drags start on a long press so a plain swipe still scrolls the grid and the bank.
 const DRAG_LONG_PRESS_MS = 300;
+// The server seeds an Activity with no history at 10 minutes (D40); the ghost matches it.
+const NO_HISTORY_SECONDS = 600;
 
 type DragGhost = {
   ghostY: SharedValue<number>;
   containerTop: SharedValue<number>;
-  start: (item: StopwatchSession) => void;
+  start: (payload: DragPayload) => void;
   finish: () => void;
 };
 
+// Local calendar date, the key a Schedule is filed under (D39).
 function dayKey(date: Date): string {
-  return date.toISOString().slice(0, 10);
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 function pxToMinutes(px: number): number {
@@ -58,15 +65,16 @@ function shiftDays(date: Date, days: number): Date {
   return result;
 }
 
-function blockSeconds(item: StopwatchSession): number {
-  if (item.scheduled_start && item.scheduled_end) {
-    return (new Date(item.scheduled_end).getTime() - new Date(item.scheduled_start).getTime()) / 1000;
-  }
-  return item.duration;
+function blockHeight(seconds: number): number {
+  return Math.max(MIN_BLOCK_HEIGHT, heightFromDuration(seconds, HOUR_HEIGHT, INTERVAL_MIN));
 }
 
-function blockHeight(item: StopwatchSession): number {
-  return Math.max(MIN_BLOCK_HEIGHT, heightFromDuration(blockSeconds(item), HOUR_HEIGHT, INTERVAL_MIN));
+function itemName(item: ScheduleItem): string {
+  return item.task?.name ?? item.custom_name ?? '';
+}
+
+function timedItems(schedules: Schedule[] | undefined): ScheduleItem[] {
+  return (schedules ?? []).flatMap((schedule) => schedule.items.filter((item) => item.scheduled_time));
 }
 
 export default function CalendarDayScreen() {
@@ -76,7 +84,7 @@ export default function CalendarDayScreen() {
   const [bankExpanded, setBankExpanded] = useState(true);
   const [bankSearch, setBankSearch] = useState('');
   const [googleAuthError, setGoogleAuthError] = useState(false);
-  const [dragItem, setDragItem] = useState<StopwatchSession | null>(null);
+  const [dragItem, setDragItem] = useState<DragPayload | null>(null);
 
   // Gesture absoluteY is window-relative; these convert it to the grid's content space.
   const containerRef = useRef<View>(null);
@@ -90,18 +98,18 @@ export default function CalendarDayScreen() {
   const drag: DragGhost = {
     ghostY,
     containerTop,
-    start: (item) => setDragItem(item),
+    start: (payload) => setDragItem(payload),
     finish: () => setDragItem(null),
   };
 
-  const { data: scheduled } = useQuery({
-    queryKey: ['sessions', 'scheduled'],
-    queryFn: sessionAPI.getScheduled,
+  const { data: daySchedules } = useQuery({
+    queryKey: ['schedules', 'range', dayKey(day), dayKey(day)],
+    queryFn: () => scheduleAPI.getRange(dayKey(day), dayKey(day)),
   });
 
-  const { data: unscheduled } = useQuery({
-    queryKey: ['sessions', 'unscheduled'],
-    queryFn: sessionAPI.getUnscheduled,
+  const { data: tasks } = useQuery({
+    queryKey: ['tasks'],
+    queryFn: taskAPI.getAll,
   });
 
   const {
@@ -123,95 +131,100 @@ export default function CalendarDayScreen() {
     })),
   });
 
+  const weekStartKey = weekDayKeys[0];
+  const weekEndKey = weekDayKeys[weekDayKeys.length - 1];
+  const { data: weekSchedules } = useQuery({
+    queryKey: ['schedules', 'range', weekStartKey, weekEndKey],
+    queryFn: () => scheduleAPI.getRange(weekStartKey, weekEndKey),
+    enabled: viewMode === 'week',
+  });
+
   const filteredBank = useMemo(
-    () => (unscheduled ?? []).filter((item) => item.name.toLowerCase().includes(bankSearch.toLowerCase())),
-    [unscheduled, bankSearch]
+    () => (tasks ?? []).filter((task) => task.name.toLowerCase().includes(bankSearch.toLowerCase())),
+    [tasks, bankSearch]
   );
 
-  const scheduleMutation = useMutation({
-    mutationFn: ({ id, body }: { id: number; body: { scheduled_start: string; scheduled_end: string } }) =>
-      sessionAPI.schedule(id, body),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sessions'] }),
-  });
+  const invalidateSchedules = () => queryClient.invalidateQueries({ queryKey: ['schedules'] });
 
-  const unscheduleMutation = useMutation({
-    mutationFn: (id: number) => sessionAPI.unschedule(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sessions'] }),
-  });
-
-  function onCalendarPushError(error: unknown) {
+  function onGoogleError(error: unknown) {
     if ((error as { response?: { status?: number } })?.response?.status === 401) {
       setGoogleAuthError(true);
     }
   }
 
-  const addToCalendarMutation = useMutation({
-    mutationFn: (id: number) => sessionAPI.addToCalendar(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sessions'] }),
-    onError: onCalendarPushError,
+  const placeMutation = useMutation({
+    mutationFn: ({ date, taskId, scheduledTime }: { date: string; taskId: number; scheduledTime: string }) =>
+      scheduleAPI.placeActivity(date, { task_id: taskId, scheduled_time: scheduledTime }),
+    onSuccess: invalidateSchedules,
   });
 
-  const removeFromCalendarMutation = useMutation({
-    mutationFn: (id: number) => sessionAPI.removeFromCalendar(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sessions'] }),
-    onError: onCalendarPushError,
+  const moveMutation = useMutation({
+    mutationFn: ({ item, scheduledTime }: { item: ScheduleItem; scheduledTime: string }) =>
+      scheduleAPI.updateItem(item.schedule_id, item.id, { scheduled_time: scheduledTime }),
+    onSuccess: invalidateSchedules,
+    onError: onGoogleError,
   });
 
-  const dayItems = useMemo(
-    () =>
-      (scheduled ?? []).filter(
-        (session) => session.scheduled_start && isSameDay(new Date(session.scheduled_start), day)
-      ),
-    [scheduled, day]
-  );
+  const deleteMutation = useMutation({
+    mutationFn: ({ item, deleteEvent }: { item: ScheduleItem; deleteEvent: boolean }) =>
+      scheduleAPI.deleteItem(item.schedule_id, item.id, deleteEvent),
+    onSuccess: invalidateSchedules,
+    onError: onGoogleError,
+  });
+
+  const dayItems = useMemo(() => timedItems(daySchedules), [daySchedules]);
 
   function isOverBank(absoluteY: number): boolean {
     return absoluteY - containerTop.value >= bankTop.current;
   }
 
-  function commitDrag(item: StopwatchSession, translationY: number, absoluteY?: number) {
-    if (!item.scheduled_start) return;
-    if (absoluteY !== undefined && isOverBank(absoluteY)) {
-      unscheduleMutation.mutate(item.id);
+  function removeItem(item: ScheduleItem) {
+    if (!item.calendar_event_id) {
+      deleteMutation.mutate({ item, deleteEvent: false });
       return;
     }
-    const originalStart = new Date(item.scheduled_start);
-    const durationMs = item.scheduled_end
-      ? new Date(item.scheduled_end).getTime() - originalStart.getTime()
-      : item.duration * 1000;
-    const rawStart = new Date(originalStart.getTime() + pxToMinutes(translationY) * 60 * 1000);
-    const snappedStart = snapToSlot(rawStart, SNAP_MIN);
-    const snappedEnd = new Date(snappedStart.getTime() + durationMs);
-    scheduleMutation.mutate({
-      id: item.id,
-      body: { scheduled_start: snappedStart.toISOString(), scheduled_end: snappedEnd.toISOString() },
-    });
+    Alert.alert('Remove block', `"${itemName(item)}" is on Google Calendar.`, [
+      { text: 'Also delete from Google', style: 'destructive', onPress: () => deleteMutation.mutate({ item, deleteEvent: true }) },
+      { text: 'Keep on Google', onPress: () => deleteMutation.mutate({ item, deleteEvent: false }) },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
   }
 
-  function commitBankDrop(item: StopwatchSession, absoluteY: number) {
+  function commitDrag(item: ScheduleItem, translationY: number, absoluteY?: number) {
+    if (!item.scheduled_time) return;
+    if (absoluteY !== undefined && isOverBank(absoluteY)) {
+      removeItem(item);
+      return;
+    }
+    const originalStart = new Date(item.scheduled_time);
+    const rawStart = new Date(originalStart.getTime() + pxToMinutes(translationY) * 60 * 1000);
+    const snappedStart = snapToSlot(rawStart, SNAP_MIN);
+    // A Block stays on its own day (D49).
+    if (!isSameDay(snappedStart, originalStart)) return;
+    moveMutation.mutate({ item, scheduledTime: snappedStart.toISOString() });
+  }
+
+  function commitBankDrop(task: Task, absoluteY: number) {
     if (isOverBank(absoluteY)) return;
     const gridY = absoluteY - containerTop.value - gridTop.current + scrollY.current;
     if (gridY < 0) return;
     const rawStart = timeFromPosition(gridY, day, START_HOUR, HOUR_HEIGHT, INTERVAL_MIN);
     const snappedStart = snapToSlot(rawStart, SNAP_MIN);
-    const snappedEnd = new Date(snappedStart.getTime() + item.duration * 1000);
-    scheduleMutation.mutate({
-      id: item.id,
-      body: { scheduled_start: snappedStart.toISOString(), scheduled_end: snappedEnd.toISOString() },
-    });
+    if (!isSameDay(snappedStart, day)) return;
+    placeMutation.mutate({ date: dayKey(day), taskId: task.id, scheduledTime: snappedStart.toISOString() });
   }
 
   function buildWeekAgendaItems(dayDate: Date, googleForDay: GoogleEvent[]): WeekAgendaItem[] {
-    const daySessions: WeekAgendaItem[] = (scheduled ?? [])
-      .filter((s) => s.scheduled_start && isSameDay(new Date(s.scheduled_start), dayDate))
-      .map((s) => ({ type: 'session', id: s.id, start: new Date(s.scheduled_start!), name: s.name }));
+    const dayScheduleItems: WeekAgendaItem[] = timedItems(weekSchedules)
+      .filter((item) => isSameDay(new Date(item.scheduled_time!), dayDate))
+      .map((item) => ({ type: 'item', id: item.id, start: new Date(item.scheduled_time!), name: itemName(item) }));
     const dayGoogle: WeekAgendaItem[] = googleForDay.map((e) => ({
       type: 'google',
       id: e.id ?? e.summary,
       start: new Date(e.start),
       name: e.summary,
     }));
-    return [...daySessions, ...dayGoogle].sort((a, b) => a.start.getTime() - b.start.getTime());
+    return [...dayScheduleItems, ...dayGoogle].sort((a, b) => a.start.getTime() - b.start.getTime());
   }
 
   return (
@@ -382,31 +395,11 @@ export default function CalendarDayScreen() {
           <DayBlock
             key={item.id}
             item={item}
-            top={positionFromTime(new Date(item.scheduled_start!), START_HOUR, HOUR_HEIGHT, INTERVAL_MIN)}
-            dimmed={dragItem?.id === item.id}
+            top={positionFromTime(new Date(item.scheduled_time!), START_HOUR, HOUR_HEIGHT, INTERVAL_MIN)}
+            dimmed={dragItem?.key === `item-${item.id}`}
             drag={drag}
             onMove={commitDrag}>
-            <Text style={styles.sessionBlockText}>{item.name}</Text>
-            {item.is_on_calendar ? (
-              <View style={styles.calendarControls}>
-                <View testID={`session-block-${item.id}-calendar-marker`} style={styles.calendarMarker} />
-                <Pressable
-                  testID={`session-block-${item.id}-remove-calendar`}
-                  accessibilityRole="button"
-                  style={styles.calendarButton}
-                  onPress={() => removeFromCalendarMutation.mutate(item.id)}>
-                  <Text style={styles.calendarButtonText}>Remove</Text>
-                </Pressable>
-              </View>
-            ) : (
-              <Pressable
-                testID={`session-block-${item.id}-push`}
-                accessibilityRole="button"
-                style={styles.calendarButton}
-                onPress={() => addToCalendarMutation.mutate(item.id)}>
-                <Text style={styles.calendarButtonText}>Push</Text>
-              </Pressable>
-            )}
+            <Text style={styles.blockText}>{itemName(item)}</Text>
           </DayBlock>
         ))}
       </ScrollView>
@@ -420,7 +413,7 @@ export default function CalendarDayScreen() {
           accessibilityRole="button"
           style={styles.bankHeader}
           onPress={() => setBankExpanded((current) => !current)}>
-          <Text style={styles.bankHeaderText}>Unscheduled ({filteredBank.length})</Text>
+          <Text style={styles.bankHeaderText}>Activities ({filteredBank.length})</Text>
         </Pressable>
         {bankExpanded && (
           <>
@@ -432,10 +425,10 @@ export default function CalendarDayScreen() {
               value={bankSearch}
               onChangeText={setBankSearch}
             />
-            <Text style={styles.bankHint}>Hold a recording, then drag it onto the day.</Text>
+            <Text style={styles.bankHint}>Hold an activity, then drag it onto the day.</Text>
             <ScrollView horizontal style={styles.bankList}>
-              {filteredBank.map((item) => (
-                <BankChip key={item.id} item={item} drag={drag} onDrop={commitBankDrop} />
+              {filteredBank.map((task) => (
+                <BankChip key={task.id} task={task} drag={drag} onDrop={commitBankDrop} />
               ))}
             </ScrollView>
           </>
@@ -444,8 +437,8 @@ export default function CalendarDayScreen() {
       {dragItem && (
         <Animated.View
           pointerEvents="none"
-          style={[styles.sessionBlock, styles.ghost, { height: blockHeight(dragItem) }, ghostStyle]}>
-          <Text style={styles.sessionBlockText}>{dragItem.name}</Text>
+          style={[styles.block, styles.ghost, { height: blockHeight(dragItem.seconds) }, ghostStyle]}>
+          <Text style={styles.blockText}>{dragItem.name}</Text>
         </Animated.View>
       )}
       </>
@@ -462,15 +455,16 @@ function DayBlock({
   onMove,
   children,
 }: {
-  item: StopwatchSession;
+  item: ScheduleItem;
   top: number;
   dimmed: boolean;
   drag: DragGhost;
-  onMove: (item: StopwatchSession, translationY: number, absoluteY?: number) => void;
+  onMove: (item: ScheduleItem, translationY: number, absoluteY?: number) => void;
   children: ReactNode;
 }) {
   const { ghostY, containerTop, start, finish } = drag;
   const active = useSharedValue(false);
+  const payload: DragPayload = { key: `item-${item.id}`, name: itemName(item), seconds: item.estimated_duration };
 
   const dragGesture = Gesture.Pan()
     .activateAfterLongPress(DRAG_LONG_PRESS_MS)
@@ -478,7 +472,7 @@ function DayBlock({
       ghostY.value = event.absoluteY - containerTop.value - (event.y - event.translationY);
       if (!active.value) {
         active.value = true;
-        runOnJS(start)(item);
+        runOnJS(start)(payload);
       }
     })
     .onEnd((event) => {
@@ -494,8 +488,8 @@ function DayBlock({
   return (
     <GestureDetector gesture={dragGesture}>
       <Animated.View
-        testID={`session-block-${item.id}`}
-        style={[styles.sessionBlock, { top, height: blockHeight(item) }, dimmed && styles.dimmed]}>
+        testID={`item-block-${item.id}`}
+        style={[styles.block, { top, height: blockHeight(item.estimated_duration) }, dimmed && styles.dimmed]}>
         {children}
       </Animated.View>
     </GestureDetector>
@@ -503,16 +497,22 @@ function DayBlock({
 }
 
 function BankChip({
-  item,
+  task,
   drag,
   onDrop,
 }: {
-  item: StopwatchSession;
+  task: Task;
   drag: DragGhost;
-  onDrop: (item: StopwatchSession, absoluteY: number) => void;
+  onDrop: (task: Task, absoluteY: number) => void;
 }) {
   const { ghostY, containerTop, start, finish } = drag;
   const active = useSharedValue(false);
+  const noHistory = !task.total_recordings;
+  const payload: DragPayload = {
+    key: `task-${task.id}`,
+    name: task.name,
+    seconds: noHistory ? NO_HISTORY_SECONDS : task.average_duration,
+  };
 
   const gesture = Gesture.Pan()
     .activateAfterLongPress(DRAG_LONG_PRESS_MS)
@@ -520,11 +520,11 @@ function BankChip({
       ghostY.value = event.absoluteY - containerTop.value;
       if (!active.value) {
         active.value = true;
-        runOnJS(start)(item);
+        runOnJS(start)(payload);
       }
     })
     .onEnd((event) => {
-      runOnJS(onDrop)(item, event.absoluteY);
+      runOnJS(onDrop)(task, event.absoluteY);
     })
     .onFinalize(() => {
       if (active.value) {
@@ -535,8 +535,13 @@ function BankChip({
 
   return (
     <GestureDetector gesture={gesture}>
-      <View testID={`bank-item-${item.id}`} style={styles.bankItem}>
-        <Text style={styles.bankItemText}>{item.name}</Text>
+      <View testID={`bank-item-${task.id}`} style={styles.bankItem}>
+        <Text style={styles.bankItemText}>{task.name}</Text>
+        {noHistory && (
+          <Text testID={`bank-item-${task.id}-no-history`} style={styles.noHistoryText}>
+            no history
+          </Text>
+        )}
       </View>
     </GestureDetector>
   );
@@ -735,7 +740,7 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     paddingHorizontal: spacing.md,
   },
-  sessionBlock: {
+  block: {
     position: 'absolute',
     left: GUTTER,
     right: spacing.lg,
@@ -745,32 +750,13 @@ const styles = StyleSheet.create({
     borderColor: colors.glassBorder,
     padding: spacing.xs,
   },
-  sessionBlockText: {
+  blockText: {
     ...typography.label,
     color: colors.text,
   },
-  calendarControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  calendarMarker: {
-    width: spacing.sm,
-    height: spacing.sm,
-    borderRadius: radii.pill,
-    backgroundColor: colors.green,
-  },
-  calendarButton: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: spacing.sm,
-    borderRadius: radii.sm,
-    backgroundColor: colors.glassInner,
-    borderWidth: 1,
-    borderColor: colors.glassBorderInner,
-  },
-  calendarButtonText: {
+  noHistoryText: {
     ...typography.caption,
-    color: colors.text,
+    color: colors.textMuted,
   },
 
 });

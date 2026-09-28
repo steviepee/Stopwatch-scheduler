@@ -813,3 +813,19 @@ Each iteration appends its results here so the next session knows what worked, w
   - No-history marker: the reference impl keyed it off `!total_recordings`. The fixtures set both `average_duration: 0` and `total_recordings: 0`, so either signal works.
   - The new `scheduleAPI` methods are reached through `as unknown as Record<string, jest.Mock>` casts (P17 precedent), so tsc stays clean before B6.impl. Once `sessionAPI` loses the six methods, nothing in the tests references them.
   - After B6.impl, the Calendar tab has no push or `google-auth-error` UI until B7. No remaining test expects it there.
+
+## B6.impl. Mobile: Activity Bank and day view on Schedule Items
+- **Date:** 2026-09-28
+- **Status:** DONE
+- **Summary:** The Calendar tab now plans Activities. Day Blocks are the Items from `scheduleAPI.getRange(day, day)`, sized by `estimated_duration` and labelled with the Activity name. The Bank lists every Activity from `taskAPI.getAll`, with search and a "no history" marker. A Bank drop calls `placeActivity(localDate, { task_id, scheduled_time })`. A Block move calls `updateItem(…, { scheduled_time })`. Drop-to-Bank deletes the Item, asking first (D45 labels) if it is Exported. Week mode makes one `getRange(weekStart, weekEnd)` call. `api.ts` drops the six Recording scheduling/push methods and `getAll`'s dead `onCalendar`/`scheduled` params, and adds `getRange`, `placeActivity`, `removeItemFromCalendar` and `clearDay`. `deleteItem` now takes `deleteEvent`. Types lose the four Recording fields and `StopwatchSessionSchedule`, and gain `ScheduleItemPlace`.
+- **Files changed:** mobile/src/app/(tabs)/calendar.tsx, mobile/src/services/api.ts, mobile/src/types/index.ts, mobile/src/__tests__/offlineQueue.test.tsx, mobile/src/__tests__/RecordingsScreen.test.tsx, prd.md, progress.md
+- **Verification:** from `mobile/` (run via `python3 -c` subprocess): `npx jest --ci --forceExit` 153/153; `npx tsc --noEmit` clean; `npx expo export --platform android` succeeds (to `/tmp/b6_export`).
+- **Gotchas:**
+  - The acceptance grep returns exactly one line, [api.test.ts:215](mobile/src/__tests__/api.test.ts#L215). That line is the B6.tests assertion that `getUnscheduled`/`addToCalendar` are *absent* from `sessionAPI`. It is a `.tests` file, so it stays. No app code matches.
+  - Removing `is_on_calendar` from `StopwatchSession` broke tsc on fixture literals in `offlineQueue.test.tsx` (x2) and `RecordingsScreen.test.tsx`. Those lines were deleted (fixture-only; neither file is a B6 test file).
+  - `dayKey()` is now the local `YYYY-MM-DD`. The Google events query uses it too, which matches the server's `tz_offset` reading better than the old UTC slice did.
+  - Drag keeps a Block on its own day (D49): a move whose snapped start crosses local midnight is dropped silently, and so is a Bank drop that would land on another day. There is no clamp.
+  - The `google-auth-error` banner is kept. It is now set by a 401 from a move or delete of an Exported Item. B7 adds Push/Remove UI and can reuse `onGoogleError`.
+  - Query keys: `['schedules', 'range', start, end]` and `['tasks']`. Mutations invalidate `['schedules']`, which also refreshes the Schedule tab's lists.
+  - The ghost is a `DragPayload { key, name, seconds }`, not the dragged object. A Bank chip ghost uses the average, or 600 s for no history.
+  - `Schedule.name` is still typed `string` and `ApplyRegimen` still has the old shape. Both are B8's.

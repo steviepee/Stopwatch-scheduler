@@ -231,13 +231,13 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] Test: Google events still render read-only and a drag on one calls no API
 
 ### B6.impl — Mobile: Activity Bank and day view on Schedule Items
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract in `src/app/(tabs)/calendar.tsx`, `services/api.ts`,
   `types/index.ts`. Keep the P16-reopened drag mechanics (300 ms hold, ghost, `measureInWindow`
   conversion) — they work on the phone.
 - **Acceptance Criteria:**
-  - [ ] All B6.tests pass; tsc clean; export succeeds
-  - [ ] `grep -rn "scheduled_start\|getUnscheduled\|addToCalendar" mobile/src` is empty
+  - [x] All B6.tests pass; tsc clean; export succeeds
+  - [x] `grep -rn "scheduled_start\|getUnscheduled\|addToCalendar" mobile/src` is empty
 
 ### B7.tests — Mobile: Block actions, edit mode, Push/Remove day, feedback
 - **Status:** PENDING

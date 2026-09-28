@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Task, TaskCreate, TaskStats, TimeLogCreate, TimeLog, StopwatchSession, StopwatchSessionCreate, StopwatchSessionUpdate, StopwatchSessionWithTask, StopwatchSessionSchedule, Schedule, ScheduleCreate, ScheduleUpdate, ScheduleItem, ScheduleItemCreate, ScheduleItemUpdate, ApplyRegimen, GenerateRequest, GenerateResponse } from '../types';
+import { Task, TaskCreate, TaskStats, TimeLogCreate, TimeLog, StopwatchSession, StopwatchSessionCreate, StopwatchSessionUpdate, StopwatchSessionWithTask, Schedule, ScheduleCreate, ScheduleUpdate, ScheduleItem, ScheduleItemCreate, ScheduleItemUpdate, ScheduleItemPlace, ApplyRegimen, GenerateRequest, GenerateResponse } from '../types';
 import { getApiUrl, getToken } from './auth';
 
 const api = axios.create({
@@ -88,22 +88,10 @@ export const googleCalendarAPI = {
 
 // Stopwatch Session APIs
 export const sessionAPI = {
-  getAll: async (taskId?: number, onCalendar?: boolean, scheduled?: boolean): Promise<StopwatchSession[]> => {
+  getAll: async (taskId?: number): Promise<StopwatchSession[]> => {
     const params: Record<string, unknown> = {};
     if (taskId !== undefined) params.task_id = taskId;
-    if (onCalendar !== undefined) params.on_calendar = onCalendar;
-    if (scheduled !== undefined) params.scheduled = scheduled;
     const response = await api.get('/sessions/', { params });
-    return response.data;
-  },
-
-  getScheduled: async (): Promise<StopwatchSession[]> => {
-    const response = await api.get('/sessions/', { params: { scheduled: true } });
-    return response.data;
-  },
-
-  getUnscheduled: async (): Promise<StopwatchSession[]> => {
-    const response = await api.get('/sessions/', { params: { scheduled: false } });
     return response.data;
   },
 
@@ -125,25 +113,6 @@ export const sessionAPI = {
   delete: async (id: number): Promise<void> => {
     await api.delete(`/sessions/${id}`);
   },
-
-  addToCalendar: async (id: number): Promise<StopwatchSession> => {
-    const response = await api.post(`/sessions/${id}/calendar`);
-    return response.data;
-  },
-
-  removeFromCalendar: async (id: number): Promise<void> => {
-    await api.delete(`/sessions/${id}/calendar`);
-  },
-
-  schedule: async (id: number, schedule: StopwatchSessionSchedule): Promise<StopwatchSession> => {
-    const response = await api.put(`/sessions/${id}/schedule`, schedule);
-    return response.data;
-  },
-
-  unschedule: async (id: number): Promise<StopwatchSession> => {
-    const response = await api.put(`/sessions/${id}/unschedule`);
-    return response.data;
-  },
 };
 
 // Schedule APIs
@@ -152,6 +121,11 @@ export const scheduleAPI = {
     const params: Record<string, unknown> = {};
     if (isRegimen !== undefined) params.is_regimen = isRegimen;
     const response = await api.get('/schedules/', { params });
+    return response.data;
+  },
+
+  getRange: async (startDate: string, endDate: string): Promise<Schedule[]> => {
+    const response = await api.get('/schedules/', { params: { start_date: startDate, end_date: endDate } });
     return response.data;
   },
 
@@ -174,6 +148,10 @@ export const scheduleAPI = {
     await api.delete(`/schedules/${id}`);
   },
 
+  clearDay: async (id: number, deleteEvents: boolean): Promise<void> => {
+    await api.delete(`/schedules/${id}`, { params: { delete_events: deleteEvents } });
+  },
+
   rate: async (id: number, rating: number): Promise<Schedule> => {
     const response = await api.patch(`/schedules/${id}/rate`, null, { params: { rating } });
     return response.data;
@@ -181,6 +159,11 @@ export const scheduleAPI = {
 
   applyRegimen: async (id: number, body: ApplyRegimen): Promise<Schedule> => {
     const response = await api.post(`/schedules/${id}/apply`, body);
+    return response.data;
+  },
+
+  placeActivity: async (date: string, body: ScheduleItemPlace): Promise<ScheduleItem> => {
+    const response = await api.post(`/schedules/days/${date}/items`, body);
     return response.data;
   },
 
@@ -194,8 +177,12 @@ export const scheduleAPI = {
     return response.data;
   },
 
-  deleteItem: async (scheduleId: number, itemId: number): Promise<void> => {
-    await api.delete(`/schedules/${scheduleId}/items/${itemId}`);
+  deleteItem: async (scheduleId: number, itemId: number, deleteEvent: boolean): Promise<void> => {
+    await api.delete(`/schedules/${scheduleId}/items/${itemId}`, { params: { delete_event: deleteEvent } });
+  },
+
+  removeItemFromCalendar: async (scheduleId: number, itemId: number): Promise<void> => {
+    await api.delete(`/schedules/${scheduleId}/items/${itemId}/calendar`);
   },
 
   generate: async (request: GenerateRequest): Promise<GenerateResponse> => {
