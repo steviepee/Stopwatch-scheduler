@@ -690,6 +690,13 @@ Each iteration appends its results here so the next session knows what worked, w
   - **The phone kept running the old calendar after the change.** Drops still landed at 2–4 AM and there were no hour labels. Press `r` in Metro, or restart it with `-c`, before judging a change on-device.
   - Test mocks gained `activateAfterLongPress` and `ScrollView`. The unschedule test now fires a `layout` on `bank-panel` and drops below it, instead of passing `droppedOnBank`.
 
+## P21. USER — Build 1b phone check
+- **Date:** 2026-09-27
+- **Status:** DONE
+- **Summary:** All five checks passed on the phone. (1) Drag from the bank, move, and persistence across an app restart all work, after the on-device rebuild recorded above as P16 reopened. Resize was removed from the check at the user's request. (2) Today's Google events show on the day view and cannot be dragged. (3) A recording and a regimen pushed to Google. Pushing the same schedule again cannot duplicate: the server skips items that already have an event, and the app offers Remove in place of a second Push. **First recorded as a pass without a regimen ever being made — corrected the same day.** When the regimen path was actually run, two things surfaced. The user saved the regimen twice (#10, #12) because Save gave no feedback, and pushing both put every event on Google twice. The user removed both from Google via the app (events confirmed `cancelled`), and #12 was deleted. **Apply is broken**: `apply_regimen` copies items without `scheduled_time`, so the applied schedule (#11, deleted) could not be pushed or shown, and nothing in the app lists applied schedules. The Apply fix needs a timezone-aware day shift and is folded into Build 2 design question 3; it is not patched here. (4) The CSV export has every row. (5) The mural renders on every tab. The text is hard to read, which the user rates as polish, not a failure. The check also turned up the backend crash (Google client, fixed ee072b3). Build 1b is complete except regimen Apply, which moves to Build 2.
+- **Gotchas:**
+  - **Drag-to-bank does not delete a pushed block's Google event.** "To poydras: teleport" (recording 11) is still on Google Calendar at 2026-09-26 02:45 CDT, left there by moves made before Remove worked. The user has not asked for it to be deleted. Build 2 makes Remove deliberate and asks on drag-to-bank.
+
 ## P8d (reopened). Schedule Save could create duplicates
 - **Date:** 2026-09-27 (found during P21 check 3)
 - **Status:** DONE

@@ -1,21 +1,18 @@
 # Standing Orders — Phase 5 → 6
 
-Current as of 2026-09-23. Read this, then `prd.md`.
+Current as of 2026-09-27. Read this, then `prd.md`.
 
 ## 0. Pick up here
 
-**The loop has nothing left.** Every PENDING task in `prd.md` (P2–P20) is DONE. What remains is
-the user's two phone checks, which the loop never picks:
+**Phase 5 is complete.** Every loop task in `prd.md` is DONE, and both phone checks passed:
+P10 on 2026-09-26 and P21 on 2026-09-27, with results in `progress.md`. The checks produced
+on-device fixes, all committed: Android date/time pickers, calendar drag rebuilt with resize
+removed, and a backend crash in the Google client (GOTCHAS).
 
-- **P10** — Build 1 check (four items). Run on 2026-09-23; it produced three fixes, all committed:
-  stale Activity average after a sync, schedule durations shown in seconds, and a GOTCHAS entry on
-  airplane mode not proving offline. **No pass/fail is recorded yet.**
-- **P21** — Build 1b check (five items). Started 2026-09-17; it produced the mural fix (P19
-  reopened, committed 2026-09-23). **No pass/fail is recorded yet.**
-
-**Next action:** ask the user which P10 and P21 items passed, record each in `progress.md`
-(failures name the task they reopen), and mark the task DONE when all its items pass. After P21:
-write the Build 2 PRD (outline in section 5), then Phase 6 deploy.
+**Next action: design the Activities bank, then write the Build 2 PRD** (outline in section 5).
+The first Build 2 task changes what the calendar bank holds, and its open questions are listed
+there. Settle them with the user before writing tasks, then write the PRD with paired
+`.tests`/`.impl` tasks for both clients (D20). Phase 6 (deploy) follows Build 2.
 
 Parked items from the phone-check sessions — raise when there is room, do not fix unasked:
 
@@ -91,11 +88,11 @@ The loop never picks a `USER` status; it picks the first `PENDING`.
 
 ## 5. Phase 5 — builds 1 and 1b are `prd.md`
 
-All loop tasks are done. P1, P5 are USER-DONE; **P10 and P21 are USER, results unrecorded** (section 0).
+All loop tasks are done. P1, P5, P10, P21 are USER-DONE.
 Decisions D22–D33 in `roadmap.md` shaped build 1; D34–D38 in `prd.md` shaped build 1b.
 P11 (delete `frontend/`) is CANCELLED — see D11.
 
-Build 2 gets its own PRD after P21 passes, planned for **both** `frontend/` and `mobile/`, with
+Build 2 gets its own PRD (P21 passed 2026-09-27), planned for **both** `frontend/` and `mobile/`, with
 paired `.tests`/`.impl` tasks (D20). Outline:
 
 - Quadrant picker on the Activity screen → `PUT /api/tasks/{id}` with `is_urgent` / `is_important`.
@@ -113,14 +110,23 @@ Added 2026-09-27 from the P21 phone check (user-approved):
   existing model: Schedule = Activities against a date). Block length = the Activity's average
   duration, not editable by drag. One-time events live in Google Calendar, not this app.
   Needs design before the PRD: how a date's Schedule is found or created, what happens to the
-  current recording-scheduling fields and routes, and how Regimens (dateless Schedules) apply
-  onto a calendar day.
+  current recording-scheduling fields and routes, how Regimens (dateless Schedules) apply
+  onto a calendar day (**Apply is broken today**: `apply_regimen` drops `scheduled_time`, so
+  the result has no times and no screen lists it; the fix is a day shift in the user's
+  timezone, which the server does not know — send a tz offset as `calendar/events` does), and what dragging a block back to the bank means once the bank is
+  Activities (today it unschedules the recording; then it would delete that Schedule Item,
+  and the Activity simply stays in the bank).
 - **Push day / Remove day** on the Calendar tab. Falls out of the item above: a day is a
   Schedule, so it is the existing `POST/DELETE /api/schedules/{id}/calendar` (no duplicates).
 - **Feedback on Save and Push.** Schedule-tab Save shows nothing until the saved card appears
   and nothing on failure (the user saved five duplicates); calendar Push/Remove handle only 401
   and fail silently otherwise.
+- **Remove from Google, made deliberate.** Rename the block's "Remove" to "Remove from Google",
+  confirm before deleting, and when a pushed block is dragged back to the bank, ask whether to
+  delete its Google event too — today drag-to-bank leaves the event behind on Google.
 - Deferred, not Build 2: a per-week list of needed Activities — see `future-work.md`.
+- Later, polish: text over the cloth mural is hard to read. The user calls it bells and
+  whistles next to the functional work; not a Build 2 task unless they raise it.
 
 The user also wants per-account users after deploy (memory: multi-user intent), which supersedes
 ADR 0002's premise. Not scheduled; prefer transition-friendly choices only when they cost nothing.

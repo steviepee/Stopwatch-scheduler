@@ -508,7 +508,7 @@ taken with the user on 2026-09-08:
   - [x] All P20.tests pass; tsc clean; export succeeds
 
 ### P21. USER — Build 1b phone check (the real gate to delete the web app)
-- **Status:** USER
+- **Status:** DONE 2026-09-27 — except regimen Apply (drops item times); fix moved to Build 2, see progress.md
 - **Description:** No native module was added, so `npx expo start --dev-client` should be enough;
   rebuild only if the P19 spike forced a native change. On the phone, against the LAN backend:
   1. Calendar tab: drag a recording from the bank onto the grid, move it (resize removed
@@ -521,8 +521,8 @@ taken with the user on 2026-09-08:
   5. The background renders and text stays readable on every tab.
   When all five pass, Build 1b is complete. P11 is cancelled (roadmap D11) — the web app stays.
 - **Acceptance Criteria:**
-  - [ ] All five checks pass on a physical phone
-  - [ ] Any failure recorded in `progress.md` with the task it reopens
+  - [x] All five checks pass on a physical phone
+  - [x] Any failure recorded in `progress.md` with the task it reopens
 
 ---
 
