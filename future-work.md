@@ -188,3 +188,36 @@ Items by ISO week, plus a way to show "placed 2 of 3".
 - Does placing an item on the calendar tick it off, or does recording it?
 - Does an unfinished week roll over, or reset?
 - Is this what a Regimen should grow into, or a separate thing beside it?
+
+## Save a calendar day as a Regimen
+
+**Raised:** 2026-09-27, in the Build 2 Activities-bank design. Wanted; deferred to keep Build 2 tight.
+
+Days are now built on the calendar, but Regimens can still only come from the Schedule-tab
+generator. A "Save as Regimen" action on the day view would copy the day's Schedule Items —
+times and per-placement lengths included — into a new named Regimen, making "a Tuesday like
+this one" repeatable.
+
+**Why it is not in Build 2.** Small on its own (copy Items into a new Regimen), but Build 2
+already reshapes the calendar, Apply, and the bank; this waits until those settle.
+
+**Questions to settle**
+
+- Does it copy Frog marks and Exported state (surely not the Google event ids)?
+- Web and mobile both, or mobile first?
+
+## Plan vs actual on the calendar
+
+**Raised:** 2026-09-27, in the Build 2 Activities-bank design (ADR 0003).
+
+Once the bank holds Activities, Recordings no longer appear on the calendar. The idea is to
+show past Recordings as read-only blocks beside the day's plan, so a day can be compared with
+what actually happened.
+
+**Why it is not small.** It adds a second, non-draggable block type to a drag layer that was
+just rebuilt for the phone, and Recordings without a start time have nowhere to go.
+
+**Questions to settle**
+
+- Side by side, overlaid, or a toggle?
+- Is a Recording matched to the Schedule Item it fulfilled, or only shown by time?

@@ -9,10 +9,11 @@ P10 on 2026-09-26 and P21 on 2026-09-27, with results in `progress.md`. The chec
 on-device fixes, all committed: Android date/time pickers, calendar drag rebuilt with resize
 removed, and a backend crash in the Google client (GOTCHAS).
 
-**Next action: design the Activities bank, then write the Build 2 PRD** (outline in section 5).
-The first Build 2 task changes what the calendar bank holds, and its open questions are listed
-there. Settle them with the user before writing tasks, then write the PRD with paired
-`.tests`/`.impl` tasks for both clients (D20). Phase 6 (deploy) follows Build 2.
+**Next action: run the loop on Build 2a** (`prd.md`, B1–B11; B5 and B12 are USER). The
+Activities-bank design was settled with the user on 2026-09-27: decisions D39–D50 in `prd.md`,
+ADR 0003, glossary updated (Bank, Block, Schedule, Scheduled). The Phase 5 PRD is archived at
+`docs/prd-phase5-completed.md`. Build 2b (quadrant, frog UI, strategies, Pomodoro, notification
+Stop, peak hours) is stubbed as HOLD and needs its own design pass. Phase 6 (deploy) follows Build 2.
 
 Parked items from the phone-check sessions — raise when there is room, do not fix unasked:
 
@@ -86,7 +87,7 @@ How USER tasks worked, for the next PRD that has them:
 
 The loop never picks a `USER` status; it picks the first `PENDING`.
 
-## 5. Phase 5 — builds 1 and 1b are `prd.md`
+## 5. Phase 5 — builds 1 and 1b are `docs/prd-phase5-completed.md`; Build 2a is `prd.md`
 
 All loop tasks are done. P1, P5, P10, P21 are USER-DONE.
 Decisions D22–D33 in `roadmap.md` shaped build 1; D34–D38 in `prd.md` shaped build 1b.

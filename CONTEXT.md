@@ -14,7 +14,7 @@ A named, repeatable thing you do, with a running average and median duration lea
 _Avoid_: Task (the code name — `Task` model, `/api/tasks`), job, item
 
 **Recording**:
-One timed run of the stopwatch, saved with a name and a duration. The unit of truth: attaching a Recording to an Activity is what teaches the Activity how long it takes.
+One run of an Activity, saved with a name and a duration: timed by the stopwatch, or entered by hand when the duration is already known. The unit of truth: attaching a Recording to an Activity is what teaches the Activity how long it takes.
 _Avoid_: Session, stopwatch session (the code name — `StopwatchSession`, `/api/sessions`)
 
 **Time Log**:
@@ -35,11 +35,11 @@ A Recording whose monotonic and wall-clock spans disagree by more than a small t
 ### Planning
 
 **Schedule**:
-An ordered set of Activities laid out against a specific date, each with an estimated duration seeded from its history.
+The plan for one calendar date: the Activities laid out on that day, each with an estimated duration seeded from its history. A date has at most one Schedule, and every way of planning that day adds to it.
 _Avoid_: Plan, day plan, timeline (the code uses `timeline` for the rendered list inside a schedule)
 
 **Schedule Item**:
-One Activity's slot within a Schedule, with its estimated duration and position.
+One placement of an Activity within a Schedule, with its own estimated duration and position. Its duration is seeded from the Activity's average (10 minutes if the Activity has no history), can be changed for that placement alone, and never feeds back into the Activity.
 
 **Regimen**:
 A Schedule saved without a date so it can be applied again to any future day.
@@ -64,11 +64,19 @@ _Avoid_: Peak energy (the lesson's term; the app measures when work happened, no
 ### Calendar
 
 **Scheduled**:
-A Recording that has been given a start and end on the in-app calendar. Distinct from being on Google Calendar.
+A Schedule Item that has a start time on the in-app calendar. Distinct from being on Google Calendar. Recordings are never Scheduled; they are history, not plans.
 
 **Exported**:
-A Recording or Schedule Item that has been pushed to Google Calendar as an event.
+A Schedule Item that has been pushed to Google Calendar as an event.
 _Avoid_: Synced, published, "on calendar" (the code name — `is_on_calendar`)
+
+**Bank**:
+The list of Activities beside the calendar, from which any Activity can be placed on any day any number of times.
+_Avoid_: Tray, palette, unscheduled list
+
+**Block**:
+A Scheduled Schedule Item as drawn on the calendar.
+_Avoid_: Event (reserved for Google Calendar), slot
 
 **Existing event**:
 A Google Calendar event imported for a date so a Strategy can schedule around it.
