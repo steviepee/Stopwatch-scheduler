@@ -250,6 +250,29 @@ describe('save step', () => {
       expect.objectContaining({ task_id: 8, position: 1, scheduled_time: timeline[1].start }),
     ]);
   });
+
+  it('cannot save the same schedule twice, but can save again after a change', async () => {
+    mockedGenerate.mockResolvedValue({ options: [option({ strategy: 'your-order' })] });
+    mockedCreate.mockResolvedValue({ ...REGIMEN, id: 56, name: 'Twice', is_regimen: false, items: [] });
+    mockedAddItem.mockResolvedValue({});
+    await renderScreen();
+
+    await screen.findByTestId('activity-row-7');
+    await selectActivity(7);
+    await fireEvent.press(screen.getByTestId('btn-generate'));
+    await screen.findByTestId('option-card-your-order');
+    await fireEvent.press(screen.getByTestId('btn-select-your-order'));
+
+    await fireEvent.press(screen.getByTestId('btn-save'));
+    await waitFor(() => expect(mockedCreate).toHaveBeenCalledTimes(1));
+    await screen.findByText('Saved');
+    await fireEvent.press(screen.getByTestId('btn-save'));
+    expect(mockedCreate).toHaveBeenCalledTimes(1);
+
+    await fireEvent(screen.getByTestId('checkbox-regimen'), 'valueChange', true);
+    await fireEvent.press(screen.getByTestId('btn-save'));
+    await waitFor(() => expect(mockedCreate).toHaveBeenCalledTimes(2));
+  });
 });
 
 describe('regimens', () => {

@@ -689,3 +689,10 @@ Each iteration appends its results here so the next session knows what worked, w
   - **Fetching `entry.bundle` from Metro with curl does not include the app's screens.** expo-router's routes need the device's `transform.routerRoot` params, so grepping that bundle for new code proves nothing. Use `npx expo export`.
   - **The phone kept running the old calendar after the change.** Drops still landed at 2–4 AM and there were no hour labels. Press `r` in Metro, or restart it with `-c`, before judging a change on-device.
   - Test mocks gained `activateAfterLongPress` and `ScrollView`. The unschedule test now fires a `layout` on `bank-panel` and drops below it, instead of passing `droppedOnBank`.
+
+## P8d (reopened). Schedule Save could create duplicates
+- **Date:** 2026-09-27 (found during P21 check 3)
+- **Status:** DONE
+- **Summary:** Save gave no feedback until the saved card appeared, so a second tap created a second identical schedule. It happened in P10 (schedules 5–8) and again in P21 (regimens #10 and #12, both pushed, so Google showed every event twice). Save now reads "Saving…" and is disabled while in flight. Afterwards it reads "Saved" and stays disabled until the request, option, name, or regimen switch changes. A failed save shows an error line.
+- **Files changed:** mobile/src/app/(tabs)/schedule.tsx, mobile/src/__tests__/ScheduleScreen.test.tsx, progress.md
+- **Verification:** from `mobile/`: `npx jest --ci` 144/144 (new test: a second tap does not call create; changing the regimen switch re-enables Save); `npx tsc --noEmit` clean.

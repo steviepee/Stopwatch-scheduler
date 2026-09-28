@@ -84,6 +84,7 @@ export default function ScheduleScreen() {
   const [selectedStrategy, setSelectedStrategy] = useState<string | null>(null);
   const [scheduleName, setScheduleName] = useState(defaultScheduleName);
   const [isRegimen, setIsRegimen] = useState(false);
+  const [savedKey, setSavedKey] = useState<string | null>(null);
   const [applyOpenId, setApplyOpenId] = useState<number | null>(null);
   const [pushedById, setPushedById] = useState<Record<number, Schedule>>({});
   const [googleAuthError, setGoogleAuthError] = useState(false);
@@ -117,8 +118,16 @@ export default function ScheduleScreen() {
       }
       return created;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['regimens'] }),
+    onSuccess: (_data, option) => {
+      setSavedKey(saveKey(option.strategy));
+      queryClient.invalidateQueries({ queryKey: ['regimens'] });
+    },
   });
+
+  // Save stays disabled for exactly what was just saved, so a second tap cannot duplicate it.
+  function saveKey(strategy: string): string {
+    return JSON.stringify([generateRequest, strategy, scheduleName, isRegimen]);
+  }
 
   const applyRegimenMutation = useMutation({
     mutationFn: ({ id, targetDate }: { id: number; targetDate: string }) =>
@@ -199,6 +208,7 @@ export default function ScheduleScreen() {
   const options = generateMutation.data?.options ?? [];
   const selectedOption = options.find((option) => option.strategy === selectedStrategy) ?? null;
   const savedSchedule = saveMutation.data;
+  const isSaved = !!selectedOption && savedKey === saveKey(selectedOption.strategy);
   const savedSchedulePush = savedSchedule ? pushedById[savedSchedule.id] : undefined;
   const isSavedSchedulePushed = !!savedSchedulePush?.items.some((item) => item.calendar_event_id);
   const savedScheduleEventsPushed = savedSchedulePush?.items.filter((item) => item.calendar_event_id).length ?? 0;
@@ -320,11 +330,19 @@ export default function ScheduleScreen() {
           <Pressable
             testID="btn-save"
             accessibilityRole="button"
-            style={styles.button}
+            style={[styles.button, (saveMutation.isPending || isSaved) && styles.buttonDisabled]}
+            disabled={saveMutation.isPending || isSaved}
             onPress={() => saveMutation.mutate(selectedOption)}
           >
-            <Text style={styles.buttonLabel}>Save</Text>
+            <Text style={styles.buttonLabel}>
+              {saveMutation.isPending ? 'Saving…' : isSaved ? 'Saved' : 'Save'}
+            </Text>
           </Pressable>
+          {saveMutation.isError && (
+            <Text testID="save-error" style={styles.caption}>
+              Couldn't save. Check the connection and try again.
+            </Text>
+          )}
         </GlassView>
       )}
 
@@ -476,6 +494,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  buttonDisabled: {
+    opacity: 0.5,
   },
   buttonLabel: {
     ...typography.label,
