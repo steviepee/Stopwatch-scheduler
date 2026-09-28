@@ -1,14 +1,15 @@
-import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { runOnJS } from 'react-native-reanimated';
+import { Gesture, GestureDetector, ScrollView } from 'react-native-gesture-handler';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, type SharedValue } from 'react-native-reanimated';
 
 import { colors, radii, spacing, touchTarget, typography } from '@/theme/tokens';
 import { sessionAPI, calendarImportAPI } from '@/services/api';
 import {
   formatDayLong,
   formatDayShort,
+  formatHour,
   getWeekDays,
   heightFromDuration,
   isSameDay,
@@ -30,6 +31,18 @@ const END_HOUR = 24;
 const HOUR_HEIGHT = 180; // px per hour (3px/min) — keeps a 15-minute block above the 44pt touch target
 const INTERVAL_MIN = 60;
 const SNAP_MIN = 15;
+const GUTTER = 56; // hour labels sit left of the blocks
+const MIN_BLOCK_HEIGHT = 44;
+const INITIAL_SCROLL_HOUR = 8;
+// Drags start on a long press so a plain swipe still scrolls the grid and the bank.
+const DRAG_LONG_PRESS_MS = 300;
+
+type DragGhost = {
+  ghostY: SharedValue<number>;
+  containerTop: SharedValue<number>;
+  start: (item: StopwatchSession) => void;
+  finish: () => void;
+};
 
 function dayKey(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -39,6 +52,23 @@ function pxToMinutes(px: number): number {
   return (px / HOUR_HEIGHT) * 60;
 }
 
+function shiftDays(date: Date, days: number): Date {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+}
+
+function blockSeconds(item: StopwatchSession): number {
+  if (item.scheduled_start && item.scheduled_end) {
+    return (new Date(item.scheduled_end).getTime() - new Date(item.scheduled_start).getTime()) / 1000;
+  }
+  return item.duration;
+}
+
+function blockHeight(item: StopwatchSession): number {
+  return Math.max(MIN_BLOCK_HEIGHT, heightFromDuration(blockSeconds(item), HOUR_HEIGHT, INTERVAL_MIN));
+}
+
 export default function CalendarDayScreen() {
   const queryClient = useQueryClient();
   const [day, setDay] = useState(() => new Date());
@@ -46,6 +76,23 @@ export default function CalendarDayScreen() {
   const [bankExpanded, setBankExpanded] = useState(true);
   const [bankSearch, setBankSearch] = useState('');
   const [googleAuthError, setGoogleAuthError] = useState(false);
+  const [dragItem, setDragItem] = useState<StopwatchSession | null>(null);
+
+  // Gesture absoluteY is window-relative; these convert it to the grid's content space.
+  const containerRef = useRef<View>(null);
+  const gridRef = useRef<ScrollView>(null);
+  const containerTop = useSharedValue(0);
+  const gridTop = useRef(0);
+  const bankTop = useRef(Infinity);
+  const scrollY = useRef(0);
+  const ghostY = useSharedValue(0);
+  const ghostStyle = useAnimatedStyle(() => ({ top: ghostY.value }));
+  const drag: DragGhost = {
+    ghostY,
+    containerTop,
+    start: (item) => setDragItem(item),
+    finish: () => setDragItem(null),
+  };
 
   const { data: scheduled } = useQuery({
     queryKey: ['sessions', 'scheduled'],
@@ -118,8 +165,16 @@ export default function CalendarDayScreen() {
     [scheduled, day]
   );
 
-  function commitDrag(item: StopwatchSession, translationY: number) {
+  function isOverBank(absoluteY: number): boolean {
+    return absoluteY - containerTop.value >= bankTop.current;
+  }
+
+  function commitDrag(item: StopwatchSession, translationY: number, absoluteY?: number) {
     if (!item.scheduled_start) return;
+    if (absoluteY !== undefined && isOverBank(absoluteY)) {
+      unscheduleMutation.mutate(item.id);
+      return;
+    }
     const originalStart = new Date(item.scheduled_start);
     const durationMs = item.scheduled_end
       ? new Date(item.scheduled_end).getTime() - originalStart.getTime()
@@ -133,12 +188,11 @@ export default function CalendarDayScreen() {
     });
   }
 
-  function commitUnschedule(item: StopwatchSession) {
-    unscheduleMutation.mutate(item.id);
-  }
-
   function commitBankDrop(item: StopwatchSession, absoluteY: number) {
-    const rawStart = timeFromPosition(absoluteY, day, START_HOUR, HOUR_HEIGHT, INTERVAL_MIN);
+    if (isOverBank(absoluteY)) return;
+    const gridY = absoluteY - containerTop.value - gridTop.current + scrollY.current;
+    if (gridY < 0) return;
+    const rawStart = timeFromPosition(gridY, day, START_HOUR, HOUR_HEIGHT, INTERVAL_MIN);
     const snappedStart = snapToSlot(rawStart, SNAP_MIN);
     const snappedEnd = new Date(snappedStart.getTime() + item.duration * 1000);
     scheduleMutation.mutate({
@@ -160,21 +214,11 @@ export default function CalendarDayScreen() {
     return [...daySessions, ...dayGoogle].sort((a, b) => a.start.getTime() - b.start.getTime());
   }
 
-  function commitResize(item: StopwatchSession, translationY: number) {
-    if (!item.scheduled_start) return;
-    const baseEnd = item.scheduled_end
-      ? new Date(item.scheduled_end)
-      : new Date(new Date(item.scheduled_start).getTime() + item.duration * 1000);
-    const rawEnd = new Date(baseEnd.getTime() + pxToMinutes(translationY) * 60 * 1000);
-    const snappedEnd = snapToSlot(rawEnd, SNAP_MIN);
-    scheduleMutation.mutate({
-      id: item.id,
-      body: { scheduled_start: item.scheduled_start, scheduled_end: snappedEnd.toISOString() },
-    });
-  }
-
   return (
-    <View style={styles.container}>
+    <View
+      ref={containerRef}
+      style={styles.container}
+      onLayout={() => containerRef.current?.measureInWindow?.((_x, y) => { containerTop.value = y; })}>
       <View style={styles.viewToggleRow}>
         <Pressable
           testID="view-toggle-day"
@@ -191,6 +235,28 @@ export default function CalendarDayScreen() {
           <Text style={styles.buttonLabel}>Week</Text>
         </Pressable>
       </View>
+
+      {viewMode === 'week' && (
+        <View style={styles.nav}>
+          <Pressable
+            testID="week-nav-prev"
+            accessibilityRole="button"
+            style={styles.navButton}
+            onPress={() => setDay((current) => shiftDays(current, -7))}>
+            <Text style={styles.navLabel}>‹</Text>
+          </Pressable>
+          <Text testID="week-label" style={styles.dayLabel}>
+            {formatDayShort(weekDays[0])} – {formatDayShort(weekDays[weekDays.length - 1])}
+          </Text>
+          <Pressable
+            testID="week-nav-next"
+            accessibilityRole="button"
+            style={styles.navButton}
+            onPress={() => setDay((current) => shiftDays(current, 7))}>
+            <Text style={styles.navLabel}>›</Text>
+          </Pressable>
+        </View>
+      )}
 
       {viewMode === 'week' && (
         <ScrollView testID="week-agenda">
@@ -210,7 +276,9 @@ export default function CalendarDayScreen() {
                 <Text style={styles.weekDayLabel}>{formatDayShort(weekDay)}</Text>
                 {items.map((item) => (
                   <View key={`${item.type}-${item.id}`} testID={`week-${item.type}-${item.id}`} style={styles.weekItemRow}>
-                    <Text style={styles.weekItemText}>{item.name}</Text>
+                    <Text style={styles.weekItemText}>
+                      {item.start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}  {item.name}
+                    </Text>
                   </View>
                 ))}
               </Pressable>
@@ -261,8 +329,25 @@ export default function CalendarDayScreen() {
       )}
 
       <ScrollView
+        ref={gridRef}
         style={styles.grid}
-        contentContainerStyle={{ height: (END_HOUR - START_HOUR) * HOUR_HEIGHT, position: 'relative' }}>
+        contentContainerStyle={{ height: (END_HOUR - START_HOUR) * HOUR_HEIGHT, position: 'relative' }}
+        scrollEventThrottle={16}
+        onScroll={(e) => { scrollY.current = e.nativeEvent.contentOffset.y; }}
+        onLayout={(e) => {
+          gridTop.current = e.nativeEvent.layout.y;
+          if (scrollY.current === 0) {
+            const y = (INITIAL_SCROLL_HOUR - START_HOUR) * HOUR_HEIGHT;
+            gridRef.current?.scrollTo?.({ y, animated: false });
+            scrollY.current = y;
+          }
+        }}>
+        {Array.from({ length: END_HOUR - START_HOUR }, (_, i) => (
+          <View key={i} style={[styles.hourRow, { top: i * HOUR_HEIGHT }]}>
+            <Text style={styles.hourLabel}>{formatHour(START_HOUR + i)}</Text>
+          </View>
+        ))}
+
         {isSameDay(day, new Date()) && (
           <View
             testID="current-time-line"
@@ -293,62 +378,43 @@ export default function CalendarDayScreen() {
           );
         })}
 
-        {dayItems.map((item) => {
-          const start = new Date(item.scheduled_start!);
-          const dragGesture = Gesture.Pan().onEnd((event) => {
-            const droppedOnBank = (event as unknown as { droppedOnBank?: boolean }).droppedOnBank;
-            if (droppedOnBank) {
-              runOnJS(commitUnschedule)(item);
-            } else {
-              runOnJS(commitDrag)(item, event.translationY);
-            }
-          });
-          const resizeGesture = Gesture.Pan().onEnd((event) => {
-            runOnJS(commitResize)(item, event.translationY);
-          });
-
-          return (
-            <GestureDetector key={item.id} gesture={dragGesture}>
-              <View
-                testID={`session-block-${item.id}`}
-                style={[
-                  styles.sessionBlock,
-                  {
-                    top: positionFromTime(start, START_HOUR, HOUR_HEIGHT, INTERVAL_MIN),
-                    height: heightFromDuration(item.duration, HOUR_HEIGHT, INTERVAL_MIN),
-                  },
-                ]}>
-                <Text style={styles.sessionBlockText}>{item.name}</Text>
-                {item.is_on_calendar ? (
-                  <View style={styles.calendarControls}>
-                    <View testID={`session-block-${item.id}-calendar-marker`} style={styles.calendarMarker} />
-                    <Pressable
-                      testID={`session-block-${item.id}-remove-calendar`}
-                      accessibilityRole="button"
-                      style={styles.calendarButton}
-                      onPress={() => removeFromCalendarMutation.mutate(item.id)}>
-                      <Text style={styles.calendarButtonText}>Remove</Text>
-                    </Pressable>
-                  </View>
-                ) : (
-                  <Pressable
-                    testID={`session-block-${item.id}-push`}
-                    accessibilityRole="button"
-                    style={styles.calendarButton}
-                    onPress={() => addToCalendarMutation.mutate(item.id)}>
-                    <Text style={styles.calendarButtonText}>Push</Text>
-                  </Pressable>
-                )}
-                <GestureDetector gesture={resizeGesture}>
-                  <View testID={`session-block-${item.id}-resize-handle`} style={styles.resizeHandle} />
-                </GestureDetector>
+        {dayItems.map((item) => (
+          <DayBlock
+            key={item.id}
+            item={item}
+            top={positionFromTime(new Date(item.scheduled_start!), START_HOUR, HOUR_HEIGHT, INTERVAL_MIN)}
+            dimmed={dragItem?.id === item.id}
+            drag={drag}
+            onMove={commitDrag}>
+            <Text style={styles.sessionBlockText}>{item.name}</Text>
+            {item.is_on_calendar ? (
+              <View style={styles.calendarControls}>
+                <View testID={`session-block-${item.id}-calendar-marker`} style={styles.calendarMarker} />
+                <Pressable
+                  testID={`session-block-${item.id}-remove-calendar`}
+                  accessibilityRole="button"
+                  style={styles.calendarButton}
+                  onPress={() => removeFromCalendarMutation.mutate(item.id)}>
+                  <Text style={styles.calendarButtonText}>Remove</Text>
+                </Pressable>
               </View>
-            </GestureDetector>
-          );
-        })}
+            ) : (
+              <Pressable
+                testID={`session-block-${item.id}-push`}
+                accessibilityRole="button"
+                style={styles.calendarButton}
+                onPress={() => addToCalendarMutation.mutate(item.id)}>
+                <Text style={styles.calendarButtonText}>Push</Text>
+              </Pressable>
+            )}
+          </DayBlock>
+        ))}
       </ScrollView>
 
-      <View style={styles.bankPanel}>
+      <View
+        testID="bank-panel"
+        style={styles.bankPanel}
+        onLayout={(e) => { bankTop.current = e.nativeEvent.layout.y; }}>
         <Pressable
           testID="bank-toggle"
           accessibilityRole="button"
@@ -366,26 +432,113 @@ export default function CalendarDayScreen() {
               value={bankSearch}
               onChangeText={setBankSearch}
             />
+            <Text style={styles.bankHint}>Hold a recording, then drag it onto the day.</Text>
             <ScrollView horizontal style={styles.bankList}>
-              {filteredBank.map((item) => {
-                const bankGesture = Gesture.Pan().onEnd((event) => {
-                  runOnJS(commitBankDrop)(item, event.absoluteY);
-                });
-                return (
-                  <GestureDetector key={item.id} gesture={bankGesture}>
-                    <View testID={`bank-item-${item.id}`} style={styles.bankItem}>
-                      <Text style={styles.bankItemText}>{item.name}</Text>
-                    </View>
-                  </GestureDetector>
-                );
-              })}
+              {filteredBank.map((item) => (
+                <BankChip key={item.id} item={item} drag={drag} onDrop={commitBankDrop} />
+              ))}
             </ScrollView>
           </>
         )}
       </View>
+      {dragItem && (
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.sessionBlock, styles.ghost, { height: blockHeight(dragItem) }, ghostStyle]}>
+          <Text style={styles.sessionBlockText}>{dragItem.name}</Text>
+        </Animated.View>
+      )}
       </>
       )}
     </View>
+  );
+}
+
+function DayBlock({
+  item,
+  top,
+  dimmed,
+  drag,
+  onMove,
+  children,
+}: {
+  item: StopwatchSession;
+  top: number;
+  dimmed: boolean;
+  drag: DragGhost;
+  onMove: (item: StopwatchSession, translationY: number, absoluteY?: number) => void;
+  children: ReactNode;
+}) {
+  const { ghostY, containerTop, start, finish } = drag;
+  const active = useSharedValue(false);
+
+  const dragGesture = Gesture.Pan()
+    .activateAfterLongPress(DRAG_LONG_PRESS_MS)
+    .onUpdate((event) => {
+      ghostY.value = event.absoluteY - containerTop.value - (event.y - event.translationY);
+      if (!active.value) {
+        active.value = true;
+        runOnJS(start)(item);
+      }
+    })
+    .onEnd((event) => {
+      runOnJS(onMove)(item, event.translationY, event.absoluteY);
+    })
+    .onFinalize(() => {
+      if (active.value) {
+        active.value = false;
+        runOnJS(finish)();
+      }
+    });
+
+  return (
+    <GestureDetector gesture={dragGesture}>
+      <Animated.View
+        testID={`session-block-${item.id}`}
+        style={[styles.sessionBlock, { top, height: blockHeight(item) }, dimmed && styles.dimmed]}>
+        {children}
+      </Animated.View>
+    </GestureDetector>
+  );
+}
+
+function BankChip({
+  item,
+  drag,
+  onDrop,
+}: {
+  item: StopwatchSession;
+  drag: DragGhost;
+  onDrop: (item: StopwatchSession, absoluteY: number) => void;
+}) {
+  const { ghostY, containerTop, start, finish } = drag;
+  const active = useSharedValue(false);
+
+  const gesture = Gesture.Pan()
+    .activateAfterLongPress(DRAG_LONG_PRESS_MS)
+    .onUpdate((event) => {
+      ghostY.value = event.absoluteY - containerTop.value;
+      if (!active.value) {
+        active.value = true;
+        runOnJS(start)(item);
+      }
+    })
+    .onEnd((event) => {
+      runOnJS(onDrop)(item, event.absoluteY);
+    })
+    .onFinalize(() => {
+      if (active.value) {
+        active.value = false;
+        runOnJS(finish)();
+      }
+    });
+
+  return (
+    <GestureDetector gesture={gesture}>
+      <View testID={`bank-item-${item.id}`} style={styles.bankItem}>
+        <Text style={styles.bankItemText}>{item.name}</Text>
+      </View>
+    </GestureDetector>
   );
 }
 
@@ -555,9 +708,36 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textMuted,
   },
+  hourRow: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    borderTopWidth: 1,
+    borderTopColor: colors.glassBorderInner,
+  },
+  hourLabel: {
+    ...typography.caption,
+    color: colors.textMuted,
+    width: GUTTER,
+    paddingLeft: spacing.xs,
+  },
+  ghost: {
+    left: GUTTER,
+    borderColor: colors.primary,
+    opacity: 0.9,
+  },
+  dimmed: {
+    opacity: 0.4,
+  },
+
+  bankHint: {
+    ...typography.caption,
+    color: colors.textMuted,
+    paddingHorizontal: spacing.md,
+  },
   sessionBlock: {
     position: 'absolute',
-    left: spacing.lg,
+    left: GUTTER,
     right: spacing.lg,
     borderRadius: radii.sm,
     backgroundColor: colors.glass,
@@ -592,11 +772,5 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.text,
   },
-  resizeHandle: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: spacing.sm,
-  },
+
 });

@@ -28,10 +28,10 @@ import type { StopwatchSession } from '../types';
 //   - dragging a `bank-item-{id}` ends with `{ absoluteY }`, the y position (in the
 //     grid's own coordinate space) where the finger lifted; the impl converts it to a
 //     time the same way the existing grid does and calls `sessionAPI.schedule`
-//   - dragging a `session-block-{id}` onto the bank ends with `{ translationY, droppedOnBank: true }`;
-//     when `droppedOnBank` is set the impl calls `sessionAPI.unschedule` instead of
-//     rescheduling (a real implementation decides this flag from `absoluteY` vs. the
-//     bank panel's measured bounds — that decision itself is not part of this contract)
+//   - dragging a `session-block-{id}` onto the bank ends with `{ translationY, absoluteY }`;
+//     when `absoluteY` is at or below the top of `bank-panel` (from its onLayout) the impl
+//     calls `sessionAPI.unschedule` instead of rescheduling (reopened 2026-09-26: the old
+//     contract passed a `droppedOnBank` flag no real gesture event carries)
 jest.mock('../services/api', () => ({
   sessionAPI: {
     getScheduled: jest.fn(),
@@ -54,6 +54,7 @@ jest.mock('react-native-gesture-handler', () => {
       minDistance: () => gesture,
       activeOffsetY: () => gesture,
       activeOffsetX: () => gesture,
+      activateAfterLongPress: () => gesture,
       onEnd: (fn: (e: Record<string, unknown>) => void) => {
         handlers.onEnd = fn;
         return gesture;
@@ -69,6 +70,7 @@ jest.mock('react-native-gesture-handler', () => {
     __esModule: true,
     __registry: registry,
     Gesture: { Pan: makeGesture },
+    ScrollView: require('react-native').ScrollView,
     GestureDetector: ({ children, gesture }: { children: any; gesture: any }) => {
       const testID = children?.props?.testID;
       if (testID) {
@@ -192,7 +194,10 @@ describe('dropping a scheduled block on the bank', () => {
     await renderScreen();
 
     await screen.findByTestId('session-block-8');
-    gestureRegistry()['session-block-8'].onEnd({ translationY: 0, droppedOnBank: true });
+    await fireEvent(screen.getByTestId('bank-panel'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 600, width: 400, height: 200 } },
+    });
+    gestureRegistry()['session-block-8'].onEnd({ translationY: 0, absoluteY: 700 });
 
     await waitFor(() => expect(mockedUnschedule).toHaveBeenCalledWith(8));
     expect(mockedSchedule).not.toHaveBeenCalled();

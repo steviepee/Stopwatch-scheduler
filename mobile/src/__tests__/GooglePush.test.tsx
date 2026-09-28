@@ -63,6 +63,7 @@ jest.mock('react-native-gesture-handler', () => {
       minDistance: () => gesture,
       activeOffsetY: () => gesture,
       activeOffsetX: () => gesture,
+      activateAfterLongPress: () => gesture,
       onEnd: (fn: (e: { translationY: number }) => void) => {
         handlers.onEnd = fn;
         return gesture;
@@ -78,6 +79,7 @@ jest.mock('react-native-gesture-handler', () => {
     __esModule: true,
     __registry: registry,
     Gesture: { Pan: makeGesture },
+    ScrollView: require('react-native').ScrollView,
     GestureDetector: ({ children, gesture }: { children: any; gesture: any }) => {
       const testID = children?.props?.testID;
       if (testID) {
@@ -326,9 +328,6 @@ describe('explicit pushes only', () => {
     await screen.findByTestId('session-block-8');
     gestureRegistry()['session-block-8'].onEnd({ translationY: 5000 });
     await waitFor(() => expect(mockedSchedule).toHaveBeenCalledTimes(1));
-
-    gestureRegistry()['session-block-8-resize-handle'].onEnd({ translationY: 5000 });
-    await waitFor(() => expect(mockedSchedule).toHaveBeenCalledTimes(2));
 
     expect(mockedAddToCalendar).not.toHaveBeenCalled();
     expect(mockedRemoveSessionCalendar).not.toHaveBeenCalled();

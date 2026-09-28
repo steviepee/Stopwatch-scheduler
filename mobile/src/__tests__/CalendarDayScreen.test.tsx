@@ -18,11 +18,10 @@ import type { StopwatchSession } from '../types';
 // so these testIDs and the gesture-registry shape ARE the contract now):
 //   - `day-nav-prev` / `day-nav-next` / `day-label`
 //   - `session-block-{id}` — draggable scheduled-recording block
-//   - `session-block-{id}-resize-handle` — nested draggable resize handle
 //   - `google-block-{id}` — read-only Google event block, no gesture attached
 //   - `google-events-error` / `btn-retry-google`
 //   - `current-time-line` — present only when the shown day is today
-// Drag/resize is exercised by reaching into the mocked
+// Drag is exercised by reaching into the mocked
 // `react-native-gesture-handler`'s `__registry` (keyed by the gestured
 // child's testID) and calling `.onEnd(event)` directly, the same "expose the
 // registration internals" pattern used for the netinfo listener mock in the
@@ -50,6 +49,7 @@ jest.mock('react-native-gesture-handler', () => {
       minDistance: () => gesture,
       activeOffsetY: () => gesture,
       activeOffsetX: () => gesture,
+      activateAfterLongPress: () => gesture,
       onEnd: (fn: (e: { translationY: number }) => void) => {
         handlers.onEnd = fn;
         return gesture;
@@ -65,6 +65,7 @@ jest.mock('react-native-gesture-handler', () => {
     __esModule: true,
     __registry: registry,
     Gesture: { Pan: makeGesture },
+    ScrollView: require('react-native').ScrollView,
     GestureDetector: ({ children, gesture }: { children: any; gesture: any }) => {
       const testID = children?.props?.testID;
       if (testID) {
@@ -173,27 +174,16 @@ describe('dragging a scheduled block', () => {
   });
 });
 
-describe('resizing a scheduled block', () => {
-  it('changes scheduled_end only, still 15-minute-snapped', async () => {
-    const item = session({
-      id: 6,
-      scheduled_start: todayAt(9),
-      scheduled_end: todayAt(9, 30),
-      duration: 1800,
-    });
+describe('block length', () => {
+  // Resize was removed 2026-09-27: a block's length is the recording's measured duration,
+  // which is the thing this app exists to learn, so it is not editable by drag.
+  it('has no resize handle', async () => {
+    const item = session({ id: 6, scheduled_start: todayAt(9), scheduled_end: todayAt(9, 30), duration: 1800 });
     mockedGetScheduled.mockResolvedValue([item]);
-    mockedSchedule.mockResolvedValue({ ...item });
     await renderScreen();
 
-    await screen.findByTestId('session-block-6-resize-handle');
-    gestureRegistry()['session-block-6-resize-handle'].onEnd({ translationY: 5000 });
-
-    await waitFor(() => expect(mockedSchedule).toHaveBeenCalledTimes(1));
-    const [id, body] = mockedSchedule.mock.calls[0];
-    expect(id).toBe(6);
-    expect(body.scheduled_start).toBe(item.scheduled_start);
-    expect(body.scheduled_end).not.toBe(item.scheduled_end);
-    expect(new Date(body.scheduled_end).getUTCMinutes() % 15).toBe(0);
+    await screen.findByTestId('session-block-6');
+    expect(screen.queryByTestId('session-block-6-resize-handle')).toBeNull();
   });
 });
 
