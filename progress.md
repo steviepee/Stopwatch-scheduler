@@ -904,3 +904,15 @@ Each iteration appends its results here so the next session knows what worked, w
   - The prefill test allows the start to be truncated to the minute (`[before - dur - 60s, after - dur]`), but `end_time - start_time` must equal the duration exactly.
   - Body keys: `name`, `duration` (seconds), `start_time`, `end_time`, plus `task_id` only when an Activity is chosen. Asserted with `toEqual` and `'task_id' in body`, so use a conditional spread.
   - `btn-manual-save` is checked with `toBeDisabled()` / `toBeEnabled()`, so pass `disabled` on the Pressable. It must stay enabled after a failed save.
+
+## B9.impl. Mobile: hand-entered Recording
+- **Date:** 2026-09-29
+- **Status:** DONE
+- **Summary:** `recordings.tsx` gets an **Add manually** button that swaps the list for a `ManualForm` component. The form has a name field, an Activity search/None/list picker, hours and minutes fields, and start date/time `PickerField`s. The start is `editedStart ?? openedAt - duration`, where `openedAt` is the form-open time truncated to the minute. The date picker sets Y/M/D and the time picker sets h:m with seconds zeroed, and both freeze the start. Save goes through a plain `useMutation` on `sessionAPI.create`. It is disabled at zero duration or while pending, invalidates `['sessions']` and `['tasks']`, and closes on success. A failure shows `manual-save-error` and keeps the form.
+- **Files changed:** mobile/src/app/(tabs)/recordings.tsx, prd.md, progress.md
+- **Verification:** from `mobile/`: `npx jest --ci --forceExit` 187/187; `npx tsc --noEmit` clean; `npx expo export --platform android` succeeds (to `/tmp/b9impl_export`).
+- **Gotchas:**
+  - "Now" is captured once when the form opens, not at Save. Computing it at Save can break the prefill test's upper bound (`start <= after - duration`), because `after` is taken before the Save press.
+  - A blank name falls back to the Activity's name, then to "Recording", mirroring the stopwatch save. The contract did not require a name.
+  - While the form is open it replaces the whole screen (early return), so the list and its filters unmount. Their state (search, date range) resets when the form closes.
+  - Bash heredocs (`cat >> file <<'EOF'`) are rejected by this sandbox's parser. Use Edit to append to `progress.md`.

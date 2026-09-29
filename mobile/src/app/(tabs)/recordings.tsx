@@ -8,10 +8,168 @@ import { sessionAPI, taskAPI } from '@/services/api';
 import { CREATE_SESSION_KEY } from '@/services/queryClient';
 import { PickerField } from '@/components/PickerField';
 import { formatElapsed } from '@/timer/format';
-import type { StopwatchSessionCreate } from '@/types';
+import type { StopwatchSessionCreate, Task } from '@/types';
 
 function dayOf(iso: string): string {
   return iso.slice(0, 10);
+}
+
+function ManualForm({ tasks, onClose }: { tasks: Task[]; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const [openedAt] = useState(() => Math.floor(Date.now() / 60_000) * 60_000);
+  const [name, setName] = useState('');
+  const [searchText, setSearchText] = useState('');
+  const [selectedTask, setSelectedTask] = useState<Task | undefined>(undefined);
+  const [hours, setHours] = useState('0');
+  const [minutes, setMinutes] = useState('0');
+  const [editedStart, setEditedStart] = useState<Date | null>(null);
+
+  const durationSeconds = (parseInt(hours, 10) || 0) * 3600 + (parseInt(minutes, 10) || 0) * 60;
+  const start = editedStart ?? new Date(openedAt - durationSeconds * 1000);
+
+  const filteredTasks = useMemo(() => {
+    const query = searchText.trim().toLowerCase();
+    if (!query) return tasks;
+    return tasks.filter((task) => task.name.toLowerCase().includes(query));
+  }, [tasks, searchText]);
+
+  const save = useMutation({
+    mutationFn: (body: StopwatchSessionCreate) => sessionAPI.create(body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      onClose();
+    },
+  });
+
+  const handleSave = () => {
+    save.mutate({
+      name: name.trim() || selectedTask?.name || 'Recording',
+      duration: durationSeconds,
+      start_time: start.toISOString(),
+      end_time: new Date(start.getTime() + durationSeconds * 1000).toISOString(),
+      ...(selectedTask ? { task_id: selectedTask.id } : {}),
+    });
+  };
+
+  const pickDate = (date: Date) => {
+    const next = new Date(start);
+    next.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+    setEditedStart(next);
+  };
+
+  const pickTime = (date: Date) => {
+    const next = new Date(start);
+    next.setHours(date.getHours(), date.getMinutes(), 0, 0);
+    setEditedStart(next);
+  };
+
+  const canSave = durationSeconds > 0 && !save.isPending;
+
+  return (
+    <ScrollView testID="manual-form" style={styles.sheet} contentContainerStyle={styles.sheetContent}>
+      <Text style={styles.sheetTitle}>Add Recording</Text>
+      <TextInput
+        testID="manual-name"
+        style={styles.input}
+        placeholder="Name"
+        placeholderTextColor={colors.placeholder}
+        value={name}
+        onChangeText={setName}
+      />
+      <TextInput
+        testID="manual-activity-search"
+        style={styles.input}
+        placeholder="Search activities"
+        placeholderTextColor={colors.placeholder}
+        value={searchText}
+        onChangeText={setSearchText}
+      />
+      <Pressable
+        testID="manual-activity-none"
+        accessibilityRole="button"
+        style={[styles.activityRow, !selectedTask && styles.activityRowSelected]}
+        onPress={() => setSelectedTask(undefined)}>
+        <Text style={styles.rowName}>None</Text>
+      </Pressable>
+      {filteredTasks.map((task) => (
+        <Pressable
+          key={task.id}
+          testID={`manual-activity-${task.id}`}
+          accessibilityRole="button"
+          style={[styles.activityRow, selectedTask?.id === task.id && styles.activityRowSelected]}
+          onPress={() => setSelectedTask(task)}>
+          <Text style={styles.rowName}>{task.name}</Text>
+        </Pressable>
+      ))}
+
+      <View style={styles.dateRange}>
+        <View style={styles.dateField}>
+          <Text style={styles.dateLabel}>Hours</Text>
+          <TextInput
+            testID="manual-hours"
+            style={styles.input}
+            keyboardType="number-pad"
+            value={hours}
+            onChangeText={setHours}
+          />
+        </View>
+        <View style={styles.dateField}>
+          <Text style={styles.dateLabel}>Minutes</Text>
+          <TextInput
+            testID="manual-minutes"
+            style={styles.input}
+            keyboardType="number-pad"
+            value={minutes}
+            onChangeText={setMinutes}
+          />
+        </View>
+      </View>
+
+      <View style={styles.dateRange}>
+        <View style={styles.dateField}>
+          <Text style={styles.dateLabel}>Start date</Text>
+          <PickerField
+            testID="manual-start-date"
+            label={start.toLocaleDateString()}
+            value={start}
+            mode="date"
+            onChange={pickDate}
+          />
+        </View>
+        <View style={styles.dateField}>
+          <Text style={styles.dateLabel}>Start time</Text>
+          <PickerField
+            testID="manual-start-time"
+            label={start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            value={start}
+            mode="time"
+            onChange={pickTime}
+          />
+        </View>
+      </View>
+
+      {save.isError && (
+        <Text testID="manual-save-error" style={styles.errorText}>
+          Could not save. Check the connection and try again.
+        </Text>
+      )}
+
+      <View style={styles.sheetActions}>
+        <Pressable testID="btn-manual-cancel" accessibilityRole="button" style={[styles.button, styles.buttonMuted]} onPress={onClose}>
+          <Text style={styles.buttonLabel}>Cancel</Text>
+        </Pressable>
+        <Pressable
+          testID="btn-manual-save"
+          accessibilityRole="button"
+          disabled={!canSave}
+          style={[styles.button, !canSave && styles.buttonDisabled]}
+          onPress={handleSave}>
+          <Text style={styles.buttonLabel}>{save.isPending ? 'Saving…' : 'Save'}</Text>
+        </Pressable>
+      </View>
+    </ScrollView>
+  );
 }
 
 export default function RecordingsScreen() {
@@ -22,6 +180,7 @@ export default function RecordingsScreen() {
   const [search, setSearch] = useState('');
   const [dateFrom, setDateFrom] = useState<Date | null>(null);
   const [dateTo, setDateTo] = useState<Date | null>(null);
+  const [manualOpen, setManualOpen] = useState(false);
 
   const deleteSession = useMutation({
     mutationFn: (id: number) => sessionAPI.delete(id),
@@ -59,8 +218,20 @@ export default function RecordingsScreen() {
       .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
   }, [sessions, dateFrom, dateTo, search]);
 
+  if (manualOpen) {
+    return <ManualForm tasks={tasks ?? []} onClose={() => setManualOpen(false)} />;
+  }
+
   return (
     <View style={styles.container}>
+      <Pressable
+        testID="btn-add-manual"
+        accessibilityRole="button"
+        style={styles.button}
+        onPress={() => setManualOpen(true)}>
+        <Text style={styles.buttonLabel}>Add manually</Text>
+      </Pressable>
+
       <TextInput
         testID="input-search"
         style={styles.input}
@@ -192,5 +363,55 @@ const styles = StyleSheet.create({
   rowMetaText: {
     ...typography.caption,
     color: colors.textMuted,
+  },
+  button: {
+    minHeight: touchTarget,
+    minWidth: touchTarget,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radii.pill,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonMuted: {
+    backgroundColor: colors.glass,
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+  buttonLabel: {
+    ...typography.label,
+    color: colors.text,
+  },
+  sheet: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  sheetContent: {
+    padding: spacing.lg,
+    gap: spacing.md,
+  },
+  sheetTitle: {
+    ...typography.heading,
+    color: colors.text,
+  },
+  activityRow: {
+    minHeight: touchTarget,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.glassBorderInner,
+  },
+  activityRowSelected: {
+    backgroundColor: colors.glass,
+  },
+  sheetActions: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    justifyContent: 'flex-end',
+  },
+  errorText: {
+    ...typography.body,
+    color: colors.red,
   },
 });

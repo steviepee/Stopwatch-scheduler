@@ -312,10 +312,10 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] Test: zero duration disables Save; a failed save shows an error and keeps the form
 
 ### B9.impl — Mobile: hand-entered Recording
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
-  - [ ] All B9.tests pass; tsc clean; export succeeds
+  - [x] All B9.tests pass; tsc clean; export succeeds
 
 ### B10.tests — Web: calendar on Schedule Items
 - **Status:** PENDING
