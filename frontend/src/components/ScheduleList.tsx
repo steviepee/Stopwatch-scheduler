@@ -18,9 +18,10 @@ function formatDuration(seconds: number): string {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
-function formatDate(iso?: string): string {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+function formatDate(date?: string): string {
+  if (!date) return '—';
+  const [y, m, d] = date.split('T')[0].split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
 function StarRating({ value, onChange }: { value?: number; onChange: (r: number) => void }) {
@@ -53,6 +54,7 @@ function ScheduleCard({
   onDelete: (id: number) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const title = schedule.name ?? formatDate(schedule.target_date);
 
   const handleRate = async (rating: number) => {
     try {
@@ -64,7 +66,7 @@ function ScheduleCard({
   };
 
   const handleDelete = async () => {
-    if (!confirm(`Delete "${schedule.name}"?`)) return;
+    if (!confirm(`Delete "${title}"?`)) return;
     try {
       await scheduleAPI.delete(schedule.id);
       onDelete(schedule.id);
@@ -82,7 +84,7 @@ function ScheduleCard({
         onClick={() => setExpanded(e => !e)}
       >
         <div className="flex-1 min-w-0">
-          <div className="text-white font-medium text-sm truncate">{schedule.name}</div>
+          <div className="text-white font-medium text-sm truncate">{title}</div>
           <div className="text-white/50 text-xs mt-0.5">
             {formatDate(schedule.target_date)} · {schedule.items.length} activities · {formatDuration(totalDuration)}
           </div>

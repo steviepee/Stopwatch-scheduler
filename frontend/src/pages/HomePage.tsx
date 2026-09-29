@@ -10,6 +10,7 @@ import { CalendarView } from '../components/calendar';
 import TaskDetailModal from '../components/TaskDetailModal';
 import { Task, StopwatchSession, StopwatchSessionCreate, Schedule, UserOptions, DEFAULT_USER_OPTIONS } from '../types';
 import { taskAPI, timeLogAPI, sessionAPI, scheduleAPI } from '../services/api';
+import { dateKey } from '../utils/calendarUtils';
 
 type ActiveTab = 'calendar' | 'schedule' | 'recordings' | 'activities' | 'options';
 
@@ -34,6 +35,7 @@ export default function HomePage() {
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [options, setOptions] = useState<UserOptions>(loadOptions);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [applyResult, setApplyResult] = useState<{ ok: boolean; date: string } | null>(null);
 
   // Derive schedules vs regimens
   const savedSchedules = useMemo(() => schedules.filter(s => !s.is_regimen), [schedules]);
@@ -87,7 +89,7 @@ export default function HomePage() {
 
   // Schedule helpers
   const addScheduleToState = useCallback((s: Schedule) => {
-    setSchedules(prev => [s, ...prev]);
+    setSchedules(prev => [s, ...prev.filter(x => x.id !== s.id)]);
   }, []);
 
   const updateScheduleInState = useCallback((s: Schedule) => {
@@ -99,16 +101,19 @@ export default function HomePage() {
   }, []);
 
   const handleApplyRegimen = useCallback(async (regimen: Schedule) => {
-    const dateStr = prompt('Apply regimen to date (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
+    const dateStr = prompt('Apply regimen to date (YYYY-MM-DD):', dateKey(new Date()));
     if (!dateStr) return;
+    setApplyResult(null);
     try {
       const applied = await scheduleAPI.applyRegimen(regimen.id, {
-        target_date: new Date(dateStr).toISOString(),
+        target_date: dateStr,
+        tz_offset: new Date().getTimezoneOffset(),
       });
       addScheduleToState(applied);
+      setApplyResult({ ok: true, date: applied.target_date ?? dateStr });
       setActiveTab('schedule');
     } catch {
-      alert('Failed to apply regimen.');
+      setApplyResult({ ok: false, date: dateStr });
     }
   }, [addScheduleToState]);
 
@@ -148,6 +153,17 @@ export default function HomePage() {
       addSessionToState(newSession);
     } catch (error) {
       console.error('Error saving session:', error);
+    }
+  }, [addSessionToState]);
+
+  const handleSessionCreated = useCallback(async (session: StopwatchSession) => {
+    addSessionToState(session);
+    if (session.task_id == null) return;
+    try {
+      const updatedTask = await taskAPI.getById(session.task_id);
+      setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
+    } catch (error) {
+      console.error('Error refreshing activity:', error);
     }
   }, [addSessionToState]);
 
@@ -251,6 +267,16 @@ export default function HomePage() {
 
             {activeTab === 'schedule' && (
               <div className="space-y-6">
+                {applyResult?.ok && (
+                  <p data-testid="apply-success" className="glass-card rounded-xl px-4 py-3 text-emerald-300 text-sm">
+                    Regimen applied to {applyResult.date}.
+                  </p>
+                )}
+                {applyResult && !applyResult.ok && (
+                  <p data-testid="apply-error" className="glass-card rounded-xl px-4 py-3 text-red-300 text-sm">
+                    Failed to apply regimen to {applyResult.date}.
+                  </p>
+                )}
                 <ScheduleBuilder
                   tasks={tasks}
                   options={options}
@@ -269,8 +295,10 @@ export default function HomePage() {
             {activeTab === 'recordings' && (
               <SessionList
                 sessions={sessions}
+                tasks={tasks}
                 onDeleteSession={handleDeleteSession}
                 onUpdateSession={handleUpdateSession}
+                onSessionCreated={handleSessionCreated}
               />
             )}
 

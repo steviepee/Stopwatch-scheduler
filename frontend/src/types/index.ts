@@ -118,7 +118,7 @@ export interface Schedule {
 }
 
 export interface ScheduleCreate {
-  name: string;
+  name?: string;
   schedule_type?: 'day' | 'week' | 'month';
   target_date?: string;
   notes?: string;
@@ -137,7 +137,7 @@ export interface ScheduleUpdate {
 
 export interface ApplyRegimen {
   target_date: string;
-  name?: string;
+  tz_offset: number;
 }
 
 // User preferences stored in localStorage

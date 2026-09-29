@@ -1,18 +1,147 @@
 import { useState, useEffect, useMemo } from 'react';
-import { StopwatchSession } from '../types';
-import { googleCalendarAPI } from '../services/api';
+import { StopwatchSession, StopwatchSessionCreate, Task } from '../types';
+import { googleCalendarAPI, sessionAPI } from '../services/api';
 
 interface SessionListProps {
   sessions: StopwatchSession[];
+  tasks: Task[];
   onDeleteSession: (sessionId: number) => void;
   onUpdateSession: (sessionId: number, name: string) => void;
+  onSessionCreated: (session: StopwatchSession) => void;
+}
+
+function toLocalInput(date: Date): string {
+  const p = (n: number) => n.toString().padStart(2, '0');
+  return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}T${p(date.getHours())}:${p(date.getMinutes())}`;
+}
+
+function ManualForm({
+  tasks,
+  onCreated,
+  onCancel,
+}: {
+  tasks: Task[];
+  onCreated: (session: StopwatchSession) => void;
+  onCancel: () => void;
+}) {
+  const [openedAt] = useState(() => {
+    const d = new Date();
+    d.setSeconds(0, 0);
+    return d;
+  });
+  const [name, setName] = useState('');
+  const [activityId, setActivityId] = useState('');
+  const [hours, setHours] = useState('0');
+  const [minutes, setMinutes] = useState('0');
+  const [editedStart, setEditedStart] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(false);
+
+  const duration = ((Number(hours) || 0) * 60 + (Number(minutes) || 0)) * 60;
+  const startValue = editedStart ?? toLocalInput(new Date(openedAt.getTime() - duration * 1000));
+
+  const handleSave = async () => {
+    if (duration <= 0 || saving) return;
+    const start = new Date(startValue);
+    const task = tasks.find(t => t.id === Number(activityId));
+    const body: StopwatchSessionCreate = {
+      name: name.trim() || task?.name || 'Recording',
+      duration,
+      ...(task ? { task_id: task.id } : {}),
+      start_time: start.toISOString(),
+      end_time: new Date(start.getTime() + duration * 1000).toISOString(),
+    };
+    setSaving(true);
+    setError(false);
+    try {
+      onCreated(await sessionAPI.create(body));
+    } catch {
+      setError(true);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div data-testid="manual-form" className="glass-inner rounded-xl p-4 mb-4 space-y-3">
+      <input
+        type="text"
+        data-testid="manual-name"
+        placeholder="Name"
+        value={name}
+        onChange={e => setName(e.target.value)}
+        className="glass-input w-full px-3 py-2 rounded-lg text-sm"
+      />
+      <select
+        data-testid="manual-activity"
+        value={activityId}
+        onChange={e => setActivityId(e.target.value)}
+        className="glass-input w-full px-3 py-2 rounded-lg text-sm"
+      >
+        <option value="">No Activity</option>
+        {tasks.map(t => (
+          <option key={t.id} value={t.id}>{t.name}</option>
+        ))}
+      </select>
+      <div className="flex gap-2 items-center">
+        <input
+          type="number"
+          min="0"
+          data-testid="manual-hours"
+          value={hours}
+          onChange={e => setHours(e.target.value)}
+          className="glass-input w-20 px-3 py-2 rounded-lg text-sm"
+        />
+        <span className="text-white/60 text-xs">h</span>
+        <input
+          type="number"
+          min="0"
+          max="59"
+          data-testid="manual-minutes"
+          value={minutes}
+          onChange={e => setMinutes(e.target.value)}
+          className="glass-input w-20 px-3 py-2 rounded-lg text-sm"
+        />
+        <span className="text-white/60 text-xs">min</span>
+      </div>
+      <div className="flex gap-2 items-center">
+        <label className="text-white/60 text-xs whitespace-nowrap">Start</label>
+        <input
+          type="datetime-local"
+          data-testid="manual-start"
+          value={startValue}
+          onChange={e => setEditedStart(e.target.value)}
+          className="glass-input flex-1 px-2 py-1 rounded-lg text-sm"
+        />
+      </div>
+      {error && (
+        <p data-testid="manual-save-error" className="text-red-300 text-sm">Failed to save recording. Try again.</p>
+      )}
+      <div className="flex gap-2 justify-end">
+        <button onClick={onCancel} className="glass-button text-sm py-1 px-3 rounded-lg">
+          Cancel
+        </button>
+        <button
+          data-testid="btn-manual-save"
+          onClick={handleSave}
+          disabled={duration <= 0 || saving}
+          className="glass-button-primary text-sm py-1 px-3 rounded-lg disabled:opacity-40"
+        >
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default function SessionList({
   sessions,
+  tasks,
   onDeleteSession,
   onUpdateSession,
+  onSessionCreated,
 }: SessionListProps) {
+  const [manualOpen, setManualOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState('');
   const [isCalendarAuthenticated, setIsCalendarAuthenticated] = useState(false);
@@ -157,6 +286,13 @@ export default function SessionList({
           </button>
         )}
         <div className="flex gap-2">
+          <button
+            data-testid="btn-add-manual"
+            onClick={() => setManualOpen(true)}
+            className="glass-button text-xs py-1 px-3 rounded-lg"
+          >
+            Add manually
+          </button>
           <button onClick={exportCSV} className="glass-button text-xs py-1 px-3 rounded-lg">
             CSV
           </button>
@@ -165,6 +301,17 @@ export default function SessionList({
           </button>
         </div>
       </div>
+
+      {manualOpen && (
+        <ManualForm
+          tasks={tasks}
+          onCreated={session => {
+            onSessionCreated(session);
+            setManualOpen(false);
+          }}
+          onCancel={() => setManualOpen(false)}
+        />
+      )}
 
       {/* Filters */}
       <div className="mb-4 space-y-3">

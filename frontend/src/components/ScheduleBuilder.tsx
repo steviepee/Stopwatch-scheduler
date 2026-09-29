@@ -3,6 +3,7 @@ import { Task, Schedule, ScheduleCreate, ScheduleItemCreate, UserOptions, DEFAUL
 import { scheduleAPI, calendarImportAPI, googleCalendarAPI } from '../services/api';
 import ActivityInput from './ActivityInput';
 import ScheduleTimeline from './ScheduleTimeline';
+import { dateKey } from '../utils/calendarUtils';
 
 interface ActivityEntry {
   taskId?: number;
@@ -26,20 +27,19 @@ function formatDuration(seconds: number): string {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
-function todayDateValue(): string {
-  return new Date().toISOString().split('T')[0];
-}
-
 export default function ScheduleBuilder({ tasks, options, onScheduleCreated }: ScheduleBuilderProps) {
   const opts = options ?? DEFAULT_USER_OPTIONS;
 
   const [step, setStep] = useState<BuilderStep>('setup');
-  const [targetDate, setTargetDate] = useState(todayDateValue());
+  const [targetDate, setTargetDate] = useState(() => dateKey(new Date()));
   const [startHour, setStartHour] = useState('08:00');
   const [activities, setActivities] = useState<ActivityEntry[]>([]);
   const [chosenItems, setChosenItems] = useState<ScheduleItemCreate[]>([]);
   const [chosenOrder, setChosenOrder] = useState<ActivityEntry[]>([]);
   const [existingEvents, setExistingEvents] = useState<{ name: string; start: string; end: string }[]>([]);
+  const [dayEvents, setDayEvents] = useState<{ name: string; start: string; end: string }[]>([]);
+  const [generating, setGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState(false);
   const [importingCal, setImportingCal] = useState(false);
   const [calImported, setCalImported] = useState(false);
 
@@ -47,6 +47,7 @@ export default function ScheduleBuilder({ tasks, options, onScheduleCreated }: S
   const [scheduleName, setScheduleName] = useState('');
   const [saveAsRegimen, setSaveAsRegimen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveResult, setSaveResult] = useState<'success' | 'error' | null>(null);
 
   const startTime = (() => {
     const d = new Date(targetDate + 'T' + startHour + ':00');
@@ -88,42 +89,61 @@ export default function ScheduleBuilder({ tasks, options, onScheduleCreated }: S
     }
   };
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (activities.length === 0) return;
-    setStep('generate');
+    setGenerating(true);
+    setGenerateError(false);
+    setSaveResult(null);
+    try {
+      const daySchedules = await scheduleAPI.getRange(targetDate, targetDate);
+      const events = daySchedules.flatMap(s => s.items)
+        .filter(item => item.scheduled_time)
+        .map(item => {
+          const start = new Date(item.scheduled_time!);
+          return {
+            name: item.task?.name ?? item.custom_name ?? '',
+            start: start.toISOString(),
+            end: new Date(start.getTime() + item.estimated_duration * 1000).toISOString(),
+          };
+        });
+      setDayEvents(events);
+      setStep('generate');
+    } catch {
+      setGenerateError(true);
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const handleSelectSchedule = useCallback((ordered: ActivityEntry[], items: ScheduleItemCreate[]) => {
     setChosenOrder(ordered);
     setChosenItems(items);
-    const defaultName = new Date(targetDate).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-    setScheduleName(defaultName + ' Schedule');
+    setScheduleName('');
     setStep('save');
-  }, [targetDate]);
+  }, []);
 
   const handleSave = async () => {
-    if (!scheduleName.trim()) return;
+    if (saving || (saveAsRegimen && !scheduleName.trim())) return;
     setSaving(true);
+    setSaveResult(null);
     try {
-      const payload: ScheduleCreate = {
-        name: scheduleName.trim(),
-        schedule_type: 'day',
-        target_date: new Date(targetDate).toISOString(),
-        is_regimen: saveAsRegimen,
-        items: chosenItems,
-      };
+      const payload: ScheduleCreate = saveAsRegimen
+        ? { name: scheduleName.trim(), schedule_type: 'day', is_regimen: true, items: chosenItems }
+        : { schedule_type: 'day', target_date: targetDate, is_regimen: false, items: chosenItems };
       const created = await scheduleAPI.create(payload);
       onScheduleCreated(created);
+      setSaveResult('success');
       // Reset builder
       setStep('setup');
       setActivities([]);
       setChosenItems([]);
       setChosenOrder([]);
       setExistingEvents([]);
+      setDayEvents([]);
       setCalImported(false);
       setSaveAsRegimen(false);
     } catch {
-      alert('Failed to save schedule.');
+      setSaveResult('error');
     } finally {
       setSaving(false);
     }
@@ -143,6 +163,10 @@ export default function ScheduleBuilder({ tasks, options, onScheduleCreated }: S
         )}
       </div>
 
+      {saveResult === 'success' && (
+        <p data-testid="save-success" className="text-emerald-300 text-sm">Schedule saved.</p>
+      )}
+
       {/* Step: Setup */}
       {step === 'setup' && (
         <div className="space-y-5">
@@ -152,6 +176,7 @@ export default function ScheduleBuilder({ tasks, options, onScheduleCreated }: S
               <label className="block text-white/60 text-xs mb-1">Date</label>
               <input
                 type="date"
+                data-testid="input-target-date"
                 value={targetDate}
                 onChange={e => setTargetDate(e.target.value)}
                 className="glass-input w-full px-3 py-2 rounded-xl text-white text-sm"
@@ -206,9 +231,13 @@ export default function ScheduleBuilder({ tasks, options, onScheduleCreated }: S
             </div>
           )}
 
+          {generateError && (
+            <p className="text-red-300 text-sm">Couldn't load that day's schedule. Try again.</p>
+          )}
+
           <button
             onClick={handleGenerate}
-            disabled={activities.length === 0}
+            disabled={activities.length === 0 || generating}
             className="w-full glass-button-primary py-3 rounded-xl font-semibold text-sm disabled:opacity-40"
           >
             Generate Schedule Options
@@ -221,7 +250,7 @@ export default function ScheduleBuilder({ tasks, options, onScheduleCreated }: S
         <ScheduleTimeline
           activities={activities}
           startTime={startTime}
-          existingEvents={existingEvents}
+          existingEvents={[...existingEvents, ...dayEvents]}
           onSelect={handleSelectSchedule}
           onReorder={handleReorder}
         />
@@ -239,20 +268,10 @@ export default function ScheduleBuilder({ tasks, options, onScheduleCreated }: S
             ))}
           </div>
 
-          <div>
-            <label className="block text-white/60 text-xs mb-1">Schedule name</label>
-            <input
-              type="text"
-              value={scheduleName}
-              onChange={e => setScheduleName(e.target.value)}
-              className="glass-input w-full px-4 py-2 rounded-xl text-white text-sm"
-              autoFocus
-            />
-          </div>
-
           <label className="flex items-center gap-3 cursor-pointer">
             <input
               type="checkbox"
+              data-testid="checkbox-regimen"
               checked={saveAsRegimen}
               onChange={e => setSaveAsRegimen(e.target.checked)}
               className="w-4 h-4 rounded accent-emerald-400"
@@ -260,9 +279,28 @@ export default function ScheduleBuilder({ tasks, options, onScheduleCreated }: S
             <span className="text-white/70 text-sm">Save as Regimen (reusable template)</span>
           </label>
 
+          {saveAsRegimen && (
+            <div>
+              <label className="block text-white/60 text-xs mb-1">Regimen name</label>
+              <input
+                type="text"
+                data-testid="input-schedule-name"
+                value={scheduleName}
+                onChange={e => setScheduleName(e.target.value)}
+                className="glass-input w-full px-4 py-2 rounded-xl text-white text-sm"
+                autoFocus
+              />
+            </div>
+          )}
+
+          {saveResult === 'error' && (
+            <p data-testid="save-error" className="text-red-300 text-sm">Failed to save schedule. Try again.</p>
+          )}
+
           <button
+            data-testid="btn-save-schedule"
             onClick={handleSave}
-            disabled={!scheduleName.trim() || saving}
+            disabled={(saveAsRegimen && !scheduleName.trim()) || saving}
             className="w-full glass-button-primary py-3 rounded-xl font-semibold text-sm disabled:opacity-40"
           >
             {saving ? 'Saving…' : 'Save Schedule'}

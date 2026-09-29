@@ -965,3 +965,15 @@ Each iteration appends its results here so the next session knows what worked, w
   - **ScheduleList:** `formatDate('2026-10-02')` parses as UTC midnight, which is Oct 1 in Chicago. Parse the date as a local Y/M/D. The card title is `name ?? formatted date`.
   - **Hand entry lives in `SessionList`.** It gets new `tasks` and `onSessionCreated` props and calls `sessionAPI.create` itself. The older `SessionList.test.tsx` passes no `tasks`, so read `tasks` only once the form is open. The prefill start is "form opened, truncated to the minute" minus the duration (10:00:30 opens as 10:00). `start_time` comes from `new Date(manualStartValue)`, and `end_time` is the start plus the duration, exactly.
   - Not asserted, but worth doing in impl: Save and Apply append into an existing day Schedule (D44), so `onScheduleCreated`/`addScheduleToState` should replace a Schedule with the same id instead of prepending a duplicate card. HomePage should also refetch the chosen Activity (`taskAPI.getById`) after a hand entry, so its average updates (B12 check 7).
+
+## B11.impl. Web: Schedule builder, Apply, hand entry
+- **Date:** 2026-09-29
+- **Status:** DONE
+- **Summary:** `ScheduleBuilder` now defaults to the local date (`dateKey`). Generate fetches `getRange(date, date)` and passes the day's timed Items to the timeline, along with any imported Google events. Save makes one `create` call: a day plan sends `target_date` with no `name`, and a Regimen sends a required `name` with no `target_date`. It shows `save-success`/`save-error` with no alerts. `ScheduleList` parses dates as local Y/M/D and titles nameless cards by date. HomePage Apply sends `{ target_date, tz_offset }` and shows `apply-success`/`apply-error`. `SessionList` gets an **Add manually** form (`ManualForm`) that calls `sessionAPI.create` itself.
+- **Files changed:** frontend/src/components/ScheduleBuilder.tsx, frontend/src/components/ScheduleList.tsx, frontend/src/components/SessionList.tsx, frontend/src/pages/HomePage.tsx, frontend/src/types/index.ts, prd.md, progress.md
+- **Verification:** from `frontend/`: `npx vitest run` 52/52; `npx tsc --noEmit` clean; `npm run build` succeeds.
+- **Gotchas:**
+  - Day Items are held in their own `dayEvents` state and concatenated with the Google-imported `existingEvents` at render. Re-running Generate replaces them rather than duplicating them. If `getRange` fails, Generate stays on setup and shows an inline error; it does not plan over an unknown day.
+  - `addScheduleToState` now replaces a Schedule with the same id (D44 append returns the existing day Schedule). A hand entry with an Activity refetches that Activity via `taskAPI.getById` so its average updates.
+  - A blank hand-entry name falls back to the Activity's name, then "Recording", as on mobile.
+  - The sandbox rejects a Bash command containing `$?` ("simple_expansion"), and the whole command is dropped, including any heredoc edit in it. Keep edits and `echo $?`-style checks in separate calls.
