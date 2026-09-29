@@ -829,3 +829,24 @@ Each iteration appends its results here so the next session knows what worked, w
   - Query keys: `['schedules', 'range', start, end]` and `['tasks']`. Mutations invalidate `['schedules']`, which also refreshes the Schedule tab's lists.
   - The ghost is a `DragPayload { key, name, seconds }`, not the dragged object. A Bank chip ghost uses the average, or 600 s for no history.
   - `Schedule.name` is still typed `string` and `ApplyRegimen` still has the old shape. Both are B8's.
+
+## B7.tests. Mobile: Block actions, edit mode, Push/Remove day, feedback
+- **Date:** 2026-09-28
+- **Status:** DONE
+- **Summary:** Rewrote `GooglePush.test.tsx` for the Calendar tab and added 18 tests covering Block actions, edit mode, Push day, Remove day, feedback, and a no-gesture-pushes check. The file header comment defines the contract. It now carries the P15 gesture-registry mock, extended with `enabled`/`onStart` so an impl can disable the move pan. The three P17 Schedule-tab tests are kept unchanged at the bottom (B8 owns that tab), and no tests were deleted.
+- **Files changed:** mobile/src/__tests__/GooglePush.test.tsx, prd.md, progress.md
+- **Verification:** from `mobile/`: `npx jest --ci --forceExit` gives 17 failed, 154 passed. All 17 failures are new B7 tests, as expected before B7.impl; "Remove day absent on an empty day" already passes. `npx tsc --noEmit` is clean, and `npx expo export --platform android` succeeds (to `/tmp/b7_export`). I also ran the suite against a throwaway reference impl of `calendar.tsx`: 171/171 passed and tsc was clean. The file was then restored from a `/tmp` copy, and its md5 matches the original.
+- **Gotchas:**
+  - **testIDs B7.impl must use:**
+    - `btn-edit-block-{id}` and `btn-remove-google-{id}` (the latter only when `calendar_event_id` is set).
+    - `item-block-{id}-resize-handle`, only in edit mode. Its **direct parent must be its own `GestureDetector`** so the registry mock can reach its `onEnd({ translationY })`.
+    - `btn-push-day` and `btn-remove-day`.
+    - Status testIDs `day-action-working`, `day-action-success` (a push's text includes the event count) and `day-action-error`.
+  - **Selecting a Block:** the tests press the Block's label text (`Activity {id}` in the fixtures) and rely on RNTL walking up to the nearest `onPress`. So wrap the label in a `Pressable` (or put one on an ancestor inside the Block). A `Gesture.Tap` will not work: the mock only has `Gesture.Pan`.
+  - **"Pressing it again ends edit mode":** the tests press `btn-edit-block-{id}` again, and first tap the Block only if the button is no longer visible. Keeping the actions visible while editing is simplest.
+  - **Move ignored in edit mode:** the test deletes the `item-block-{id}` registry entry before entering edit mode, then calls it only if it re-registers. Either of these passes: detaching the move `GestureDetector`, or keeping it and returning early in `commitDrag`.
+  - **Resize body:** must be exactly `{ estimated_duration }`, a multiple of 300, minimum 300. Compute it from the Item's current `estimated_duration` plus the pixel delta. The reference used `Math.max(300, Math.round((d + pxToMinutes(ty)*60)/300)*300)`. A +37 px drag (about 12 min at 3 px/min) must land above 1800.
+  - **Dialog button labels are exact:** "Clear all", "Remove from Google only", "Cancel". The per-Block Remove from Google confirm only needs a "Cancel" plus one other button, which the test presses.
+  - **401 check:** matches `/authorize from a laptop/i` anywhere on screen, so either `day-action-error` text or the existing `google-auth-error` banner works. The 500 test asserts that the phrase is **absent**, so do not show the laptop text for non-401 errors.
+  - **Push day visibility:** it shows only when the day has at least one non-Exported Item. The empty-day test asserts that both Push day and Remove day are absent. The reference used `daySchedules?.[0]` as the day's Schedule id.
+  - The tests' QueryClient sets `mutations: { retry: false }`.

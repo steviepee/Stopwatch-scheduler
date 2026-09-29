@@ -240,7 +240,7 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] `grep -rn "scheduled_start\|getUnscheduled\|addToCalendar" mobile/src` is empty
 
 ### B7.tests — Mobile: Block actions, edit mode, Push/Remove day, feedback
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Rewrite `mobile/src/__tests__/GooglePush.test.tsx` for the calendar and add
   edit-mode tests.
 - **Contract:**
@@ -258,12 +258,12 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
     count for a push) or an error message. A 401 shows "authorize from a laptop" (D14). No
     failure is silent.
 - **Acceptance Criteria:**
-  - [ ] Test: edit mode on → handle present, move gesture ignored, resize calls `updateItem` with a 5-minute-snapped duration
-  - [ ] Test: edit mode off → no handle, move works
-  - [ ] Test: Remove from Google confirms first and is absent on non-Exported Blocks
-  - [ ] Test: each Remove day choice makes exactly its call
-  - [ ] Test: Push day success shows the count; a 500 shows an error; a 401 shows the laptop message
-  - [ ] Test: no gesture ever pushes an Item that was not already Exported
+  - [x] Test: edit mode on → handle present, move gesture ignored, resize calls `updateItem` with a 5-minute-snapped duration
+  - [x] Test: edit mode off → no handle, move works
+  - [x] Test: Remove from Google confirms first and is absent on non-Exported Blocks
+  - [x] Test: each Remove day choice makes exactly its call
+  - [x] Test: Push day success shows the count; a 500 shows an error; a 401 shows the laptop message
+  - [x] Test: no gesture ever pushes an Item that was not already Exported
 
 ### B7.impl — Mobile: Block actions, edit mode, Push/Remove day, feedback
 - **Status:** PENDING
