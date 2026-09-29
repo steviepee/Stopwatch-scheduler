@@ -340,12 +340,12 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] Test: a push failure is shown
 
 ### B10.impl — Web: calendar on Schedule Items
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract in `frontend/src/components/calendar/`,
   `pages/HomePage.tsx`, `components/SessionList.tsx`, `services/api.ts`, `types/index.ts`.
 - **Acceptance Criteria:**
-  - [ ] All B10.tests pass; web tsc clean; `npm run build` succeeds
-  - [ ] `grep -rn "scheduled_start\|unschedule\|addToCalendar" frontend/src` is empty
+  - [x] All B10.tests pass; web tsc clean; `npm run build` succeeds
+  - [x] `grep -rn "scheduled_start\|unschedule\|addToCalendar" frontend/src` is empty
 
 ### B11.tests — Web: Schedule builder, Apply, hand entry
 - **Status:** PENDING

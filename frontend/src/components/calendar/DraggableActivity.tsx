@@ -1,16 +1,16 @@
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { StopwatchSession } from '../../types';
+import { Task } from '../../types';
 import { formatDuration } from '../../utils/calendarUtils';
 
-interface DraggableSessionProps {
-  session: StopwatchSession;
+interface DraggableActivityProps {
+  task: Task;
 }
 
-export function DraggableSession({ session }: DraggableSessionProps) {
+export function DraggableActivity({ task }: DraggableActivityProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: `session-${session.id}`,
-    data: { session },
+    id: `activity-${task.id}`,
+    data: { task },
   });
 
   const style = {
@@ -24,10 +24,15 @@ export function DraggableSession({ session }: DraggableSessionProps) {
       style={style}
       {...listeners}
       {...attributes}
+      data-testid={`bank-item-${task.id}`}
       className={`draggable-session ${isDragging ? 'dragging' : ''}`}
     >
-      <div className="session-name">{session.name}</div>
-      <div className="session-duration">{formatDuration(session.duration)}</div>
+      <div className="session-name">{task.name}</div>
+      {task.total_recordings ? (
+        <div className="session-duration">{formatDuration(task.average_duration)}</div>
+      ) : (
+        <div className="session-duration" data-testid={`bank-item-${task.id}-no-history`}>no history</div>
+      )}
     </div>
   );
 }

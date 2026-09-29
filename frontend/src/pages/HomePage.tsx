@@ -35,16 +35,6 @@ export default function HomePage() {
   const [options, setOptions] = useState<UserOptions>(loadOptions);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
-  // Derive scheduled/unscheduled from sessions
-  const scheduledSessions = useMemo(
-    () => sessions.filter(s => s.scheduled_start),
-    [sessions]
-  );
-  const unscheduledSessions = useMemo(
-    () => sessions.filter(s => !s.scheduled_start),
-    [sessions]
-  );
-
   // Derive schedules vs regimens
   const savedSchedules = useMemo(() => schedules.filter(s => !s.is_regimen), [schedules]);
   const regimens = useMemo(() => schedules.filter(s => s.is_regimen), [schedules]);
@@ -180,28 +170,6 @@ export default function HomePage() {
     }
   }, [updateSessionInState]);
 
-  const handleAddToCalendar = useCallback(async (sessionId: number) => {
-    try {
-      const updatedSession = await sessionAPI.addToCalendar(sessionId);
-      updateSessionInState(updatedSession);
-    } catch (error) {
-      console.error('Error adding to calendar:', error);
-    }
-  }, [updateSessionInState]);
-
-  const handleRemoveFromCalendar = useCallback(async (sessionId: number) => {
-    try {
-      await sessionAPI.removeFromCalendar(sessionId);
-      setSessions(prev => prev.map(s =>
-        s.id === sessionId
-          ? { ...s, is_on_calendar: false, calendar_event_id: undefined }
-          : s
-      ));
-    } catch (error) {
-      console.error('Error removing from calendar:', error);
-    }
-  }, []);
-
   const handleSelectTask = useCallback((task: Task) => {
     setSelectedTask(task);
   }, []);
@@ -278,14 +246,7 @@ export default function HomePage() {
         {!isSaveModalOpen && (
           <>
             {activeTab === 'calendar' && (
-              <CalendarView
-                scheduledSessions={scheduledSessions}
-                unscheduledSessions={unscheduledSessions}
-                onSessionUpdate={updateSessionInState}
-                onSessionCreate={addSessionToState}
-                tasks={tasks}
-                options={options}
-              />
+              <CalendarView tasks={tasks} />
             )}
 
             {activeTab === 'schedule' && (
@@ -310,8 +271,6 @@ export default function HomePage() {
                 sessions={sessions}
                 onDeleteSession={handleDeleteSession}
                 onUpdateSession={handleUpdateSession}
-                onAddToCalendar={handleAddToCalendar}
-                onRemoveFromCalendar={handleRemoveFromCalendar}
               />
             )}
 

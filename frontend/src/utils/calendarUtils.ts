@@ -112,6 +112,15 @@ export function isSameDay(date1: Date, date2: Date): boolean {
 }
 
 /**
+ * Local calendar date as "YYYY-MM-DD"
+ */
+export function dateKey(date: Date): string {
+  const m = (date.getMonth() + 1).toString().padStart(2, '0');
+  const d = date.getDate().toString().padStart(2, '0');
+  return `${date.getFullYear()}-${m}-${d}`;
+}
+
+/**
  * Format date as "Mon 5", "Tue 6", etc.
  */
 export function formatDayShort(date: Date): string {

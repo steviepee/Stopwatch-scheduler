@@ -2,31 +2,23 @@ import { useState, useEffect, useMemo } from 'react';
 import { StopwatchSession } from '../types';
 import { googleCalendarAPI } from '../services/api';
 
-type CalendarFilter = 'all' | 'on' | 'off';
-
 interface SessionListProps {
   sessions: StopwatchSession[];
   onDeleteSession: (sessionId: number) => void;
   onUpdateSession: (sessionId: number, name: string) => void;
-  onAddToCalendar: (sessionId: number) => void;
-  onRemoveFromCalendar: (sessionId: number) => void;
 }
 
 export default function SessionList({
   sessions,
   onDeleteSession,
   onUpdateSession,
-  onAddToCalendar,
-  onRemoveFromCalendar,
 }: SessionListProps) {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState('');
   const [isCalendarAuthenticated, setIsCalendarAuthenticated] = useState(false);
-  const [loadingCalendar, setLoadingCalendar] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [calendarFilter, setCalendarFilter] = useState<CalendarFilter>('all');
 
   const filteredSessions = useMemo(() => {
     const q = searchQuery.toLowerCase();
@@ -37,11 +29,9 @@ export default function SessionList({
       const created = new Date(s.created_at);
       if (from && created < from) return false;
       if (to && created > to) return false;
-      if (calendarFilter === 'on' && !s.is_on_calendar) return false;
-      if (calendarFilter === 'off' && s.is_on_calendar) return false;
       return true;
     });
-  }, [sessions, searchQuery, dateFrom, dateTo, calendarFilter]);
+  }, [sessions, searchQuery, dateFrom, dateTo]);
 
   useEffect(() => {
     checkCalendarAuth();
@@ -108,30 +98,16 @@ export default function SessionList({
     setEditName('');
   };
 
-  const handleCalendarAction = async (session: StopwatchSession) => {
-    setLoadingCalendar(session.id);
-    try {
-      if (session.is_on_calendar) {
-        await onRemoveFromCalendar(session.id);
-      } else {
-        await onAddToCalendar(session.id);
-      }
-    } finally {
-      setLoadingCalendar(null);
-    }
-  };
-
   const dateStamp = () => new Date().toISOString().split('T')[0];
 
   const exportCSV = () => {
-    const headers = ['id', 'name', 'duration_seconds', 'task_id', 'notes', 'is_on_calendar', 'created_at'];
+    const headers = ['id', 'name', 'duration_seconds', 'task_id', 'notes', 'created_at'];
     const rows = sessions.map(s => [
       s.id,
       `"${s.name.replace(/"/g, '""')}"`,
       s.duration,
       s.task_id ?? '',
       `"${(s.notes ?? '').replace(/"/g, '""')}"`,
-      s.is_on_calendar,
       s.created_at,
     ].join(','));
     const csv = [headers.join(','), ...rows].join('\n');
@@ -218,21 +194,6 @@ export default function SessionList({
               className="glass-input flex-1 px-2 py-1 rounded-lg text-sm"
             />
           </div>
-          <div className="flex rounded-lg overflow-hidden border border-white/20 text-xs">
-            {(['all', 'on', 'off'] as CalendarFilter[]).map(f => (
-              <button
-                key={f}
-                onClick={() => setCalendarFilter(f)}
-                className={`px-3 py-1 transition-colors ${
-                  calendarFilter === f
-                    ? 'bg-white/20 text-white font-semibold'
-                    : 'text-white/60 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                {f === 'all' ? 'All' : f === 'on' ? 'On Calendar' : 'Not on Calendar'}
-              </button>
-            ))}
-          </div>
         </div>
       </div>
 
@@ -304,36 +265,7 @@ export default function SessionList({
                 </div>
 
                 <div className="flex flex-col gap-2 items-end">
-                  {/* Calendar Status Badge */}
-                  {session.is_on_calendar && (
-                    <span className="text-xs bg-green-500/30 text-green-300 px-2 py-1 rounded-full">
-                      On Calendar
-                    </span>
-                  )}
-
                   <div className="flex gap-2">
-                    {/* Calendar Button */}
-                    {isCalendarAuthenticated && (
-                      <button
-                        onClick={() => handleCalendarAction(session)}
-                        disabled={loadingCalendar === session.id}
-                        className={`text-sm px-3 py-1 rounded-lg transition-all duration-300 ease-out hover:scale-105 hover:shadow-[0_12px_40px_rgba(0,0,0,0.4)] hover:bg-white/5 hover:backdrop-blur-sm ${
-                          session.is_on_calendar
-                            ? 'glass-button-red'
-                            : 'glass-button-primary'
-                        }`}
-                        title={session.is_on_calendar ? 'Remove from calendar' : 'Add to calendar'}
-                      >
-                        {loadingCalendar === session.id ? (
-                          '...'
-                        ) : session.is_on_calendar ? (
-                          '📅 Remove'
-                        ) : (
-                          '📅 Add'
-                        )}
-                      </button>
-                    )}
-
                     {/* Delete Button */}
                     <button
                       onClick={() => onDeleteSession(session.id)}

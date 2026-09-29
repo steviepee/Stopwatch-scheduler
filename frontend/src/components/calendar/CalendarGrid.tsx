@@ -1,68 +1,64 @@
 import { useDroppable } from '@dnd-kit/core';
-import { StopwatchSession } from '../../types';
-import { SessionBlock } from './SessionBlock';
+import { Schedule, ScheduleItem } from '../../types';
+import { ItemBlock } from './ItemBlock';
 import {
-  getWeekDays,
   formatHour,
   formatDayShort,
   isSameDay,
+  dateKey,
 } from '../../utils/calendarUtils';
 
 interface CalendarGridProps {
-  currentDate: Date;
+  days: Date[];
   viewMode: 'week' | 'day';
-  sessions: StopwatchSession[];
+  schedulesByDate: Record<string, Schedule>;
+  itemsByDate: Record<string, ScheduleItem[]>;
   startHour: number;
   endHour: number;
   slotHeight: number;
   intervalMin: number;
-  onRemoveFromCalendar: (sessionId: number) => void;
-  onExportToGoogle: (sessionId: number) => void;
-  onResize: (sessionId: number, newDurationSeconds: number) => void;
-  onSlotClick: (date: Date, hour: number, minute: number) => void;
+  selectedId: number | null;
+  editingId: number | null;
+  onSelect: (itemId: number) => void;
+  onToggleEdit: (itemId: number) => void;
+  onRemoveFromGoogle: (item: ScheduleItem) => void;
+  onResize: (item: ScheduleItem, newDurationSeconds: number) => void;
+  onSlotClick: (date: Date, minutesFromStart: number) => void;
+  onPushDay: (schedule: Schedule) => void;
+  onRemoveDay: (schedule: Schedule) => void;
 }
 
 function DroppableColumn({
   date,
   children,
   onSlotClick,
-  startHour,
   slotHeight,
   intervalMin,
 }: {
   date: Date;
   children: React.ReactNode;
-  onSlotClick: (date: Date, hour: number, minute: number) => void;
-  startHour: number;
+  onSlotClick: (date: Date, minutesFromStart: number) => void;
   slotHeight: number;
   intervalMin: number;
 }) {
-  const dateStr = date.toISOString().split('T')[0];
+  const key = dateKey(date);
   const { setNodeRef, isOver } = useDroppable({
-    id: `column-${dateStr}`,
+    id: `column-${key}`,
     data: { date },
   });
 
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    // Only handle clicks directly on the column, not on session blocks
     if ((e.target as HTMLElement).closest('.session-block')) return;
-
-    const rect = e.currentTarget.getBoundingClientRect();
-    const y = e.clientY - rect.top;
-
-    // Calculate time from position
-    const totalMinutes = (y / slotHeight) * intervalMin;
-    const hour = Math.floor(totalMinutes / 60) + startHour;
-    const minute = Math.floor((totalMinutes % 60) / intervalMin) * intervalMin;
-
-    onSlotClick(date, hour, minute);
+    const y = e.clientY - e.currentTarget.getBoundingClientRect().top;
+    onSlotClick(date, (y / slotHeight) * intervalMin);
   };
 
   return (
     <div
       ref={setNodeRef}
       className={`day-column ${isOver ? 'drag-over' : ''}`}
-      data-date={dateStr}
+      data-date={key}
+      data-testid={`day-column-${key}`}
       onClick={handleClick}
     >
       {children}
@@ -71,34 +67,29 @@ function DroppableColumn({
 }
 
 export function CalendarGrid({
-  currentDate,
+  days,
   viewMode,
-  sessions,
+  schedulesByDate,
+  itemsByDate,
   startHour,
   endHour,
   slotHeight,
   intervalMin,
-  onRemoveFromCalendar,
-  onExportToGoogle,
+  selectedId,
+  editingId,
+  onSelect,
+  onToggleEdit,
+  onRemoveFromGoogle,
   onResize,
   onSlotClick,
+  onPushDay,
+  onRemoveDay,
 }: CalendarGridProps) {
-  const days = viewMode === 'week' ? getWeekDays(currentDate) : [currentDate];
   const today = new Date();
   const hours = Array.from({ length: endHour - startHour + 1 }, (_, i) => startHour + i);
   const slotsPerHour = 60 / intervalMin;
   const totalSlots = hours.length * slotsPerHour;
 
-  // Get sessions for a specific day
-  const getSessionsForDay = (day: Date) => {
-    return sessions.filter((session) => {
-      if (!session.scheduled_start) return false;
-      const sessionDate = new Date(session.scheduled_start);
-      return isSameDay(sessionDate, day);
-    });
-  };
-
-  // Current time indicator
   const getCurrentTimePosition = () => {
     const now = new Date();
     const hours = now.getHours();
@@ -112,17 +103,42 @@ export function CalendarGrid({
 
   return (
     <div className={`calendar-grid ${viewMode}`}>
-      {/* Header row with day names */}
+      {/* Header row with day names and day actions */}
       <div className="grid-header">
         <div className="time-column-header"></div>
-        {days.map((day) => (
-          <div
-            key={day.toISOString()}
-            className={`day-header ${isSameDay(day, today) ? 'today' : ''}`}
-          >
-            {formatDayShort(day)}
-          </div>
-        ))}
+        {days.map((day) => {
+          const key = dateKey(day);
+          const schedule = schedulesByDate[key];
+          const items = schedule?.items ?? [];
+          return (
+            <div
+              key={key}
+              className={`day-header ${isSameDay(day, today) ? 'today' : ''}`}
+            >
+              {formatDayShort(day)}
+              {schedule && items.length > 0 && (
+                <div className="day-header-actions">
+                  {items.some((i) => !i.calendar_event_id) && (
+                    <button
+                      className="action-btn"
+                      data-testid={`btn-push-day-${key}`}
+                      onClick={() => onPushDay(schedule)}
+                    >
+                      Push day
+                    </button>
+                  )}
+                  <button
+                    className="action-btn remove-btn"
+                    data-testid={`btn-remove-day-${key}`}
+                    onClick={() => onRemoveDay(schedule)}
+                  >
+                    Remove day
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Grid body */}
@@ -143,10 +159,9 @@ export function CalendarGrid({
         {/* Day columns */}
         {days.map((day) => (
           <DroppableColumn
-            key={day.toISOString()}
+            key={dateKey(day)}
             date={day}
             onSlotClick={onSlotClick}
-            startHour={startHour}
             slotHeight={slotHeight}
             intervalMin={intervalMin}
           >
@@ -167,16 +182,19 @@ export function CalendarGrid({
               </div>
             ))}
 
-            {/* Session blocks */}
-            {getSessionsForDay(day).map((session) => (
-              <SessionBlock
-                key={session.id}
-                session={session}
+            {/* Schedule Item blocks */}
+            {(itemsByDate[dateKey(day)] ?? []).map((item) => (
+              <ItemBlock
+                key={item.id}
+                item={item}
                 startHour={startHour}
                 slotHeight={slotHeight}
                 intervalMin={intervalMin}
-                onRemove={onRemoveFromCalendar}
-                onExportToGoogle={onExportToGoogle}
+                selected={selectedId === item.id}
+                editing={editingId === item.id}
+                onSelect={onSelect}
+                onToggleEdit={onToggleEdit}
+                onRemoveFromGoogle={onRemoveFromGoogle}
                 onResize={onResize}
               />
             ))}
