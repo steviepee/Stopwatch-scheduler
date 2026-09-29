@@ -273,7 +273,7 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] All B7.tests pass; tsc clean; export succeeds
 
 ### B8.tests — Mobile: Schedule tab saves into the day, Apply fixed, feedback
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Update `mobile/src/__tests__/ScheduleScreen.test.tsx`.
 - **Contract:**
   - Generating for a date fetches that day's Items (`getRange`) and passes them as
@@ -286,11 +286,11 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - Apply sends `{target_date, tz_offset}` and reports success with the date, or an error.
   - Schedule-tab push/remove report success and failure the same way as B7.
 - **Acceptance Criteria:**
-  - [ ] Test: existing Items reach `generate` as `existing_events`
-  - [ ] Test: day Save sends `target_date` and no name; Regimen Save requires a name
-  - [ ] Test: Save success, failure, and retry states
-  - [ ] Test: Apply sends a local date and `tz_offset`, and shows its outcome
-  - [ ] Test: a push failure is shown, not silent
+  - [x] Test: existing Items reach `generate` as `existing_events`
+  - [x] Test: day Save sends `target_date` and no name; Regimen Save requires a name
+  - [x] Test: Save success, failure, and retry states
+  - [x] Test: Apply sends a local date and `tz_offset`, and shows its outcome
+  - [x] Test: a push failure is shown, not silent
 
 ### B8.impl — Mobile: Schedule tab saves into the day, Apply fixed, feedback
 - **Status:** PENDING
