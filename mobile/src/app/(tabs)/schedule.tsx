@@ -6,10 +6,10 @@ import { GlassView } from 'expo-glass-effect';
 
 import { colors, radii, spacing, touchTarget, typography } from '@/theme/tokens';
 import { PickerField } from '@/components/PickerField';
-import { taskAPI, scheduleAPI } from '@/services/api';
+import { calendarImportAPI, taskAPI, scheduleAPI } from '@/services/api';
 import { useUserOptions, type UserOptions } from '@/services/options';
 import { formatElapsed } from '@/timer/format';
-import type { GenerateActivity, GenerateRequest, Schedule, ScheduleItemCreate, StrategyOption, Task } from '@/types';
+import type { GenerateActivity, GenerateEvent, GenerateRequest, Schedule, ScheduleCreate, StrategyOption, Task } from '@/types';
 
 const STRATEGIES = ['your-order', 'shortest-first', 'longest-first', 'best-fit'];
 
@@ -65,8 +65,30 @@ function formatTime(date: Date): string {
   return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
-function defaultScheduleName(): string {
-  return new Date().toISOString().slice(0, 10);
+function localDateKey(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+async function fetchExistingEvents(date: string): Promise<GenerateEvent[]> {
+  const [schedules, googleEvents] = await Promise.all([
+    scheduleAPI.getRange(date, date),
+    calendarImportAPI.getEvents(date),
+  ]);
+  const items = schedules.flatMap((schedule) => schedule.items).filter((item) => item.scheduled_time);
+  return [
+    ...items.map((item) => {
+      const start = new Date(item.scheduled_time!);
+      return {
+        name: item.task?.name ?? item.custom_name ?? '',
+        start: start.toISOString(),
+        end: new Date(start.getTime() + item.estimated_duration * 1000).toISOString(),
+      };
+    }),
+    ...googleEvents.map((event) => ({ name: event.summary, start: event.start, end: event.end })),
+  ];
 }
 
 export default function ScheduleScreen() {
@@ -82,7 +104,7 @@ export default function ScheduleScreen() {
   const [dayEnd, setDayEnd] = useState<Date>(() => defaultDayEnd(roundUpTo15(new Date())));
   const [generateRequest, setGenerateRequest] = useState<GenerateRequest | null>(null);
   const [selectedStrategy, setSelectedStrategy] = useState<string | null>(null);
-  const [scheduleName, setScheduleName] = useState(defaultScheduleName);
+  const [scheduleName, setScheduleName] = useState('');
   const [isRegimen, setIsRegimen] = useState(false);
   const [savedKey, setSavedKey] = useState<string | null>(null);
   const [applyOpenId, setApplyOpenId] = useState<number | null>(null);
@@ -97,30 +119,29 @@ export default function ScheduleScreen() {
   }, [tasks, search]);
 
   const generateMutation = useMutation({
-    mutationFn: (request: GenerateRequest) => scheduleAPI.generate(request),
+    mutationFn: async (request: GenerateRequest) => {
+      const existingEvents = await fetchExistingEvents(localDateKey(new Date(request.start_time)));
+      return scheduleAPI.generate({ ...request, existing_events: existingEvents });
+    },
   });
 
   const saveMutation = useMutation({
-    mutationFn: async (option: StrategyOption) => {
-      const created = await scheduleAPI.create({
-        name: scheduleName.trim() || defaultScheduleName(),
-        is_regimen: isRegimen,
-      });
-      for (let i = 0; i < option.timeline.length; i++) {
-        const entry = option.timeline[i];
-        const item: ScheduleItemCreate = {
-          task_id: entry.task_id ?? undefined,
-          estimated_duration: Math.round((new Date(entry.end).getTime() - new Date(entry.start).getTime()) / 1000),
-          position: i,
-          scheduled_time: entry.start,
-        };
-        await scheduleAPI.addItem(created.id, item);
-      }
-      return created;
+    mutationFn: (option: StrategyOption) => {
+      const items = option.timeline.map((entry, i) => ({
+        task_id: entry.task_id ?? undefined,
+        estimated_duration: Math.round((new Date(entry.end).getTime() - new Date(entry.start).getTime()) / 1000),
+        position: i,
+        scheduled_time: entry.start,
+      }));
+      const body: ScheduleCreate = isRegimen
+        ? { name: scheduleName.trim(), is_regimen: true, items }
+        : { target_date: localDateKey(startTime), is_regimen: false, items };
+      return scheduleAPI.create(body);
     },
     onSuccess: (_data, option) => {
       setSavedKey(saveKey(option.strategy));
       queryClient.invalidateQueries({ queryKey: ['regimens'] });
+      queryClient.invalidateQueries({ queryKey: ['schedules'] });
     },
   });
 
@@ -131,8 +152,11 @@ export default function ScheduleScreen() {
 
   const applyRegimenMutation = useMutation({
     mutationFn: ({ id, targetDate }: { id: number; targetDate: string }) =>
-      scheduleAPI.applyRegimen(id, { target_date: targetDate }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['regimens'] }),
+      scheduleAPI.applyRegimen(id, { target_date: targetDate, tz_offset: new Date().getTimezoneOffset() }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['regimens'] });
+      queryClient.invalidateQueries({ queryKey: ['schedules'] });
+    },
   });
 
   function onCalendarPushError(error: unknown) {
@@ -162,6 +186,29 @@ export default function ScheduleScreen() {
     },
     onError: onCalendarPushError,
   });
+
+  // One status line for both calendar actions: starting one clears the other's outcome.
+  function pushSchedule(id: number) {
+    removeScheduleCalendarMutation.reset();
+    pushToCalendarMutation.mutate(id);
+  }
+
+  function removeScheduleCalendar(id: number) {
+    pushToCalendarMutation.reset();
+    removeScheduleCalendarMutation.mutate(id);
+  }
+
+  const calendarActionPending = pushToCalendarMutation.isPending || removeScheduleCalendarMutation.isPending;
+  const calendarActionSuccess = pushToCalendarMutation.isSuccess
+    ? `Pushed ${pushToCalendarMutation.data.items.filter((item) => item.calendar_event_id).length} events to Google`
+    : removeScheduleCalendarMutation.isSuccess
+      ? 'Removed from Google'
+      : null;
+  const calendarActionError = pushToCalendarMutation.isError
+    ? "Couldn't push to Google. Try again."
+    : removeScheduleCalendarMutation.isError
+      ? "Couldn't remove from Google. Try again."
+      : null;
 
   function toggleActivity(task: Task) {
     setSelectedIds((prev) => {
@@ -209,6 +256,8 @@ export default function ScheduleScreen() {
   const selectedOption = options.find((option) => option.strategy === selectedStrategy) ?? null;
   const savedSchedule = saveMutation.data;
   const isSaved = !!selectedOption && savedKey === saveKey(selectedOption.strategy);
+  const nameMissing = isRegimen && !scheduleName.trim();
+  const saveDisabled = saveMutation.isPending || isSaved || nameMissing;
   const savedSchedulePush = savedSchedule ? pushedById[savedSchedule.id] : undefined;
   const isSavedSchedulePushed = !!savedSchedulePush?.items.some((item) => item.calendar_event_id);
   const savedScheduleEventsPushed = savedSchedulePush?.items.filter((item) => item.calendar_event_id).length ?? 0;
@@ -317,21 +366,25 @@ export default function ScheduleScreen() {
 
       {selectedOption && (
         <GlassView glassEffectStyle="regular" style={styles.card}>
-          <TextInput
-            testID="input-schedule-name"
-            style={styles.input}
-            value={scheduleName}
-            onChangeText={setScheduleName}
-          />
           <View style={styles.row}>
             <Text style={styles.rowLabel}>Save as regimen</Text>
             <Switch testID="checkbox-regimen" value={isRegimen} onValueChange={setIsRegimen} />
           </View>
+          {isRegimen && (
+            <TextInput
+              testID="input-schedule-name"
+              style={styles.input}
+              placeholder="Regimen name"
+              placeholderTextColor={colors.placeholder}
+              value={scheduleName}
+              onChangeText={setScheduleName}
+            />
+          )}
           <Pressable
             testID="btn-save"
             accessibilityRole="button"
-            style={[styles.button, (saveMutation.isPending || isSaved) && styles.buttonDisabled]}
-            disabled={saveMutation.isPending || isSaved}
+            style={[styles.button, saveDisabled && styles.buttonDisabled]}
+            disabled={saveDisabled}
             onPress={() => saveMutation.mutate(selectedOption)}
           >
             <Text style={styles.buttonLabel}>
@@ -348,7 +401,7 @@ export default function ScheduleScreen() {
 
       {savedSchedule && (
         <GlassView glassEffectStyle="regular" style={styles.card}>
-          <Text style={styles.rowLabel}>{savedSchedule.name}</Text>
+          <Text style={styles.rowLabel}>{savedSchedule.name ?? savedSchedule.target_date}</Text>
           {isSavedSchedulePushed ? (
             <>
               <Text testID="text-events-pushed" style={styles.caption}>
@@ -358,7 +411,7 @@ export default function ScheduleScreen() {
                 testID="btn-remove-schedule-calendar"
                 accessibilityRole="button"
                 style={styles.button}
-                onPress={() => removeScheduleCalendarMutation.mutate(savedSchedule.id)}
+                onPress={() => removeScheduleCalendar(savedSchedule.id)}
               >
                 <Text style={styles.buttonLabel}>Remove from Calendar</Text>
               </Pressable>
@@ -368,7 +421,7 @@ export default function ScheduleScreen() {
               testID="btn-push-schedule"
               accessibilityRole="button"
               style={styles.button}
-              onPress={() => pushToCalendarMutation.mutate(savedSchedule.id)}
+              onPress={() => pushSchedule(savedSchedule.id)}
             >
               <Text style={styles.buttonLabel}>Push to Calendar</Text>
             </Pressable>
@@ -376,7 +429,27 @@ export default function ScheduleScreen() {
         </GlassView>
       )}
 
+      {calendarActionPending && (
+        <Text testID="schedule-action-working" style={styles.caption}>Working…</Text>
+      )}
+      {calendarActionSuccess && (
+        <Text testID="schedule-action-success" style={styles.caption}>{calendarActionSuccess}</Text>
+      )}
+      {calendarActionError && (
+        <Text testID="schedule-action-error" style={styles.caption}>{calendarActionError}</Text>
+      )}
+
       <Text style={styles.heading}>Regimens</Text>
+      {applyRegimenMutation.isSuccess && (
+        <Text testID="apply-success" style={styles.caption}>
+          Applied to {applyRegimenMutation.data.target_date}
+        </Text>
+      )}
+      {applyRegimenMutation.isError && (
+        <Text testID="apply-error" style={styles.caption}>
+          Couldn't apply. Check the connection and try again.
+        </Text>
+      )}
       {(regimens ?? []).map((regimen) => {
         const regimenPush = pushedById[regimen.id];
         const regimenItems = regimenPush?.items ?? regimen.items;
@@ -397,7 +470,7 @@ export default function ScheduleScreen() {
               testID={`btn-remove-calendar-${regimen.id}`}
               accessibilityRole="button"
               style={styles.button}
-              onPress={() => removeScheduleCalendarMutation.mutate(regimen.id)}
+              onPress={() => removeScheduleCalendar(regimen.id)}
             >
               <Text style={styles.buttonLabel}>Remove</Text>
             </Pressable>
@@ -406,7 +479,7 @@ export default function ScheduleScreen() {
               testID={`btn-push-${regimen.id}`}
               accessibilityRole="button"
               style={styles.button}
-              onPress={() => pushToCalendarMutation.mutate(regimen.id)}
+              onPress={() => pushSchedule(regimen.id)}
             >
               <Text style={styles.buttonLabel}>Push</Text>
             </Pressable>
@@ -419,7 +492,7 @@ export default function ScheduleScreen() {
               onChange={(event, date) => {
                 setApplyOpenId(null);
                 if (event.type === 'set' && date) {
-                  applyRegimenMutation.mutate({ id: regimen.id, targetDate: date.toISOString() });
+                  applyRegimenMutation.mutate({ id: regimen.id, targetDate: localDateKey(date) });
                 }
               }}
             />

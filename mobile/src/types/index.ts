@@ -106,7 +106,7 @@ export interface ScheduleItemPlace {
 
 export interface Schedule {
   id: number;
-  name: string;
+  name: string | null;
   schedule_type: 'day' | 'week' | 'month';
   target_date?: string;
   rating?: number;
@@ -118,7 +118,7 @@ export interface Schedule {
 }
 
 export interface ScheduleCreate {
-  name: string;
+  name?: string;
   schedule_type?: 'day' | 'week' | 'month';
   target_date?: string;
   notes?: string;
@@ -137,7 +137,7 @@ export interface ScheduleUpdate {
 
 export interface ApplyRegimen {
   target_date: string;
-  name?: string;
+  tz_offset: number;
 }
 
 // User preferences persisted on the device

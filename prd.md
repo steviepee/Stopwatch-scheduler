@@ -293,10 +293,10 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] Test: a push failure is shown, not silent
 
 ### B8.impl — Mobile: Schedule tab saves into the day, Apply fixed, feedback
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract in `src/app/(tabs)/schedule.tsx`.
 - **Acceptance Criteria:**
-  - [ ] All B8.tests pass; tsc clean; export succeeds
+  - [x] All B8.tests pass; tsc clean; export succeeds
 
 ### B9.tests — Mobile: hand-entered Recording
 - **Status:** PENDING

@@ -878,3 +878,15 @@ Each iteration appends its results here so the next session knows what worked, w
   - `apply-success` text must contain the local `YYYY-MM-DD`. The reference showed the response's `target_date`.
   - The 401 test uses `queryAllByText(/authorize from a laptop/i)`, so showing the phrase in both the banner and `schedule-action-error` is fine here, unlike B7. The 500 test requires zero matches.
   - Every `create`/`applyRegimen` fixture with `name: null` goes through `jest.Mock`, so it compiles before `Schedule.name` becomes nullable.
+
+## B8.impl. Mobile: Schedule tab saves into the day, Apply fixed, feedback
+- **Date:** 2026-09-28
+- **Status:** DONE
+- **Summary:** In `schedule.tsx`, Generate's mutation fetches the start date's Items (`getRange(d, d)`) and Google events (`getEvents(d)`) and sends them as `existing_events`. Save makes one `create` call: a day plan sends `target_date` + `items` with no `name` key, and a Regimen sends `name` + `items`, where the name field shows only with the Regimen switch on, starts empty, and is required. Apply sends `{ target_date: local YYYY-MM-DD, tz_offset }` and shows `apply-success` / `apply-error`. Push/remove report through `schedule-action-working` / `-success` / `-error`. Types: `Schedule.name` is `string | null`, `ScheduleCreate.name` is optional, and `ApplyRegimen` is `{ target_date, tz_offset }`.
+- **Files changed:** mobile/src/app/(tabs)/schedule.tsx, mobile/src/types/index.ts, prd.md, progress.md
+- **Verification:** from `mobile/`: `npx jest --ci --forceExit` 181/181; `npx tsc --noEmit` clean; `npx expo export --platform android` succeeds (to `/tmp/b8impl_export`).
+- **Gotchas:**
+  - The existing-events fetch runs inside `generateMutation`'s `mutationFn`, keyed off `request.start_time`, so Retry refetches them too. It uses direct API calls, not `fetchQuery`. If `getEvents` fails (for example Google is not authorized), Generate fails and shows Retry. It does not silently plan over the day.
+  - Push and remove stay two mutations. Each one `reset()`s the other before it runs, so only one status line shows at a time. On a 401, the laptop text appears only in the `google-auth-error` banner. `schedule-action-error` never contains it, so a 500 shows no laptop text.
+  - Save and Apply invalidate `['schedules']` as well as `['regimens']`, which refreshes the Calendar tab.
+  - The saved-schedule card shows `name ?? target_date`, because day Schedules have no name.
