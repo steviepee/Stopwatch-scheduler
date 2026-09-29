@@ -32,6 +32,7 @@ const END_HOUR = 24;
 const HOUR_HEIGHT = 180; // px per hour (3px/min) — keeps a 15-minute block above the 44pt touch target
 const INTERVAL_MIN = 60;
 const SNAP_MIN = 15;
+const RESIZE_SNAP_SECONDS = 300;
 const GUTTER = 56; // hour labels sit left of the blocks
 const MIN_BLOCK_HEIGHT = 44;
 const INITIAL_SCROLL_HOUR = 8;
@@ -77,6 +78,12 @@ function timedItems(schedules: Schedule[] | undefined): ScheduleItem[] {
   return (schedules ?? []).flatMap((schedule) => schedule.items.filter((item) => item.scheduled_time));
 }
 
+function isUnauthorized(error: unknown): boolean {
+  return (error as { response?: { status?: number } })?.response?.status === 401;
+}
+
+type DayAction = { run: () => Promise<string>; failure: string };
+
 export default function CalendarDayScreen() {
   const queryClient = useQueryClient();
   const [day, setDay] = useState(() => new Date());
@@ -85,6 +92,8 @@ export default function CalendarDayScreen() {
   const [bankSearch, setBankSearch] = useState('');
   const [googleAuthError, setGoogleAuthError] = useState(false);
   const [dragItem, setDragItem] = useState<DragPayload | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   // Gesture absoluteY is window-relative; these convert it to the grid's content space.
   const containerRef = useRef<View>(null);
@@ -147,7 +156,7 @@ export default function CalendarDayScreen() {
   const invalidateSchedules = () => queryClient.invalidateQueries({ queryKey: ['schedules'] });
 
   function onGoogleError(error: unknown) {
-    if ((error as { response?: { status?: number } })?.response?.status === 401) {
+    if (isUnauthorized(error)) {
       setGoogleAuthError(true);
     }
   }
@@ -172,7 +181,98 @@ export default function CalendarDayScreen() {
     onError: onGoogleError,
   });
 
+  const resizeMutation = useMutation({
+    mutationFn: ({ item, seconds }: { item: ScheduleItem; seconds: number }) =>
+      scheduleAPI.updateItem(item.schedule_id, item.id, { estimated_duration: seconds }),
+    onSuccess: invalidateSchedules,
+    onError: onGoogleError,
+  });
+
+  // Push, remove and clear share one status line so none of them fails silently.
+  const dayAction = useMutation({
+    mutationFn: ({ run }: DayAction) => run(),
+    onSettled: invalidateSchedules,
+  });
+
   const dayItems = useMemo(() => timedItems(daySchedules), [daySchedules]);
+  const daySchedule = daySchedules?.[0];
+  const selectedItem = dayItems.find((item) => item.id === selectedId);
+
+  function changeDay(next: (current: Date) => Date) {
+    setDay(next);
+    setSelectedId(null);
+    setEditingId(null);
+    dayAction.reset();
+  }
+
+  function toggleSelected(item: ScheduleItem) {
+    setSelectedId((current) => (current === item.id ? null : item.id));
+    setEditingId(null);
+  }
+
+  function pushDay(schedule: Schedule) {
+    dayAction.mutate({
+      run: async () => {
+        const pushed = await scheduleAPI.pushToCalendar(schedule.id);
+        const count = pushed.items.filter((item) => item.calendar_event_id).length;
+        return `Pushed ${count} event${count === 1 ? '' : 's'} to Google`;
+      },
+      failure: 'Push failed',
+    });
+  }
+
+  function removeDay(schedule: Schedule) {
+    Alert.alert('Remove day', 'Clear the whole day, or only take it off Google Calendar?', [
+      {
+        text: 'Clear all',
+        style: 'destructive',
+        onPress: () =>
+          dayAction.mutate({
+            run: async () => {
+              await scheduleAPI.clearDay(schedule.id, true);
+              return 'Day cleared';
+            },
+            failure: 'Clear failed',
+          }),
+      },
+      {
+        text: 'Remove from Google only',
+        onPress: () =>
+          dayAction.mutate({
+            run: async () => {
+              await scheduleAPI.removeFromCalendar(schedule.id);
+              return 'Removed from Google';
+            },
+            failure: 'Remove failed',
+          }),
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }
+
+  function removeItemFromGoogle(item: ScheduleItem) {
+    Alert.alert('Remove from Google', `Delete the Google event for "${itemName(item)}"? The block stays.`, [
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: () =>
+          dayAction.mutate({
+            run: async () => {
+              await scheduleAPI.removeItemFromCalendar(item.schedule_id, item.id);
+              return 'Removed from Google';
+            },
+            failure: 'Remove failed',
+          }),
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }
+
+  function commitResize(item: ScheduleItem, translationY: number) {
+    const raw = item.estimated_duration + pxToMinutes(translationY) * 60;
+    const seconds = Math.max(RESIZE_SNAP_SECONDS, Math.round(raw / RESIZE_SNAP_SECONDS) * RESIZE_SNAP_SECONDS);
+    resizeMutation.mutate({ item, seconds });
+  }
 
   function isOverBank(absoluteY: number): boolean {
     return absoluteY - containerTop.value >= bankTop.current;
@@ -307,7 +407,7 @@ export default function CalendarDayScreen() {
           testID="day-nav-prev"
           accessibilityRole="button"
           style={styles.navButton}
-          onPress={() => setDay((current) => previousDay(current))}>
+          onPress={() => changeDay(previousDay)}>
           <Text style={styles.navLabel}>‹</Text>
         </Pressable>
         <Text testID="day-label" style={styles.dayLabel}>
@@ -317,10 +417,69 @@ export default function CalendarDayScreen() {
           testID="day-nav-next"
           accessibilityRole="button"
           style={styles.navButton}
-          onPress={() => setDay((current) => nextDay(current))}>
+          onPress={() => changeDay(nextDay)}>
           <Text style={styles.navLabel}>›</Text>
         </Pressable>
       </View>
+
+      {daySchedule && dayItems.length > 0 && (
+        <View style={styles.actionRow}>
+          {dayItems.some((item) => !item.calendar_event_id) && (
+            <Pressable
+              testID="btn-push-day"
+              accessibilityRole="button"
+              disabled={dayAction.isPending}
+              style={styles.actionButton}
+              onPress={() => pushDay(daySchedule)}>
+              <Text style={styles.buttonLabel}>Push day</Text>
+            </Pressable>
+          )}
+          <Pressable
+            testID="btn-remove-day"
+            accessibilityRole="button"
+            disabled={dayAction.isPending}
+            style={styles.actionButton}
+            onPress={() => removeDay(daySchedule)}>
+            <Text style={styles.buttonLabel}>Remove day</Text>
+          </Pressable>
+        </View>
+      )}
+
+      {selectedItem && (
+        <View style={styles.actionRow}>
+          <Pressable
+            testID={`btn-edit-block-${selectedItem.id}`}
+            accessibilityRole="button"
+            style={[styles.actionButton, editingId === selectedItem.id && styles.toggleButtonActive]}
+            onPress={() => setEditingId((current) => (current === selectedItem.id ? null : selectedItem.id))}>
+            <Text style={styles.buttonLabel}>{editingId === selectedItem.id ? 'Done editing' : 'Edit block'}</Text>
+          </Pressable>
+          {selectedItem.calendar_event_id && (
+            <Pressable
+              testID={`btn-remove-google-${selectedItem.id}`}
+              accessibilityRole="button"
+              disabled={dayAction.isPending}
+              style={styles.actionButton}
+              onPress={() => removeItemFromGoogle(selectedItem)}>
+              <Text style={styles.buttonLabel}>Remove from Google</Text>
+            </Pressable>
+          )}
+        </View>
+      )}
+
+      {dayAction.isPending && (
+        <Text testID="day-action-working" style={styles.statusText}>Working…</Text>
+      )}
+      {dayAction.isSuccess && (
+        <Text testID="day-action-success" style={styles.statusText}>{dayAction.data}</Text>
+      )}
+      {dayAction.isError && (
+        <Text testID="day-action-error" style={[styles.statusText, styles.statusError]}>
+          {isUnauthorized(dayAction.error)
+            ? 'Google Calendar needs to be reconnected — authorize from a laptop.'
+            : `${dayAction.variables.failure}. Try again.`}
+        </Text>
+      )}
 
       {googleAuthError && (
         <View testID="google-auth-error" style={styles.errorBanner}>
@@ -397,9 +556,14 @@ export default function CalendarDayScreen() {
             item={item}
             top={positionFromTime(new Date(item.scheduled_time!), START_HOUR, HOUR_HEIGHT, INTERVAL_MIN)}
             dimmed={dragItem?.key === `item-${item.id}`}
+            selected={item.id === selectedId}
+            editing={item.id === editingId}
             drag={drag}
-            onMove={commitDrag}>
-            <Text style={styles.blockText}>{itemName(item)}</Text>
+            onMove={commitDrag}
+            onResize={commitResize}>
+            <Pressable accessibilityRole="button" onPress={() => toggleSelected(item)}>
+              <Text style={styles.blockText}>{itemName(item)}</Text>
+            </Pressable>
           </DayBlock>
         ))}
       </ScrollView>
@@ -451,24 +615,46 @@ function DayBlock({
   item,
   top,
   dimmed,
+  selected,
+  editing,
   drag,
   onMove,
+  onResize,
   children,
 }: {
   item: ScheduleItem;
   top: number;
   dimmed: boolean;
+  selected: boolean;
+  editing: boolean;
   drag: DragGhost;
   onMove: (item: ScheduleItem, translationY: number, absoluteY?: number) => void;
+  onResize: (item: ScheduleItem, translationY: number) => void;
   children: ReactNode;
 }) {
   const { ghostY, containerTop, start, finish } = drag;
   const active = useSharedValue(false);
+  const resizeY = useSharedValue(0);
+  const baseHeight = blockHeight(item.estimated_duration);
+  const heightStyle = useAnimatedStyle(() => ({ height: Math.max(MIN_BLOCK_HEIGHT, baseHeight + resizeY.value) }));
   const payload: DragPayload = { key: `item-${item.id}`, name: itemName(item), seconds: item.estimated_duration };
 
+  const resizeGesture = Gesture.Pan()
+    .onUpdate((event) => {
+      resizeY.value = event.translationY;
+    })
+    .onEnd((event) => {
+      runOnJS(onResize)(item, event.translationY);
+    })
+    .onFinalize(() => {
+      resizeY.value = 0;
+    });
+
+  // In edit mode the Block resizes only; its move gesture does nothing (D42).
   const dragGesture = Gesture.Pan()
     .activateAfterLongPress(DRAG_LONG_PRESS_MS)
     .onUpdate((event) => {
+      if (editing) return;
       ghostY.value = event.absoluteY - containerTop.value - (event.y - event.translationY);
       if (!active.value) {
         active.value = true;
@@ -476,6 +662,7 @@ function DayBlock({
       }
     })
     .onEnd((event) => {
+      if (editing) return;
       runOnJS(onMove)(item, event.translationY, event.absoluteY);
     })
     .onFinalize(() => {
@@ -489,8 +676,15 @@ function DayBlock({
     <GestureDetector gesture={dragGesture}>
       <Animated.View
         testID={`item-block-${item.id}`}
-        style={[styles.block, { top, height: blockHeight(item.estimated_duration) }, dimmed && styles.dimmed]}>
+        style={[styles.block, { top }, heightStyle, selected && styles.selectedBlock, dimmed && styles.dimmed]}>
         {children}
+        {editing && (
+          <GestureDetector gesture={resizeGesture}>
+            <View testID={`item-block-${item.id}-resize-handle`} style={styles.resizeHandle}>
+              <View style={styles.resizeGrip} />
+            </View>
+          </GestureDetector>
+        )}
       </Animated.View>
     </GestureDetector>
   );
@@ -757,6 +951,50 @@ const styles = StyleSheet.create({
   noHistoryText: {
     ...typography.caption,
     color: colors.textMuted,
+  },
+  selectedBlock: {
+    borderColor: colors.primary,
+  },
+  resizeHandle: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: touchTarget,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingBottom: spacing.xs,
+  },
+  resizeGrip: {
+    width: 40,
+    height: 4,
+    borderRadius: radii.pill,
+    backgroundColor: colors.primary,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  actionButton: {
+    minHeight: touchTarget,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radii.pill,
+    backgroundColor: colors.glass,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusText: {
+    ...typography.caption,
+    color: colors.textMuted,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  statusError: {
+    color: colors.red,
   },
 
 });

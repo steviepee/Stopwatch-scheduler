@@ -850,3 +850,16 @@ Each iteration appends its results here so the next session knows what worked, w
   - **401 check:** matches `/authorize from a laptop/i` anywhere on screen, so either `day-action-error` text or the existing `google-auth-error` banner works. The 500 test asserts that the phrase is **absent**, so do not show the laptop text for non-401 errors.
   - **Push day visibility:** it shows only when the day has at least one non-Exported Item. The empty-day test asserts that both Push day and Remove day are absent. The reference used `daySchedules?.[0]` as the day's Schedule id.
   - The tests' QueryClient sets `mutations: { retry: false }`.
+
+## B7.impl. Mobile: Block actions, edit mode, Push/Remove day, feedback
+- **Date:** 2026-09-28
+- **Status:** DONE
+- **Summary:** In `calendar.tsx`, tapping a Block's label selects it. An action row then shows **Edit block** (toggles edit mode) and, on Exported Blocks only, **Remove from Google** (confirms first, then `removeItemFromCalendar`). In edit mode a bottom-edge handle with its own `GestureDetector` resizes through `updateItem({ estimated_duration })`, snapped to 300 s with a minimum of 300 and a live height preview, and the move gesture does nothing. The day header gets **Push day** (only when some Item is not Exported) and **Remove day** (Clear all / Remove from Google only / Cancel). All four Google actions go through one `dayAction` mutation that shows `day-action-working` / `-success` (a push includes the event count) / `-error` (a 401 shows the "authorize from a laptop" text).
+- **Files changed:** mobile/src/app/(tabs)/calendar.tsx, prd.md, progress.md
+- **Verification:** from `mobile/` (via `python3 -c` subprocess): `npx jest --ci --forceExit` 171/171; `npx tsc --noEmit` clean; `npx expo export --platform android` succeeds (to `/tmp/b7impl_export`).
+- **Gotchas:**
+  - **Do not use `.enabled()` on a Gesture here.** Only `GooglePush.test.tsx`'s mock has it. The gesture mocks in `CalendarDayScreen`/`CalendarBankScreen` do not, and 10 of their tests crash with it.
+  - **Detaching the move `GestureDetector` in edit mode fails the edit-mode test.** Selecting the Block re-renders it before edit mode starts, and the registry keeps that pre-edit gesture, whose closure is stale. The fix: keep the detector attached and early-return in its `onUpdate`/`onEnd` when the `editing` prop is set. That way each render registers a fresh closure.
+  - The day-action 401 text appears only in `day-action-error`, not in the `google-auth-error` banner. Showing both would put the phrase on screen twice and break `findByText`. The banner is still set by 401s from move/resize/delete.
+  - Changing day clears the selection, edit mode, and the day-action status. `dayAction` invalidates `['schedules']` on settle, success or failure, because a partial Clear all can change server state.
+  - The resize handle is 44pt high and pinned to the Block's bottom, so on a 44 px (≤15 min) Block it covers the whole Block. That is fine because the action row stays reachable outside the Block. On device the handle pan activates immediately, and the outer move pan needs a 300 ms hold, so the handle wins.

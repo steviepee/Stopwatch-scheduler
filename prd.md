@@ -266,11 +266,11 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] Test: no gesture ever pushes an Item that was not already Exported
 
 ### B7.impl — Mobile: Block actions, edit mode, Push/Remove day, feedback
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract. The edit handle only exists in edit mode, which
   is what stops it stealing the move-hold (the reason resize was removed in P16-reopened).
 - **Acceptance Criteria:**
-  - [ ] All B7.tests pass; tsc clean; export succeeds
+  - [x] All B7.tests pass; tsc clean; export succeeds
 
 ### B8.tests — Mobile: Schedule tab saves into the day, Apply fixed, feedback
 - **Status:** PENDING
