@@ -916,3 +916,20 @@ Each iteration appends its results here so the next session knows what worked, w
   - A blank name falls back to the Activity's name, then to "Recording", mirroring the stopwatch save. The contract did not require a name.
   - While the form is open it replaces the whole screen (early return), so the list and its filters unmount. Their state (search, date range) resets when the form closes.
   - Bash heredocs (`cat >> file <<'EOF'`) are rejected by this sandbox's parser. Use Edit to append to `progress.md`.
+
+## B10.tests. Web: calendar on Schedule Items
+- **Date:** 2026-09-29
+- **Status:** DONE
+- **Summary:** Rewrote `frontend/src/__tests__/CalendarView.test.tsx` for B10. The header comment is the contract: props, testids, dnd ids, drop maths, dialogs and feedback. It has 25 tests covering Blocks from Items, the Activity Bank with search and the no-history marker, Bank drop and slot-click placement, same-column move, cross-column no-op, drop-to-Bank for plain and Exported Blocks, Remove from Google, edit mode with a 5-minute/minimum-300 resize, Push/Remove day, and the working/success/error/401 feedback. It deletes all the old tests that used Recording scheduling props (`scheduledSessions`, `unscheduledSessions`, `onSessionUpdate`, `onSessionCreate`). In `SessionList.test.tsx`, the `onAddToCalendar`/`onRemoveFromCalendar` props and `is_on_calendar` fixtures are gone, and a new test asserts there is no Recording push/remove button, badge or calendar filter (D46).
+- **Files changed:** frontend/src/__tests__/CalendarView.test.tsx, frontend/src/__tests__/SessionList.test.tsx, prd.md, progress.md
+- **Verification:** from `frontend/`: `npx vitest run` 26 failed, 10 passed. All 26 failures are the new B10 tests (25 CalendarView + 1 SessionList), as expected before B10.impl. `npx tsc --noEmit` is clean. Against a throwaway reference `CalendarView.tsx`, 25/25 passed. The file was then restored from `/tmp/b10t_CalendarView_orig.tsx` (md5 ee8b4454… matches).
+- **Gotchas:**
+  - `CalendarView` is cast to `ComponentType<{ tasks: Task[] }>` in the test, so B10.impl can drop the old props freely. `SessionList` is cast the same way (`sessions`, `onDeleteSession`, `onUpdateSession`).
+  - **Column ids use the LOCAL date.** Today's `DroppableColumn` uses `toISOString().split('T')[0]`, which is UTC and wrong. Use a `getFullYear/getMonth/getDate` key. The week is `getWeekDays` (Sunday start), and `getRange` is called with the first and last keys.
+  - Drop y = `active.rect.current.translated.top - over.rect.top`, at 1 px per minute from 06:00, snapped to 15 minutes. Build the time with `new Date(Y, M-1, D, 6, snappedMin).toISOString()`.
+  - **Clicks bubble.** Block clicks and action-button clicks sit inside the column, so they must not open the picker (`stopPropagation` or a `closest('.session-block')` guard). Render the picker, the drop-to-Bank dialog and the Remove day dialog **outside** the column, or an option click bubbles back to the column.
+  - The resize uses `mouseDown` on the handle, then `mouseMove`/`mouseUp` on `document`. Duration = old + deltaY×60 s, rounded to 300 s, min 300.
+  - In edit mode, pass `disabled: true` to that Block's `useDraggable`. The mock's `drag()` then skips it. Ignoring the drop in `onDragEnd` also works.
+  - A push's success text must contain the count as a standalone number (`/\b2\b/`). Take the count from the response items that have a `calendar_event_id`.
+  - `ScheduleItem` in `types/index.ts` still lacks `calendar_event_id`, and `Schedule.name` is non-null. B10.impl adds both. The web `scheduleAPI` also has no `getRange`, `placeActivity`, `removeItemFromCalendar`, `clearDay`, `pushToCalendar` or `removeFromCalendar` yet. Its `deleteItem` needs a third `deleteEvent` arg (`?delete_event=`). Copy the shapes from `mobile/src/services/api.ts`.
+  - HomePage has no test. The B10.impl grep criterion covers removing its Recording push/remove wiring.

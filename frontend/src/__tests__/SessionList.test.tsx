@@ -1,6 +1,17 @@
-import { render, screen, fireEvent } from '@testing-library/react';
-import { vi } from 'vitest';
-import SessionList from '../components/SessionList';
+import type { ComponentType } from 'react';
+import { act, render, screen, fireEvent } from '@testing-library/react';
+import { vi, type Mock } from 'vitest';
+import SessionListComponent from '../components/SessionList';
+import { googleCalendarAPI } from '../services/api';
+import type { StopwatchSession } from '../types';
+
+// B10 (D46): Recordings are history only. SessionList takes no calendar callbacks and shows no
+// Recording push/remove button, badge or calendar filter, even when Google is authorized.
+const SessionList = SessionListComponent as unknown as ComponentType<{
+  sessions: StopwatchSession[];
+  onDeleteSession: (sessionId: number) => void;
+  onUpdateSession: (sessionId: number, name: string) => void;
+}>;
 
 vi.mock('../services/api', () => ({
   googleCalendarAPI: {
@@ -14,7 +25,6 @@ const mockSessions = [
     id: 1,
     name: 'Morning Run',
     duration: 3600,
-    is_on_calendar: false,
     created_at: '2026-03-06T08:00:00',
     updated_at: '2026-03-06T08:00:00',
   },
@@ -22,17 +32,14 @@ const mockSessions = [
     id: 2,
     name: 'Evening Read',
     duration: 1800,
-    is_on_calendar: true,
     created_at: '2026-03-06T20:00:00',
     updated_at: '2026-03-06T20:00:00',
   },
-];
+] as StopwatchSession[];
 
 describe('SessionList', () => {
   const onDeleteSession = vi.fn();
   const onUpdateSession = vi.fn();
-  const onAddToCalendar = vi.fn();
-  const onRemoveFromCalendar = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -44,8 +51,6 @@ describe('SessionList', () => {
         sessions={mockSessions}
         onDeleteSession={onDeleteSession}
         onUpdateSession={onUpdateSession}
-        onAddToCalendar={onAddToCalendar}
-        onRemoveFromCalendar={onRemoveFromCalendar}
       />
     );
     expect(screen.getByText('Morning Run')).toBeInTheDocument();
@@ -58,8 +63,6 @@ describe('SessionList', () => {
         sessions={[]}
         onDeleteSession={onDeleteSession}
         onUpdateSession={onUpdateSession}
-        onAddToCalendar={onAddToCalendar}
-        onRemoveFromCalendar={onRemoveFromCalendar}
       />
     );
     expect(screen.getByText(/No sessions yet/i)).toBeInTheDocument();
@@ -72,8 +75,6 @@ describe('SessionList', () => {
         sessions={mockSessions}
         onDeleteSession={onDeleteSession}
         onUpdateSession={onUpdateSession}
-        onAddToCalendar={onAddToCalendar}
-        onRemoveFromCalendar={onRemoveFromCalendar}
       />
     );
     const deleteButtons = screen.getAllByText('Delete');
@@ -87,8 +88,6 @@ describe('SessionList', () => {
         sessions={mockSessions}
         onDeleteSession={onDeleteSession}
         onUpdateSession={onUpdateSession}
-        onAddToCalendar={onAddToCalendar}
-        onRemoveFromCalendar={onRemoveFromCalendar}
       />
     );
     fireEvent.click(screen.getByText('Morning Run'));
@@ -101,12 +100,27 @@ describe('SessionList', () => {
         sessions={mockSessions}
         onDeleteSession={onDeleteSession}
         onUpdateSession={onUpdateSession}
-        onAddToCalendar={onAddToCalendar}
-        onRemoveFromCalendar={onRemoveFromCalendar}
       />
     );
     fireEvent.change(screen.getByPlaceholderText('Search by name...'), { target: { value: 'morning' } });
     expect(screen.getByText('Morning Run')).toBeInTheDocument();
     expect(screen.queryByText('Evening Read')).not.toBeInTheDocument();
+  });
+
+  it('has no Recording calendar push, remove, badge or filter, even when Google is authorized', async () => {
+    (googleCalendarAPI.checkAuthStatus as Mock).mockResolvedValue({ authenticated: true });
+    render(
+      <SessionList
+        sessions={mockSessions}
+        onDeleteSession={onDeleteSession}
+        onUpdateSession={onUpdateSession}
+      />
+    );
+    await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+    expect(screen.queryByTitle('Add to calendar')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Remove from calendar')).not.toBeInTheDocument();
+    expect(screen.queryByText(/📅/)).not.toBeInTheDocument();
+    expect(screen.queryByText('On Calendar')).not.toBeInTheDocument();
+    expect(screen.queryByText('Not on Calendar')).not.toBeInTheDocument();
   });
 });

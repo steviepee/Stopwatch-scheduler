@@ -318,7 +318,7 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] All B9.tests pass; tsc clean; export succeeds
 
 ### B10.tests — Web: calendar on Schedule Items
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Rewrite `frontend/src/__tests__/CalendarView.test.tsx`.
 - **Contract:** The B6 and B7 behaviour on the web week grid, with these differences:
   - `frontend/src/services/api.ts` and `types/index.ts` get the same API changes as B6.
@@ -332,12 +332,12 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - Recording push/remove buttons are removed from the Recordings list (`SessionList`,
     `HomePage`).
 - **Acceptance Criteria:**
-  - [ ] Test: Blocks render from Schedule Items; the Bank lists all Activities
-  - [ ] Test: bank drop and slot click both call `placeActivity` with the slot's local date and time
-  - [ ] Test: a cross-column drop makes no call
-  - [ ] Test: edit mode toggling and a 5-minute resize
-  - [ ] Test: drop-to-Bank confirm for an Exported Block; each Remove day choice
-  - [ ] Test: a push failure is shown
+  - [x] Test: Blocks render from Schedule Items; the Bank lists all Activities
+  - [x] Test: bank drop and slot click both call `placeActivity` with the slot's local date and time
+  - [x] Test: a cross-column drop makes no call
+  - [x] Test: edit mode toggling and a 5-minute resize
+  - [x] Test: drop-to-Bank confirm for an Exported Block; each Remove day choice
+  - [x] Test: a push failure is shown
 
 ### B10.impl — Web: calendar on Schedule Items
 - **Status:** PENDING
