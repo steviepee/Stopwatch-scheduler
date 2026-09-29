@@ -890,3 +890,17 @@ Each iteration appends its results here so the next session knows what worked, w
   - Push and remove stay two mutations. Each one `reset()`s the other before it runs, so only one status line shows at a time. On a 401, the laptop text appears only in the `google-auth-error` banner. `schedule-action-error` never contains it, so a 500 shows no laptop text.
   - Save and Apply invalidate `['schedules']` as well as `['regimens']`, which refreshes the Calendar tab.
   - The saved-schedule card shows `name ?? target_date`, because day Schedules have no name.
+
+## B9.tests. Mobile: hand-entered Recording
+- **Date:** 2026-09-28
+- **Status:** DONE
+- **Summary:** Added a `hand-entered recording` block to `RecordingsScreen.test.tsx` (the header comment is the contract), with 6 tests: the start prefills to now minus the duration and follows duration edits; picking a start date/time stops that; the Save body with and without an Activity; zero duration disables Save; a failed save shows `manual-save-error` and keeps the form and its values. Added `create` to the `sessionAPI` mock. No existing tests removed.
+- **Files changed:** mobile/src/__tests__/RecordingsScreen.test.tsx, prd.md, progress.md
+- **Verification:** from `mobile/`: `npx jest --ci --forceExit` 6 failed, 181 passed. All 6 failures are the new B9 tests, as expected before B9.impl. `npx tsc --noEmit` is clean, and `npx expo export --platform android` succeeds (to `/tmp/b9t_export`). Against a throwaway reference `recordings.tsx`, 12/12 passed in this file. The file was then restored from `/tmp/b9_recordings_orig.tsx` (md5 164bccfa… matches).
+- **Gotchas:**
+  - **testIDs:** `btn-add-manual`, `manual-form`, `manual-name`, `manual-activity-search`, `manual-activity-none`, `manual-activity-{id}`, `manual-hours`, `manual-minutes`, PickerFields `manual-start-date` / `manual-start-time` (the `-open` suffix comes from `PickerField`), `btn-manual-save`, `manual-save-error`.
+  - **Save must call `sessionAPI.create` through a plain `useMutation`**, not `useCreateSession`. The test's QueryClient is a bare `new QueryClient` with no `CREATE_SESSION_KEY` mutation default, so `useCreateSession` would have no `mutationFn`. A queued offline save could not show a failure either. Invalidate `['sessions']` and `['tasks']` on success; the form may close then.
+  - **Start editing:** the reference kept `editedStart: Date | null`, with `start = editedStart ?? now - duration` computed each render. The date picker set Y/M/D on the current start, and the time picker set hours/minutes with seconds and ms zeroed. The datetimepicker mock returns the same full local Date for both pickers, so taking the picked Date whole also passes. Expected values are built with `new Date(2026, 8, 27, 6, 15)` (local), so they hold in any TZ.
+  - The prefill test allows the start to be truncated to the minute (`[before - dur - 60s, after - dur]`), but `end_time - start_time` must equal the duration exactly.
+  - Body keys: `name`, `duration` (seconds), `start_time`, `end_time`, plus `task_id` only when an Activity is chosen. Asserted with `toEqual` and `'task_id' in body`, so use a conditional spread.
+  - `btn-manual-save` is checked with `toBeDisabled()` / `toBeEnabled()`, so pass `disabled` on the Pressable. It must stay enabled after a failed save.

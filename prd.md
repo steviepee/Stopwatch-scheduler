@@ -299,7 +299,7 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] All B8.tests pass; tsc clean; export succeeds
 
 ### B9.tests — Mobile: hand-entered Recording
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Extend `mobile/src/__tests__/RecordingsScreen.test.tsx`.
 - **Contract:** An **Add manually** button on the Recordings screen opens a form: name, Activity
   (optional, same picker as the stopwatch save), duration (hours and minutes), and start date
@@ -307,9 +307,9 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   Save calls `sessionAPI.create` with `duration`, `start_time`, `end_time` = start + duration, and
   `task_id` if chosen. A zero duration cannot be saved.
 - **Acceptance Criteria:**
-  - [ ] Test: the start prefills to now minus the duration and tracks duration changes until edited
-  - [ ] Test: Save sends the right body, with and without an Activity
-  - [ ] Test: zero duration disables Save; a failed save shows an error and keeps the form
+  - [x] Test: the start prefills to now minus the duration and tracks duration changes until edited
+  - [x] Test: Save sends the right body, with and without an Activity
+  - [x] Test: zero duration disables Save; a failed save shows an error and keeps the form
 
 ### B9.impl — Mobile: hand-entered Recording
 - **Status:** PENDING

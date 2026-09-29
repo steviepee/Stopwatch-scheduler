@@ -12,8 +12,22 @@ import type { StopwatchSession, Task } from '../types';
 // client-side date-range filter, long-press delete, and "pending" rows
 // sourced from the mutation cache (not only optimistic `['sessions']` rows,
 // since a mutation restored after process death carries no optimistic row).
+//
+// B9 contract (hand-entered Recording, D47): an "Add manually" button
+// (`btn-add-manual`) opens a form (`manual-form`) with a name (`manual-name`),
+// an optional Activity picker like the stopwatch save's (`manual-activity-search`,
+// `manual-activity-none`, one `manual-activity-{id}` row per Activity), a
+// duration in hours and minutes (`manual-hours`, `manual-minutes`), and a start
+// date and time (PickerFields `manual-start-date` and `manual-start-time`). The
+// start prefills to now minus the duration and follows the duration until the
+// user picks a start date or time; after that it stays put. Save
+// (`btn-manual-save`) calls `sessionAPI.create` directly (not the offline queue,
+// so a failure is visible) with `name`, `duration` in seconds, `start_time`,
+// `end_time` = start + duration, both UTC `Z`, and `task_id` only when an
+// Activity is chosen. Save is disabled at zero duration. A failed save shows
+// `manual-save-error` and keeps the form and its values.
 jest.mock('../services/api', () => ({
-  sessionAPI: { getAll: jest.fn(), delete: jest.fn() },
+  sessionAPI: { getAll: jest.fn(), delete: jest.fn(), create: jest.fn() },
   taskAPI: { getAll: jest.fn() },
 }));
 
@@ -34,6 +48,7 @@ jest.mock('@react-native-community/datetimepicker', () => {
 
 const mockedGetAll = sessionAPI.getAll as jest.Mock;
 const mockedDelete = sessionAPI.delete as jest.Mock;
+const mockedCreate = sessionAPI.create as jest.Mock;
 const mockedTasksGetAll = taskAPI.getAll as jest.Mock;
 
 const GYM: Task = {
@@ -78,6 +93,7 @@ async function renderScreen(queryClient: QueryClient = client()) {
 beforeEach(() => {
   mockedGetAll.mockReset();
   mockedDelete.mockReset();
+  mockedCreate.mockReset();
   mockedTasksGetAll.mockReset();
   mockedTasksGetAll.mockResolvedValue([GYM, READING]);
   mockPickerValue = new Date('2026-01-01T00:00:00.000Z');
@@ -225,5 +241,151 @@ describe('recordings pending marker', () => {
 
     qc.getMutationCache().getAll().forEach((m) => m.destroy());
     qc.clear();
+  });
+});
+
+describe('hand-entered recording', () => {
+  function manualClient() {
+    return new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  }
+
+  async function openForm() {
+    mockedGetAll.mockResolvedValue([]);
+    await renderScreen(manualClient());
+    await fireEvent.press(await screen.findByTestId('btn-add-manual'));
+    await screen.findByTestId('manual-form');
+  }
+
+  async function setDuration(hours: string, minutes: string) {
+    await fireEvent.changeText(screen.getByTestId('manual-hours'), hours);
+    await fireEvent.changeText(screen.getByTestId('manual-minutes'), minutes);
+  }
+
+  async function pickStart(local: Date) {
+    mockPickerValue = local;
+    await fireEvent.press(screen.getByTestId('manual-start-date-open'));
+    await fireEvent.press(screen.getByTestId('manual-start-date'));
+    await fireEvent.press(screen.getByTestId('manual-start-time-open'));
+    await fireEvent.press(screen.getByTestId('manual-start-time'));
+  }
+
+  function sentBody() {
+    expect(mockedCreate).toHaveBeenCalledTimes(1);
+    return mockedCreate.mock.calls[0][0];
+  }
+
+  it('prefills the start to now minus the duration and tracks duration changes', async () => {
+    mockedCreate.mockResolvedValue(session({ id: 50 }));
+    const before = Date.now();
+    await openForm();
+
+    await fireEvent.changeText(screen.getByTestId('manual-name'), 'Run');
+    await setDuration('1', '30');
+    await fireEvent.changeText(screen.getByTestId('manual-minutes'), '45');
+    const after = Date.now();
+    await fireEvent.press(screen.getByTestId('btn-manual-save'));
+
+    await waitFor(() => expect(mockedCreate).toHaveBeenCalled());
+    const body = sentBody();
+    const durationMs = (1 * 3600 + 45 * 60) * 1000;
+    expect(body.duration).toBe(6300);
+    expect(body.start_time).toMatch(/Z$/);
+    expect(body.end_time).toMatch(/Z$/);
+    const start = new Date(body.start_time).getTime();
+    // The start may be truncated to the minute.
+    expect(start).toBeGreaterThanOrEqual(before - durationMs - 60_000);
+    expect(start).toBeLessThanOrEqual(after - durationMs);
+    expect(new Date(body.end_time).getTime() - start).toBe(durationMs);
+  });
+
+  it('stops tracking the duration once the user edits the start', async () => {
+    mockedCreate.mockResolvedValue(session({ id: 51 }));
+    await openForm();
+
+    await fireEvent.changeText(screen.getByTestId('manual-name'), 'Run');
+    await setDuration('0', '20');
+    const picked = new Date(2026, 8, 27, 6, 15);
+    await pickStart(picked);
+    await setDuration('1', '0');
+    await fireEvent.press(screen.getByTestId('btn-manual-save'));
+
+    await waitFor(() => expect(mockedCreate).toHaveBeenCalled());
+    const body = sentBody();
+    expect(body.duration).toBe(3600);
+    expect(body.start_time).toBe(picked.toISOString());
+    expect(body.end_time).toBe(new Date(picked.getTime() + 3600_000).toISOString());
+  });
+
+  it('sends task_id when an Activity is chosen', async () => {
+    mockedCreate.mockResolvedValue(session({ id: 52 }));
+    await openForm();
+
+    await fireEvent.changeText(screen.getByTestId('manual-name'), 'Leg day');
+    await fireEvent.press(await screen.findByTestId('manual-activity-7'));
+    await setDuration('0', '40');
+    const picked = new Date(2026, 8, 28, 7, 0);
+    await pickStart(picked);
+    await fireEvent.press(screen.getByTestId('btn-manual-save'));
+
+    await waitFor(() => expect(mockedCreate).toHaveBeenCalled());
+    expect(sentBody()).toEqual({
+      name: 'Leg day',
+      duration: 2400,
+      start_time: picked.toISOString(),
+      end_time: new Date(picked.getTime() + 2400_000).toISOString(),
+      task_id: 7,
+    });
+  });
+
+  it('sends no task_id without an Activity', async () => {
+    mockedCreate.mockResolvedValue(session({ id: 53 }));
+    await openForm();
+
+    await fireEvent.changeText(screen.getByTestId('manual-name'), 'Walk');
+    await fireEvent.press(await screen.findByTestId('manual-activity-7'));
+    await fireEvent.press(screen.getByTestId('manual-activity-none'));
+    await setDuration('0', '15');
+    const picked = new Date(2026, 8, 28, 12, 30);
+    await pickStart(picked);
+    await fireEvent.press(screen.getByTestId('btn-manual-save'));
+
+    await waitFor(() => expect(mockedCreate).toHaveBeenCalled());
+    const body = sentBody();
+    expect(body).toEqual({
+      name: 'Walk',
+      duration: 900,
+      start_time: picked.toISOString(),
+      end_time: new Date(picked.getTime() + 900_000).toISOString(),
+    });
+    expect('task_id' in body).toBe(false);
+  });
+
+  it('disables Save at zero duration', async () => {
+    await openForm();
+
+    await fireEvent.changeText(screen.getByTestId('manual-name'), 'Nothing');
+    await setDuration('0', '0');
+
+    expect(screen.getByTestId('btn-manual-save')).toBeDisabled();
+    await fireEvent.press(screen.getByTestId('btn-manual-save'));
+    expect(mockedCreate).not.toHaveBeenCalled();
+
+    await setDuration('0', '5');
+    expect(screen.getByTestId('btn-manual-save')).toBeEnabled();
+  });
+
+  it('shows an error on a failed save and keeps the form', async () => {
+    mockedCreate.mockRejectedValue(new Error('Network Error'));
+    await openForm();
+
+    await fireEvent.changeText(screen.getByTestId('manual-name'), 'Swim');
+    await setDuration('0', '30');
+    await fireEvent.press(screen.getByTestId('btn-manual-save'));
+
+    await screen.findByTestId('manual-save-error');
+    expect(screen.getByTestId('manual-form')).toBeTruthy();
+    expect(screen.getByTestId('manual-name').props.value).toBe('Swim');
+    expect(screen.getByTestId('manual-minutes').props.value).toBe('30');
+    expect(screen.getByTestId('btn-manual-save')).toBeEnabled();
   });
 });
