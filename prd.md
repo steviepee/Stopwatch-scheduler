@@ -348,7 +348,7 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] `grep -rn "scheduled_start\|unschedule\|addToCalendar" frontend/src` is empty
 
 ### B11.tests — Web: Schedule builder, Apply, hand entry
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** `frontend/src/__tests__/ScheduleBuilder.test.tsx` and
   `frontend/src/__tests__/ManualRecording.test.tsx`.
 - **Contract:** B8 for `ScheduleBuilder` / `ScheduleList` / `HomePage`'s apply (local
@@ -356,9 +356,9 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   visible success and failure). B9 for the web Recordings list: an **Add manually** form with the
   same fields, prefill and body.
 - **Acceptance Criteria:**
-  - [ ] Test: day Save sends `target_date` and no name; Apply sends a local date and `tz_offset`
-  - [ ] Test: Save and Apply show success and failure
-  - [ ] Test: hand entry prefill and body, as B9
+  - [x] Test: day Save sends `target_date` and no name; Apply sends a local date and `tz_offset`
+  - [x] Test: Save and Apply show success and failure
+  - [x] Test: hand entry prefill and body, as B9
 
 ### B11.impl — Web: Schedule builder, Apply, hand entry
 - **Status:** PENDING
