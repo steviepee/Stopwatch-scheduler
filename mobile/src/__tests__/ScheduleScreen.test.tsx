@@ -60,6 +60,15 @@ import type { GenerateResponse, Schedule, ScheduleItem, StrategyOption, Task } f
 // `calendar_event_id`) or `schedule-action-error`. A 401 shows text matching
 // /authorize from a laptop/i (in `schedule-action-error` or the `google-auth-error` banner);
 // any other failure must not show it.
+//
+// B14 contract: Generate survives Google being unavailable.
+//   - If `calendarImportAPI.getEvents` rejects, Generate still calls `scheduleAPI.generate`
+//     with only the day's Items as `existing_events`, and shows `google-events-skipped`
+//     whose text matches /Planned without Google events/i. On a 401 that notice also
+//     matches /authorize from a laptop/i; on any other status it does not.
+//   - If `scheduleAPI.getRange` rejects, `generate` is not called and `btn-retry-generate`
+//     shows, as before — planning over unknown Items could overlap the user's own plan.
+//   - When both succeed, `google-events-skipped` is not rendered.
 jest.mock('../services/api', () => ({
   taskAPI: { getAll: jest.fn() },
   scheduleAPI: {
@@ -327,6 +336,95 @@ describe('setup step', () => {
       expect(e.start).toMatch(/Z$/);
       expect(e.end).toMatch(/Z$/);
     }
+  });
+});
+
+describe('Generate when Google is unavailable', () => {
+  const START = new Date('2026-02-03T08:00:00.000Z');
+
+  function daySchedule() {
+    return {
+      ...REGIMEN,
+      id: 50,
+      name: null,
+      is_regimen: false,
+      target_date: localKey(START),
+      items: [
+        scheduleItem({ id: 1, task_id: 8, task: READING, scheduled_time: '2026-02-03T10:00:00Z', estimated_duration: 1800 }),
+      ],
+    };
+  }
+
+  async function generate() {
+    await renderScreen();
+    await screen.findByTestId('activity-row-7');
+    await selectActivity(7);
+    await pickStart(START);
+    await fireEvent.press(screen.getByTestId('btn-generate'));
+  }
+
+  it('plans with only the day Items and shows a notice when getEvents fails', async () => {
+    mockedGetRange.mockResolvedValue([daySchedule()]);
+    mockedGetEvents.mockRejectedValue(httpError(500));
+    mockedGenerate.mockResolvedValue({ options: [option({})] });
+
+    await generate();
+
+    await waitFor(() => expect(mockedGenerate).toHaveBeenCalledTimes(1));
+    const events = mockedGenerate.mock.calls[0][0].existing_events;
+    expect(events).toHaveLength(1);
+    expect(events[0].name).toBe('Reading');
+    expect(new Date(events[0].start).getTime()).toBe(Date.parse('2026-02-03T10:00:00Z'));
+    expect(new Date(events[0].end).getTime()).toBe(Date.parse('2026-02-03T10:30:00Z'));
+
+    expect(await screen.findByTestId('google-events-skipped')).toHaveTextContent(/Planned without Google events/i);
+    await screen.findByTestId('option-card-your-order');
+    expect(screen.queryByTestId('btn-retry-generate')).toBeNull();
+  });
+
+  it('a 401 from getEvents puts the laptop text in the notice', async () => {
+    mockedGetEvents.mockRejectedValue(httpError(401));
+    mockedGenerate.mockResolvedValue({ options: [option({})] });
+
+    await generate();
+
+    const notice = await screen.findByTestId('google-events-skipped');
+    expect(notice).toHaveTextContent(/Planned without Google events/i);
+    expect(notice).toHaveTextContent(/authorize from a laptop/i);
+    expect(mockedGenerate).toHaveBeenCalledTimes(1);
+  });
+
+  it('a 500 from getEvents leaves the laptop text out', async () => {
+    mockedGetEvents.mockRejectedValue(httpError(500));
+    mockedGenerate.mockResolvedValue({ options: [option({})] });
+
+    await generate();
+
+    const notice = await screen.findByTestId('google-events-skipped');
+    expect(notice).not.toHaveTextContent(/authorize from a laptop/i);
+    expect(screen.queryAllByText(/authorize from a laptop/i)).toHaveLength(0);
+  });
+
+  it('does not generate when getRange fails, and offers Retry', async () => {
+    mockedGetRange.mockRejectedValue(httpError(500));
+    mockedGenerate.mockResolvedValue({ options: [option({})] });
+
+    await generate();
+
+    await screen.findByTestId('btn-retry-generate');
+    expect(mockedGenerate).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('option-card-your-order')).toBeNull();
+  });
+
+  it('shows no notice when both fetches succeed', async () => {
+    mockedGetRange.mockResolvedValue([daySchedule()]);
+    mockedGenerate.mockResolvedValue({ options: [option({})] });
+
+    await generate();
+
+    await screen.findByTestId('option-card-your-order');
+    expect(mockedGenerate).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('google-events-skipped')).toBeNull();
   });
 });
 

@@ -393,7 +393,7 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] All B13.tests pass; full suite passes
 
 ### B14.tests — Mobile Generate works when Google is unavailable
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Found in the post-loop review (B8.impl gotcha). `fetchExistingEvents` in
   `src/app/(tabs)/schedule.tsx` fetches the day's Items and Google events with one `Promise.all`,
   so an expired Google authorization or a Google outage makes Generate fail outright. Extend
@@ -404,10 +404,10 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   Generate still fails with Retry as today, because planning over unknown Items could overlap
   the user's own plan.
 - **Acceptance Criteria:**
-  - [ ] Test: `getEvents` rejecting → `generate` is called with only the day's Items, and the notice shows
-  - [ ] Test: a 401 from `getEvents` → the notice includes the laptop text; a 500 → it does not
-  - [ ] Test: `getRange` rejecting → no `generate` call; Retry shows
-  - [ ] Test: both succeeding → no notice
+  - [x] Test: `getEvents` rejecting → `generate` is called with only the day's Items, and the notice shows
+  - [x] Test: a 401 from `getEvents` → the notice includes the laptop text; a 500 → it does not
+  - [x] Test: `getRange` rejecting → no `generate` call; Retry shows
+  - [x] Test: both succeeding → no notice
 
 ### B14.impl — Mobile Generate works when Google is unavailable
 - **Status:** PENDING
