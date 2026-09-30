@@ -386,11 +386,11 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] Test: retrying a Clear all after a mid-way failure succeeds
 
 ### B13.impl — Google deletes tolerate events that are already gone
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract. `HttpError` is
   `googleapiclient.errors.HttpError`; its status is `resp.status`.
 - **Acceptance Criteria:**
-  - [ ] All B13.tests pass; full suite passes
+  - [x] All B13.tests pass; full suite passes
 
 ### B14.tests — Mobile Generate works when Google is unavailable
 - **Status:** PENDING

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import date, datetime, timedelta
+from googleapiclient.errors import HttpError
 
 from app.database import get_db
 from app.models.schedule import Schedule, ScheduleItem
@@ -33,7 +34,11 @@ def _require_google():
 
 
 def _delete_event(event_id: str):
-    calendar_service.service.events().delete(calendarId='primary', eventId=event_id).execute()
+    try:
+        calendar_service.service.events().delete(calendarId='primary', eventId=event_id).execute()
+    except HttpError as e:
+        if e.resp.status not in (404, 410):
+            raise HTTPException(status_code=500, detail=str(e))
 
 
 def _clear_other_frogs(db: Session, item: ScheduleItem):
@@ -339,10 +344,7 @@ def remove_schedule_from_calendar(schedule_id: int, db: Session = Depends(get_db
         for item in db_schedule.items:
             if item.calendar_event_id is None:
                 continue
-            calendar_service.service.events().delete(
-                calendarId='primary',
-                eventId=item.calendar_event_id
-            ).execute()
+            _delete_event(item.calendar_event_id)
             item.calendar_event_id = None
 
         db.commit()
