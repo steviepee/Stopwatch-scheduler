@@ -366,6 +366,55 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
 - **Acceptance Criteria:**
   - [x] All B11.tests pass; web tsc clean; `npm run build` succeeds
 
+### B13.tests — Google deletes tolerate events that are already gone
+- **Status:** PENDING
+- **Description:** Found in the post-loop review (B3.impl gotcha). If Google fails partway
+  through Clear all or Remove from Google only, nothing is committed, so the events already
+  deleted keep their ids on their Items. Every retry then asks Google to delete an event that no
+  longer exists, gets 404/410, and 500s again — the day is stuck. Extend
+  `backend/tests/test_item_google_sync.py`, Google mocked as in the existing tests.
+- **Contract:** Every route that deletes a Google event — item delete with `delete_event=true`,
+  `DELETE .../items/{item_id}/calendar`, Clear all, and `DELETE /api/schedules/{id}/calendar` —
+  treats a Google `HttpError` with status 404 or 410 as "already deleted": it nulls the id (or
+  deletes the Item/Schedule) and carries on. Any other Google error still 500s with nothing
+  committed. All four routes delete through the one `_delete_event` helper in
+  `routers/schedules.py`.
+- **Acceptance Criteria:**
+  - [ ] Test: for each of the four routes, a 404 and a 410 from Google's delete count as success
+  - [ ] Test: Clear all where the 2nd of 3 events is already gone deletes the other two and the Schedule
+  - [ ] Test: a 500 from Google still fails the request and leaves every id in place
+  - [ ] Test: retrying a Clear all after a mid-way failure succeeds
+
+### B13.impl — Google deletes tolerate events that are already gone
+- **Status:** PENDING
+- **Description:** Implement to the contract. `HttpError` is
+  `googleapiclient.errors.HttpError`; its status is `resp.status`.
+- **Acceptance Criteria:**
+  - [ ] All B13.tests pass; full suite passes
+
+### B14.tests — Mobile Generate works when Google is unavailable
+- **Status:** PENDING
+- **Description:** Found in the post-loop review (B8.impl gotcha). `fetchExistingEvents` in
+  `src/app/(tabs)/schedule.tsx` fetches the day's Items and Google events with one `Promise.all`,
+  so an expired Google authorization or a Google outage makes Generate fail outright. Extend
+  `mobile/src/__tests__/ScheduleScreen.test.tsx`.
+- **Contract:** If `calendarImportAPI.getEvents` fails, Generate still runs with the day's Items
+  as `existing_events` and shows a `google-events-skipped` notice ("Planned without Google
+  events"; on a 401, it also says to authorize from a laptop). If `scheduleAPI.getRange` fails,
+  Generate still fails with Retry as today, because planning over unknown Items could overlap
+  the user's own plan.
+- **Acceptance Criteria:**
+  - [ ] Test: `getEvents` rejecting → `generate` is called with only the day's Items, and the notice shows
+  - [ ] Test: a 401 from `getEvents` → the notice includes the laptop text; a 500 → it does not
+  - [ ] Test: `getRange` rejecting → no `generate` call; Retry shows
+  - [ ] Test: both succeeding → no notice
+
+### B14.impl — Mobile Generate works when Google is unavailable
+- **Status:** PENDING
+- **Description:** Implement to the contract.
+- **Acceptance Criteria:**
+  - [ ] All B14.tests pass; tsc clean; export succeeds
+
 ### B12. USER — Build 2a check, phone and browser
 - **Status:** USER
 - **Description:** B5 done and uvicorn restarted. Phone: `cd mobile && npx expo start --dev-client`
