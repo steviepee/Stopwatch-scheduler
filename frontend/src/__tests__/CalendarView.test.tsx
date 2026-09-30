@@ -476,6 +476,49 @@ describe('CalendarView — Block actions and edit mode', () => {
   });
 });
 
+// B15 contract: a Block renders at least 24 px tall; above that, height stays exactly
+// `estimated_duration` in minutes. `style.top` is unchanged. A resize still computes from the
+// Item's `estimated_duration`, not the rendered height.
+describe('CalendarView — short Blocks', () => {
+  function addShortBlock() {
+    schedules.push({
+      id: 102,
+      target_date: '2026-10-02',
+      items: [makeItem(31, 102, tasks[0], iso(2026, 9, 2, 7, 0), 300)],
+    });
+  }
+
+  it('a 5-minute Block renders 24 px tall; a 45-minute Block still renders 45 px', async () => {
+    addShortBlock();
+    await renderView();
+    const short = screen.getByTestId('item-block-31');
+    expect(short.style.height).toBe('24px');
+    expect(short.style.top).toBe('60px');
+    expect(screen.getByTestId('item-block-11').style.height).toBe('45px');
+  });
+
+  it('a 5-minute Block can be selected by clicking it, and its actions show', async () => {
+    addShortBlock();
+    await renderView();
+    fireEvent.click(screen.getByTestId('item-block-31'));
+    expect(await screen.findByTestId('btn-edit-block-31')).toBeInTheDocument();
+    expect(screen.queryByTestId('activity-picker')).not.toBeInTheDocument();
+  });
+
+  it('resizing a 5-minute Block by +10 px sends estimated_duration 900', async () => {
+    addShortBlock();
+    await renderView();
+    await selectBlock(31);
+    fireEvent.click(screen.getByTestId('btn-edit-block-31'));
+    const handle = await screen.findByTestId('item-block-31-resize-handle');
+    fireEvent.mouseDown(handle, { clientY: 500 });
+    fireEvent.mouseMove(document, { clientY: 510 });
+    fireEvent.mouseUp(document, { clientY: 510 });
+    await waitFor(() => expect(api.updateItem).toHaveBeenCalledWith(102, 31, { estimated_duration: 900 }));
+    expect(api.updateItem).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('CalendarView — Push day and Remove day', () => {
   it('shows Push day only with a non-Exported Item, Remove day only with Items', async () => {
     await renderView();

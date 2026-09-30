@@ -416,7 +416,7 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] All B14.tests pass; tsc clean; export succeeds
 
 ### B15.tests — Web: short Blocks stay clickable
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Found in the post-loop review (B10.impl gotcha). Web Blocks are 1 px per
   minute with no floor ([ItemBlock.tsx](frontend/src/components/calendar/ItemBlock.tsx)), so a
   5-minute Block is 5 px tall — too small to click, select or drag. Mobile already floors Blocks
@@ -426,9 +426,9 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   slot below it). Resizing in edit mode still computes from the Item's `estimated_duration`, not
   the rendered height, so resizing a 5-minute Block by +10 px gives 15 minutes, not 30.
 - **Acceptance Criteria:**
-  - [ ] Test: a 5-minute Block renders 24 px tall; a 45-minute Block still renders 45 px
-  - [ ] Test: a 5-minute Block can be selected by clicking it, and its actions show
-  - [ ] Test: resizing a 5-minute Block by +10 px sends `estimated_duration` 900
+  - [x] Test: a 5-minute Block renders 24 px tall; a 45-minute Block still renders 45 px
+  - [x] Test: a 5-minute Block can be selected by clicking it, and its actions show
+  - [x] Test: resizing a 5-minute Block by +10 px sends `estimated_duration` 900
 
 ### B15.impl — Web: short Blocks stay clickable
 - **Status:** PENDING

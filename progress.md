@@ -1017,3 +1017,11 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Files changed:** mobile/src/app/(tabs)/schedule.tsx, prd.md, progress.md
 - **Verification:** from `mobile/` (via python3 subprocess): `npx jest --ci --forceExit` 192/192 passed; `npx tsc --noEmit` clean; `npx expo export --platform android` succeeded (to `/tmp/b14i_export`).
 - **Gotchas:** The notice does not set the `google-auth-error` banner, so a 500 never shows laptop text anywhere. If both fetches fail, the notice and Retry show together; harmless.
+
+## B15.tests. Web: short Blocks stay clickable
+- **Date:** 2026-09-29
+- **Status:** DONE
+- **Summary:** Added a `CalendarView — short Blocks` describe to `frontend/src/__tests__/CalendarView.test.tsx` with three tests. Each pushes a Schedule 102 on 2026-10-02 holding one 5-minute Item (id 31, 07:00), so the shared fixtures and the other tests are untouched. The tests cover a 24 px floor with `top` unchanged at 60 px and the 45-minute Block still 45 px; click-to-select showing `btn-edit-block-31`; and a +10 px resize sending `{ estimated_duration: 900 }`.
+- **Files changed:** frontend/src/__tests__/CalendarView.test.tsx, prd.md, progress.md
+- **Verification:** from `frontend/`: `npx vitest run` 1 failed, 54 passed. The one failure is the new height test (got `5px`), as expected before B15.impl. `npx tsc --noEmit` is clean.
+- **Gotchas:** The selection and resize tests already pass. jsdom has no layout, so a 5 px Block is still clickable there, and `ItemBlock`'s resize already computes from `item.estimated_duration`. They are regression guards: B15.impl must floor only the rendered `height` (e.g. `Math.max(24, heightFromDuration(...))` in `ItemBlock.tsx`), not the duration the resize uses. In this sandbox, `cd frontend && npx vitest run > file` is refused (a `cd` plus a redirect needs approval); run `cd frontend && npx vitest run` with no redirect instead.
