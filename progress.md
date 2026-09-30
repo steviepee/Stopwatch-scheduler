@@ -1025,3 +1025,11 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Files changed:** frontend/src/__tests__/CalendarView.test.tsx, prd.md, progress.md
 - **Verification:** from `frontend/`: `npx vitest run` 1 failed, 54 passed. The one failure is the new height test (got `5px`), as expected before B15.impl. `npx tsc --noEmit` is clean.
 - **Gotchas:** The selection and resize tests already pass. jsdom has no layout, so a 5 px Block is still clickable there, and `ItemBlock`'s resize already computes from `item.estimated_duration`. They are regression guards: B15.impl must floor only the rendered `height` (e.g. `Math.max(24, heightFromDuration(...))` in `ItemBlock.tsx`), not the duration the resize uses. In this sandbox, `cd frontend && npx vitest run > file` is refused (a `cd` plus a redirect needs approval); run `cd frontend && npx vitest run` with no redirect instead.
+
+## B15.impl. Web: short Blocks stay clickable
+- **Date:** 2026-09-29
+- **Status:** DONE
+- **Summary:** `ItemBlock.tsx` floors the rendered height at `MIN_BLOCK_HEIGHT` (24 px) with `Math.max`. `top` and the resize math still use `item.estimated_duration`, so a +10 px resize of a 5-minute Block gives 900 s.
+- **Files changed:** frontend/src/components/calendar/ItemBlock.tsx, prd.md, progress.md
+- **Verification:** from `frontend/`: `npx vitest run` 55/55 passed; `npx tsc --noEmit` clean; `npm run build` succeeded.
+- **Gotchas:** During a resize drag the preview height is floored too, so shrinking a Block below 24 min shows no visual change until mouseup (the duration label still updates). Chaining several commands with `;` and `$?` in one Bash call was refused; run each check as its own call.

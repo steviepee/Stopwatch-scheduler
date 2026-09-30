@@ -431,10 +431,10 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] Test: resizing a 5-minute Block by +10 px sends `estimated_duration` 900
 
 ### B15.impl — Web: short Blocks stay clickable
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
-  - [ ] All B15.tests pass; web tsc clean; `npm run build` succeeds
+  - [x] All B15.tests pass; web tsc clean; `npm run build` succeeds
 
 ### B12. USER — Build 2a check, phone and browser
 - **Status:** USER

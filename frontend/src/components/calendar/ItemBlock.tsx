@@ -18,6 +18,7 @@ interface ItemBlockProps {
 }
 
 const RESIZE_SNAP = 300;
+const MIN_BLOCK_HEIGHT = 24;
 
 function snapDuration(seconds: number) {
   return Math.max(RESIZE_SNAP, Math.round(seconds / RESIZE_SNAP) * RESIZE_SNAP);
@@ -46,7 +47,7 @@ export function ItemBlock({
   const exported = !!item.calendar_event_id;
   const duration = previewDuration ?? item.estimated_duration;
   const top = positionFromTime(new Date(item.scheduled_time!), startHour, slotHeight, intervalMin);
-  const height = heightFromDuration(duration, slotHeight, intervalMin);
+  const height = Math.max(MIN_BLOCK_HEIGHT, heightFromDuration(duration, slotHeight, intervalMin));
 
   const handleResizeStart = (e: React.MouseEvent) => {
     e.preventDefault();
