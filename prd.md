@@ -178,7 +178,7 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] All B4.tests pass; full suite passes
 
 ### B5. USER — Migrate the live database
-- **Status:** USER
+- **Status:** USER — DONE 2026-09-29. `alembic current` at head; `target_date` is DATE; #9 dated 2026-09-26; no duplicate dates; backup at `~/stopwatch-before-build2.sql`.
 - **Description:** B1–B4 changed the schema; live MySQL does not know yet. The backend will 500
   on schedules and sessions until this is done. From the repo root:
   ```bash
@@ -414,6 +414,27 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
   - [ ] All B14.tests pass; tsc clean; export succeeds
+
+### B15.tests — Web: short Blocks stay clickable
+- **Status:** PENDING
+- **Description:** Found in the post-loop review (B10.impl gotcha). Web Blocks are 1 px per
+  minute with no floor ([ItemBlock.tsx](frontend/src/components/calendar/ItemBlock.tsx)), so a
+  5-minute Block is 5 px tall — too small to click, select or drag. Mobile already floors Blocks
+  at 44 px. Extend `frontend/src/__tests__/CalendarView.test.tsx`.
+- **Contract:** A Block renders at least **24 px** tall; above that, height stays exactly
+  `estimated_duration` in minutes. The top offset is unchanged (a short Block may overlap the
+  slot below it). Resizing in edit mode still computes from the Item's `estimated_duration`, not
+  the rendered height, so resizing a 5-minute Block by +10 px gives 15 minutes, not 30.
+- **Acceptance Criteria:**
+  - [ ] Test: a 5-minute Block renders 24 px tall; a 45-minute Block still renders 45 px
+  - [ ] Test: a 5-minute Block can be selected by clicking it, and its actions show
+  - [ ] Test: resizing a 5-minute Block by +10 px sends `estimated_duration` 900
+
+### B15.impl — Web: short Blocks stay clickable
+- **Status:** PENDING
+- **Description:** Implement to the contract.
+- **Acceptance Criteria:**
+  - [ ] All B15.tests pass; web tsc clean; `npm run build` succeeds
 
 ### B12. USER — Build 2a check, phone and browser
 - **Status:** USER
