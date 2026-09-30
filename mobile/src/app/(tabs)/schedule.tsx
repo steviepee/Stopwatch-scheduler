@@ -72,10 +72,16 @@ function localDateKey(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-async function fetchExistingEvents(date: string): Promise<GenerateEvent[]> {
+async function fetchExistingEvents(
+  date: string,
+  onGoogleError: (error: unknown) => void,
+): Promise<GenerateEvent[]> {
   const [schedules, googleEvents] = await Promise.all([
     scheduleAPI.getRange(date, date),
-    calendarImportAPI.getEvents(date),
+    calendarImportAPI.getEvents(date).catch((error) => {
+      onGoogleError(error);
+      return [];
+    }),
   ]);
   const items = schedules.flatMap((schedule) => schedule.items).filter((item) => item.scheduled_time);
   return [
@@ -110,6 +116,7 @@ export default function ScheduleScreen() {
   const [applyOpenId, setApplyOpenId] = useState<number | null>(null);
   const [pushedById, setPushedById] = useState<Record<number, Schedule>>({});
   const [googleAuthError, setGoogleAuthError] = useState(false);
+  const [googleEventsSkipped, setGoogleEventsSkipped] = useState<'unauthorized' | 'unavailable' | null>(null);
 
   const filteredTasks = useMemo(() => {
     const list = tasks ?? [];
@@ -120,7 +127,12 @@ export default function ScheduleScreen() {
 
   const generateMutation = useMutation({
     mutationFn: async (request: GenerateRequest) => {
-      const existingEvents = await fetchExistingEvents(localDateKey(new Date(request.start_time)));
+      setGoogleEventsSkipped(null);
+      const existingEvents = await fetchExistingEvents(localDateKey(new Date(request.start_time)), (error) =>
+        setGoogleEventsSkipped(
+          (error as { response?: { status?: number } })?.response?.status === 401 ? 'unauthorized' : 'unavailable',
+        ),
+      );
       return scheduleAPI.generate({ ...request, existing_events: existingEvents });
     },
   });
@@ -343,6 +355,14 @@ export default function ScheduleScreen() {
         >
           <Text style={styles.buttonLabel}>Retry</Text>
         </Pressable>
+      )}
+
+      {googleEventsSkipped && (
+        <Text testID="google-events-skipped" style={styles.caption}>
+          {googleEventsSkipped === 'unauthorized'
+            ? 'Planned without Google events — authorize from a laptop to include them.'
+            : 'Planned without Google events.'}
+        </Text>
       )}
 
       {options.map((option) => (

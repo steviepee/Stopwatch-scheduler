@@ -410,10 +410,10 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] Test: both succeeding → no notice
 
 ### B14.impl — Mobile Generate works when Google is unavailable
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
-  - [ ] All B14.tests pass; tsc clean; export succeeds
+  - [x] All B14.tests pass; tsc clean; export succeeds
 
 ### B15.tests — Web: short Blocks stay clickable
 - **Status:** PENDING
