@@ -367,7 +367,7 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] All B11.tests pass; web tsc clean; `npm run build` succeeds
 
 ### B13.tests — Google deletes tolerate events that are already gone
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Found in the post-loop review (B3.impl gotcha). If Google fails partway
   through Clear all or Remove from Google only, nothing is committed, so the events already
   deleted keep their ids on their Items. Every retry then asks Google to delete an event that no
@@ -380,10 +380,10 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   committed. All four routes delete through the one `_delete_event` helper in
   `routers/schedules.py`.
 - **Acceptance Criteria:**
-  - [ ] Test: for each of the four routes, a 404 and a 410 from Google's delete count as success
-  - [ ] Test: Clear all where the 2nd of 3 events is already gone deletes the other two and the Schedule
-  - [ ] Test: a 500 from Google still fails the request and leaves every id in place
-  - [ ] Test: retrying a Clear all after a mid-way failure succeeds
+  - [x] Test: for each of the four routes, a 404 and a 410 from Google's delete count as success
+  - [x] Test: Clear all where the 2nd of 3 events is already gone deletes the other two and the Schedule
+  - [x] Test: a 500 from Google still fails the request and leaves every id in place
+  - [x] Test: retrying a Clear all after a mid-way failure succeeds
 
 ### B13.impl — Google deletes tolerate events that are already gone
 - **Status:** PENDING

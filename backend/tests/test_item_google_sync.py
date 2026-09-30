@@ -2,6 +2,10 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from unittest.mock import patch, MagicMock
 
+import httplib2
+import pytest
+from googleapiclient.errors import HttpError
+
 from app.models.schedule import Schedule, ScheduleItem
 from app.routers.schedules import calendar_service
 
@@ -450,3 +454,198 @@ def test_no_route_touches_an_event_id_not_stored_on_its_item(client):
 
     fetched_b = client.get(f"/api/schedules/{day_b['id']}").json()
     assert fetched_b["items"][0]["calendar_event_id"] == "evt-b1"
+
+
+# --- Google deletes tolerate events that are already gone (B13) ---
+
+def _http_error(status):
+    return HttpError(httplib2.Response({"status": status}), b"{}")
+
+
+def _delete_fails(g, statuses):
+    """Google's delete raises HttpError(status) for each eventId in `statuses` (read at call
+    time, so a test can change it between requests); every other id deletes cleanly."""
+    def delete(*args, **kwargs):
+        request = MagicMock()
+        status = statuses.get(kwargs.get("eventId"))
+        if status is not None:
+            request.execute.side_effect = _http_error(status)
+        return request
+    g["delete"].side_effect = delete
+
+
+def _three_exported(client):
+    return _exported_schedule(client, [
+        {"custom_name": "Write", "estimated_duration": 600.0, "scheduled_time": T9},
+        {"custom_name": "Read", "estimated_duration": 600.0, "scheduled_time": T10},
+        {"custom_name": "Run", "estimated_duration": 600.0, "scheduled_time": T11},
+    ], ["evt-1", "evt-2", "evt-3"])
+
+
+def _event_ids(client, sid):
+    items = client.get(f"/api/schedules/{sid}").json()["items"]
+    return {i["custom_name"]: i["calendar_event_id"] for i in items}
+
+
+@pytest.mark.parametrize("status", [404, 410])
+def test_item_delete_treats_gone_event_as_deleted(client, status):
+    sched = _exported_schedule(client, [
+        {"custom_name": "Write", "estimated_duration": 600.0, "scheduled_time": T9},
+    ], ["evt-1"])
+    item = _item(sched, "Write")
+
+    with _google() as g:
+        _delete_fails(g, {"evt-1": status})
+        r = client.delete(f"/api/schedules/{sched['id']}/items/{item['id']}", params={"delete_event": "true"})
+
+    assert r.status_code == 200
+    assert _deleted_event_ids(g) == ["evt-1"]
+    assert client.get(f"/api/schedules/{sched['id']}").json()["items"] == []
+
+
+@pytest.mark.parametrize("status", [404, 410])
+def test_item_calendar_removal_treats_gone_event_as_deleted(client, status):
+    sched = _exported_schedule(client, [
+        {"custom_name": "Write", "estimated_duration": 600.0, "scheduled_time": T9},
+    ], ["evt-1"])
+    item = _item(sched, "Write")
+
+    with _google() as g:
+        _delete_fails(g, {"evt-1": status})
+        r = client.delete(f"/api/schedules/{sched['id']}/items/{item['id']}/calendar")
+
+    assert r.status_code == 200
+    assert _deleted_event_ids(g) == ["evt-1"]
+    assert _event_ids(client, sched["id"]) == {"Write": None}
+
+
+@pytest.mark.parametrize("status", [404, 410])
+def test_clear_all_treats_gone_event_as_deleted(client, db, status):
+    sched = _exported_schedule(client, [
+        {"custom_name": "Write", "estimated_duration": 600.0, "scheduled_time": T9},
+    ], ["evt-1"])
+    sid = sched["id"]
+
+    with _google() as g:
+        _delete_fails(g, {"evt-1": status})
+        r = client.delete(f"/api/schedules/{sid}", params={"delete_events": "true"})
+
+    assert r.status_code == 200
+    assert _deleted_event_ids(g) == ["evt-1"]
+    assert db.query(Schedule).filter(Schedule.id == sid).count() == 0
+    assert db.query(ScheduleItem).filter(ScheduleItem.schedule_id == sid).count() == 0
+
+
+@pytest.mark.parametrize("status", [404, 410])
+def test_remove_from_google_only_treats_gone_event_as_deleted(client, status):
+    sched = _exported_schedule(client, [
+        {"custom_name": "Write", "estimated_duration": 600.0, "scheduled_time": T9},
+    ], ["evt-1"])
+    sid = sched["id"]
+
+    with _google() as g:
+        _delete_fails(g, {"evt-1": status})
+        r = client.delete(f"/api/schedules/{sid}/calendar")
+
+    assert r.status_code == 200
+    assert _deleted_event_ids(g) == ["evt-1"]
+    assert _event_ids(client, sid) == {"Write": None}
+
+
+@pytest.mark.parametrize("status", [404, 410])
+def test_clear_all_with_middle_event_gone_deletes_the_rest_and_schedule(client, db, status):
+    sid = _three_exported(client)["id"]
+
+    with _google() as g:
+        _delete_fails(g, {"evt-2": status})
+        r = client.delete(f"/api/schedules/{sid}", params={"delete_events": "true"})
+
+    assert r.status_code == 200
+    assert sorted(_deleted_event_ids(g)) == ["evt-1", "evt-2", "evt-3"]
+    assert db.query(Schedule).filter(Schedule.id == sid).count() == 0
+    assert db.query(ScheduleItem).filter(ScheduleItem.schedule_id == sid).count() == 0
+
+
+@pytest.mark.parametrize("status", [404, 410])
+def test_remove_from_google_only_with_middle_event_gone_clears_every_id(client, status):
+    sid = _three_exported(client)["id"]
+
+    with _google() as g:
+        _delete_fails(g, {"evt-2": status})
+        r = client.delete(f"/api/schedules/{sid}/calendar")
+
+    assert r.status_code == 200
+    assert sorted(_deleted_event_ids(g)) == ["evt-1", "evt-2", "evt-3"]
+    assert _event_ids(client, sid) == {"Write": None, "Read": None, "Run": None}
+
+
+def test_item_delete_google_500_fails_and_keeps_item(client):
+    sched = _exported_schedule(client, [
+        {"custom_name": "Write", "estimated_duration": 600.0, "scheduled_time": T9},
+    ], ["evt-1"])
+    item = _item(sched, "Write")
+
+    with _google() as g:
+        _delete_fails(g, {"evt-1": 500})
+        r = client.delete(f"/api/schedules/{sched['id']}/items/{item['id']}", params={"delete_event": "true"})
+
+    assert r.status_code == 500
+    assert _event_ids(client, sched["id"]) == {"Write": "evt-1"}
+
+
+def test_item_calendar_removal_google_500_fails_and_keeps_id(client):
+    sched = _exported_schedule(client, [
+        {"custom_name": "Write", "estimated_duration": 600.0, "scheduled_time": T9},
+    ], ["evt-1"])
+    item = _item(sched, "Write")
+
+    with _google() as g:
+        _delete_fails(g, {"evt-1": 500})
+        r = client.delete(f"/api/schedules/{sched['id']}/items/{item['id']}/calendar")
+
+    assert r.status_code == 500
+    assert _event_ids(client, sched["id"]) == {"Write": "evt-1"}
+
+
+def test_clear_all_google_500_midway_fails_and_keeps_every_id(client, db):
+    sid = _three_exported(client)["id"]
+
+    with _google() as g:
+        _delete_fails(g, {"evt-2": 500})
+        r = client.delete(f"/api/schedules/{sid}", params={"delete_events": "true"})
+
+    assert r.status_code == 500
+    assert db.query(Schedule).filter(Schedule.id == sid).count() == 1
+    assert _event_ids(client, sid) == {"Write": "evt-1", "Read": "evt-2", "Run": "evt-3"}
+
+
+def test_remove_from_google_only_google_500_midway_fails_and_keeps_every_id(client):
+    sid = _three_exported(client)["id"]
+
+    with _google() as g:
+        _delete_fails(g, {"evt-2": 500})
+        r = client.delete(f"/api/schedules/{sid}/calendar")
+
+    assert r.status_code == 500
+    assert _event_ids(client, sid) == {"Write": "evt-1", "Read": "evt-2", "Run": "evt-3"}
+
+
+def test_clear_all_retry_after_midway_failure_succeeds(client, db):
+    """The first attempt deletes evt-1 on Google, then fails on evt-2, so nothing is committed
+    and evt-1's id is still stored. The retry gets 404 for evt-1 and must carry on."""
+    sid = _three_exported(client)["id"]
+    statuses = {"evt-2": 500}
+
+    with _google() as g:
+        _delete_fails(g, statuses)
+        first = client.delete(f"/api/schedules/{sid}", params={"delete_events": "true"})
+        assert first.status_code == 500
+        assert _event_ids(client, sid) == {"Write": "evt-1", "Read": "evt-2", "Run": "evt-3"}
+
+        statuses.clear()
+        statuses["evt-1"] = 404
+        retry = client.delete(f"/api/schedules/{sid}", params={"delete_events": "true"})
+
+    assert retry.status_code == 200
+    assert db.query(Schedule).filter(Schedule.id == sid).count() == 0
+    assert db.query(ScheduleItem).filter(ScheduleItem.schedule_id == sid).count() == 0
