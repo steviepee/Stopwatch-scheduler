@@ -4,7 +4,7 @@ import { vi, type Mock } from 'vitest';
 import ScheduleBuilderComponent from '../components/ScheduleBuilder';
 import ScheduleListComponent from '../components/ScheduleList';
 import HomePage from '../pages/HomePage';
-import { scheduleAPI, sessionAPI, taskAPI } from '../services/api';
+import { calendarImportAPI, googleCalendarAPI, scheduleAPI, sessionAPI, taskAPI } from '../services/api';
 import type { Schedule, ScheduleItemCreate, Task } from '../types';
 
 // B11 contract (Build 2a, D39, D44, B8 on the web): the Schedule tab saves into the day, Apply
@@ -39,6 +39,25 @@ import type { Schedule, ScheduleItemCreate, Task } from '../types';
 // tz_offset })` with exactly those two keys, `tz_offset` = `new Date().getTimezoneOffset()`.
 // Success shows `apply-success` containing the date; failure shows `apply-error`. No
 // `window.alert`.
+//
+// B28 contract (D44 amended, B26): the web plans through the server's Generate, as mobile does.
+//   - `scheduleAPI.generate(req)` POSTs `/schedules/generate` (no trailing slash). Request and
+//     response shapes match mobile's `GenerateRequest` / `GenerateResponse`.
+//   - "Generate Schedule Options" fetches the day's Items (as B11) and then calls `generate`
+//     ONCE with: `start_time` (date + Start Time, local, as UTC `Z`), `day_start` (06:00 local on
+//     the date), `day_end` (23:00 local), `activities` in list order as `{ task_id?, name,
+//     estimated_duration }`, `existing_events` = the day's timed Items plus any imported Google
+//     events, `strategies: ['your-order', 'shortest-first', 'longest-first', 'best-fit']` and
+//     `avoid_existing: true`. A failed call shows `generate-error` inline and stays on setup.
+//   - `ScheduleTimeline` is a presenter: props `options` (the response's `options`),
+//     `onSelect(items)`, `onReorder(activities)`. One tab (a button) per option with the
+//     server's `label` and `description`; the selected option's entries (draggable rows on the
+//     Your Order tab) with start–end; its `excluded` as "Didn't fit: <names>". "Use This
+//     Schedule" calls `onSelect` with one Item per entry: `task_id`, `custom_name` when there is
+//     no task, `estimated_duration` = end − start in seconds, `position`, `scheduled_time` = the
+//     entry's start.
+//   - Reordering rows on Your Order calls `onReorder` with the reordered activities (`name`,
+//     `estimated_duration`, `task_id`), and the builder calls `generate` again in that order.
 
 process.env.TZ = 'America/Chicago';
 
@@ -55,6 +74,7 @@ vi.mock('../services/api', () => ({
     delete: vi.fn(),
     pushToCalendar: vi.fn(),
     removeFromCalendar: vi.fn(),
+    generate: vi.fn(),
   },
   googleCalendarAPI: {
     checkAuthStatus: vi.fn().mockResolvedValue({ authenticated: false }),
@@ -65,11 +85,22 @@ vi.mock('../services/api', () => ({
 
 vi.mock('../components/calendar', () => ({ CalendarView: () => null }));
 
+type Entry = { task_id: number | null; name: string; start: string; end: string };
+type Flag = { name: string; reason: string };
+type Option = {
+  strategy: string;
+  label: string;
+  description: string;
+  timeline: Entry[];
+  flagged: Flag[];
+  excluded: Flag[];
+};
+type ReorderActivity = { task_id?: number | null; name: string; estimated_duration: number };
+
 type TimelineProps = {
-  activities: unknown[];
-  startTime: Date;
-  existingEvents: { name: string; start: string; end: string }[];
-  onSelect: (ordered: unknown[], items: ScheduleItemCreate[]) => void;
+  options: Option[];
+  onSelect: (items: ScheduleItemCreate[]) => void;
+  onReorder: (activities: ReorderActivity[]) => void;
 };
 
 const timeline = vi.hoisted(() => ({
@@ -78,13 +109,17 @@ const timeline = vi.hoisted(() => ({
     { task_id: 1, estimated_duration: 1800, position: 0, scheduled_time: '2026-10-02T13:00:00.000Z' },
     { custom_name: 'Stretch', estimated_duration: 1200, position: 1, scheduled_time: '2026-10-02T13:30:00.000Z' },
   ],
+  reorderTo: [] as unknown[],
 }));
 
 vi.mock('../components/ScheduleTimeline', () => ({
   default: (props: TimelineProps): ReactNode => {
     timeline.props = props;
     return (
-      <button onClick={() => props.onSelect(props.activities, timeline.items)}>Use This Schedule</button>
+      <>
+        <button onClick={() => props.onSelect(timeline.items)}>Use This Schedule</button>
+        <button onClick={() => props.onReorder(timeline.reorderTo as ReorderActivity[])}>Mock reorder</button>
+      </>
     );
   },
 }));
@@ -92,6 +127,52 @@ vi.mock('../components/ScheduleTimeline', () => ({
 const schedules = scheduleAPI as unknown as Record<string, Mock>;
 const tasksApi = taskAPI as unknown as Record<string, Mock>;
 const sessions = sessionAPI as unknown as Record<string, Mock>;
+const google = googleCalendarAPI as unknown as Record<string, Mock>;
+const calImport = calendarImportAPI as unknown as Record<string, Mock>;
+
+const OPTIONS: Option[] = [
+  {
+    strategy: 'your-order',
+    label: 'Your Order',
+    description: 'Server: as you listed them',
+    timeline: [
+      { task_id: 1, name: 'Gym', start: '2026-10-02T13:00:00Z', end: '2026-10-02T14:00:00Z' },
+      { task_id: null, name: 'Stretch', start: '2026-10-02T16:00:00Z', end: '2026-10-02T16:20:00Z' },
+    ],
+    flagged: [],
+    excluded: [],
+  },
+  {
+    strategy: 'shortest-first',
+    label: 'Shortest First',
+    description: 'Server: quick wins first',
+    timeline: [{ task_id: null, name: 'Stretch', start: '2026-10-02T13:00:00Z', end: '2026-10-02T13:20:00Z' }],
+    flagged: [],
+    excluded: [{ name: 'Gym', reason: 'no-free-slot' }],
+  },
+  {
+    strategy: 'longest-first',
+    label: 'Longest First',
+    description: 'Server: hardest thing early',
+    timeline: [
+      { task_id: 1, name: 'Gym', start: '2026-10-02T13:00:00Z', end: '2026-10-02T14:00:00Z' },
+      { task_id: null, name: 'Stretch', start: '2026-10-02T14:00:00Z', end: '2026-10-02T14:20:00Z' },
+    ],
+    flagged: [],
+    excluded: [],
+  },
+  {
+    strategy: 'best-fit',
+    label: 'Best Fit',
+    description: 'Server: fills the gaps',
+    timeline: [
+      { task_id: 1, name: 'Gym', start: '2026-10-02T13:00:00Z', end: '2026-10-02T14:00:00Z' },
+      { task_id: null, name: 'Stretch', start: '2026-10-02T14:00:00Z', end: '2026-10-02T14:20:00Z' },
+    ],
+    flagged: [],
+    excluded: [],
+  },
+];
 
 const ScheduleBuilder = ScheduleBuilderComponent as unknown as ComponentType<{
   tasks: Task[];
@@ -147,16 +228,26 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 
-async function renderToGenerateStep(date?: string) {
+function addActivity(name: string, minutes: string) {
+  fireEvent.change(screen.getByPlaceholderText('Activity name (e.g. Go for a run)'), { target: { value: name } });
+  fireEvent.change(screen.getByPlaceholderText('min'), { target: { value: minutes } });
+  fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+}
+
+function renderToSetup(date?: string) {
   const onScheduleCreated = vi.fn();
   render(<ScheduleBuilder tasks={TASKS} onScheduleCreated={onScheduleCreated} />);
   if (date) fireEvent.change(screen.getByTestId('input-target-date'), { target: { value: date } });
-  fireEvent.change(screen.getByPlaceholderText('Activity name (e.g. Go for a run)'), { target: { value: 'Stretch' } });
-  fireEvent.change(screen.getByPlaceholderText('min'), { target: { value: '20' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+  addActivity('Stretch', '20');
+  addActivity('Walk', '30');
+  return { onScheduleCreated };
+}
+
+async function renderToGenerateStep(date?: string) {
+  const result = renderToSetup(date);
   fireEvent.click(screen.getByText('Generate Schedule Options'));
   await screen.findByText('Use This Schedule');
-  return { onScheduleCreated };
+  return result;
 }
 
 async function renderToSaveStep(date?: string) {
@@ -173,6 +264,8 @@ beforeEach(() => {
   timeline.props = null;
   window.alert = vi.fn();
   schedules.getRange.mockResolvedValue([]);
+  schedules.generate.mockResolvedValue({ options: OPTIONS });
+  timeline.reorderTo = [];
 });
 
 afterEach(() => {
@@ -185,16 +278,36 @@ describe('ScheduleBuilder: generating around the day', () => {
     expect(screen.getByTestId('input-target-date')).toHaveValue('2026-09-29');
   });
 
-  it("passes the day's existing Items to the timeline as existingEvents", async () => {
+  it("sends one generate request with the day's Items and Google events, avoiding busy time", async () => {
     schedules.getRange.mockResolvedValue([DAY_ITEMS]);
-    await renderToGenerateStep('2026-10-02');
+    google.checkAuthStatus.mockResolvedValueOnce({ authenticated: true });
+    calImport.getEvents.mockResolvedValueOnce([
+      { summary: 'Standup', start: '2026-10-02T14:00:00Z', end: '2026-10-02T14:15:00Z' },
+    ]);
+    renderToSetup('2026-10-02');
+    fireEvent.click(screen.getByText('Import from Google Calendar'));
+    await screen.findByText(/1 imported/);
+
+    fireEvent.click(screen.getByText('Generate Schedule Options'));
+    await screen.findByText('Use This Schedule');
 
     expect(schedules.getRange).toHaveBeenCalledWith('2026-10-02', '2026-10-02');
-    await waitFor(() => {
-      const events = (timeline.props as TimelineProps).existingEvents;
-      expect(events).toHaveLength(2);
-    });
-    const events = (timeline.props as TimelineProps).existingEvents;
+    expect(schedules.generate).toHaveBeenCalledTimes(1);
+    const req = schedules.generate.mock.calls[0][0];
+
+    for (const key of ['start_time', 'day_start', 'day_end']) expect(req[key]).toMatch(/Z$/);
+    expect(Date.parse(req.start_time)).toBe(Date.parse('2026-10-02T13:00:00Z'));
+    expect(Date.parse(req.day_start)).toBe(Date.parse('2026-10-02T11:00:00Z'));
+    expect(Date.parse(req.day_end)).toBe(Date.parse('2026-10-03T04:00:00Z'));
+
+    expect(req.activities.map((a: ReorderActivity) => a.name)).toEqual(['Stretch', 'Walk']);
+    expect(req.activities.map((a: ReorderActivity) => a.estimated_duration)).toEqual([1200, 1800]);
+
+    expect(req.strategies).toEqual(['your-order', 'shortest-first', 'longest-first', 'best-fit']);
+    expect(req.avoid_existing).toBe(true);
+
+    const events = req.existing_events as { name: string; start: string; end: string }[];
+    expect(events).toHaveLength(3);
     for (const e of events) {
       expect(e.start).toMatch(/Z$/);
       expect(e.end).toMatch(/Z$/);
@@ -204,7 +317,108 @@ describe('ScheduleBuilder: generating around the day', () => {
     expect(Date.parse(byName.Gym.end)).toBe(Date.parse('2026-10-02T16:00:00Z'));
     expect(Date.parse(byName.Dentist.start)).toBe(Date.parse('2026-10-02T19:30:00Z'));
     expect(Date.parse(byName.Dentist.end)).toBe(Date.parse('2026-10-02T20:00:00Z'));
+    expect(Date.parse(byName.Standup.start)).toBe(Date.parse('2026-10-02T14:00:00Z'));
     expect(byName.Someday).toBeUndefined();
+
+    expect((timeline.props as TimelineProps).options).toEqual(OPTIONS);
+  });
+
+  it('reordering on Your Order calls generate again with the new order', async () => {
+    await renderToGenerateStep('2026-10-02');
+    expect(schedules.generate).toHaveBeenCalledTimes(1);
+
+    timeline.reorderTo = [
+      { name: 'Walk', estimated_duration: 1800 },
+      { name: 'Stretch', estimated_duration: 1200 },
+    ];
+    fireEvent.click(screen.getByText('Mock reorder'));
+
+    await waitFor(() => expect(schedules.generate).toHaveBeenCalledTimes(2));
+    const req = schedules.generate.mock.calls[1][0];
+    expect(req.activities.map((a: ReorderActivity) => a.name)).toEqual(['Walk', 'Stretch']);
+    expect(req.activities.map((a: ReorderActivity) => a.estimated_duration)).toEqual([1800, 1200]);
+    expect(req.avoid_existing).toBe(true);
+  });
+
+  it('a failed generate shows an error, no timeline, and stays on setup', async () => {
+    schedules.generate.mockRejectedValueOnce({ response: { status: 500 } });
+    renderToSetup('2026-10-02');
+    fireEvent.click(screen.getByText('Generate Schedule Options'));
+
+    expect(await screen.findByTestId('generate-error')).toBeInTheDocument();
+    expect(timeline.props).toBeNull();
+    expect(screen.queryByText('Use This Schedule')).not.toBeInTheDocument();
+    expect(screen.getByText('Generate Schedule Options')).toBeEnabled();
+  });
+});
+
+describe('ScheduleTimeline: presents the server options', () => {
+  async function renderTimeline() {
+    const { default: RealTimeline } = await vi.importActual<{ default: ComponentType<TimelineProps> }>(
+      '../components/ScheduleTimeline'
+    );
+    const onSelect = vi.fn();
+    const onReorder = vi.fn();
+    render(<RealTimeline options={OPTIONS} onSelect={onSelect} onReorder={onReorder} />);
+    return { onSelect, onReorder };
+  }
+
+  it('renders a tab per option with the server label and description, and Didn\'t fit', async () => {
+    await renderTimeline();
+    for (const o of OPTIONS) {
+      expect(screen.getByRole('button', { name: new RegExp(o.label) })).toBeInTheDocument();
+      expect(screen.getByText(o.description)).toBeInTheDocument();
+    }
+
+    fireEvent.click(screen.getByRole('button', { name: /Your Order/ }));
+    expect(screen.getByText('Gym')).toBeInTheDocument();
+    expect(screen.getByText('Stretch')).toBeInTheDocument();
+    expect(screen.queryByText(/Didn't fit/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Shortest First/ }));
+    expect(screen.getByText('Stretch')).toBeInTheDocument();
+    expect(screen.getByText(/Didn't fit:.*Gym/)).toBeInTheDocument();
+  });
+
+  it("Use This Schedule passes Items built from the selected option's entries", async () => {
+    const { onSelect } = await renderTimeline();
+    fireEvent.click(screen.getByRole('button', { name: /Your Order/ }));
+    fireEvent.click(screen.getByText('Use This Schedule'));
+
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    const items = onSelect.mock.calls[0][0] as ScheduleItemCreate[];
+    expect(items).toHaveLength(2);
+
+    expect(items[0].task_id).toBe(1);
+    expect(items[0].custom_name).toBeFalsy();
+    expect(items[0].estimated_duration).toBe(3600);
+    expect(items[0].position).toBe(0);
+    expect(items[0].scheduled_time).toMatch(/Z$/);
+    expect(Date.parse(items[0].scheduled_time!)).toBe(Date.parse('2026-10-02T13:00:00Z'));
+
+    expect(items[1].task_id ?? null).toBeNull();
+    expect(items[1].custom_name).toBe('Stretch');
+    expect(items[1].estimated_duration).toBe(1200);
+    expect(items[1].position).toBe(1);
+    expect(items[1].scheduled_time).toMatch(/Z$/);
+    expect(Date.parse(items[1].scheduled_time!)).toBe(Date.parse('2026-10-02T16:00:00Z'));
+  });
+
+  it('dragging a row on Your Order calls onReorder with the new activity order', async () => {
+    const { onReorder } = await renderTimeline();
+    fireEvent.click(screen.getByRole('button', { name: /Your Order/ }));
+
+    const rows = ['Gym', 'Stretch'].map((n) => screen.getByText(n).closest('[draggable="true"]'));
+    expect(rows[0]).not.toBeNull();
+    expect(rows[1]).not.toBeNull();
+    fireEvent.dragStart(rows[0]!);
+    fireEvent.dragOver(rows[1]!);
+
+    expect(onReorder).toHaveBeenCalled();
+    const reordered = onReorder.mock.calls[onReorder.mock.calls.length - 1][0] as ReorderActivity[];
+    expect(reordered.map((a) => a.name)).toEqual(['Stretch', 'Gym']);
+    expect(reordered.map((a) => a.estimated_duration)).toEqual([1200, 3600]);
+    expect(reordered[1].task_id).toBe(1);
   });
 });
 

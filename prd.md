@@ -555,7 +555,7 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] All B27.tests pass; tsc clean; export succeeds
 
 ### B28.tests — Web: plans come from the server's Generate
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Rewritten 2026-10-03 after the first B28 was BLOCKED: the web never calls
   `POST /api/schedules/generate`. [ScheduleTimeline.tsx](frontend/src/components/ScheduleTimeline.tsx)
   computes its four options in the browser (`buildTimeline`, `bestFitOrder`), so B26's
@@ -581,11 +581,11 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
     `generate` again with the new order.
   - `buildTimeline` and `bestFitOrder` are deleted; nothing else uses them.
 - **Acceptance Criteria:**
-  - [ ] Test: Generate sends one request with the fields above, including `avoid_existing: true` and the day's Items as `existing_events`
-  - [ ] Test: tabs and timelines render from the response; an option's `excluded` shows as "Didn't fit"
-  - [ ] Test: Use This Schedule passes Items whose `scheduled_time`s are the server's entry starts
-  - [ ] Test: reordering on Your Order calls `generate` again with the new activity order
-  - [ ] Test: a failed generate shows an error and no timeline
+  - [x] Test: Generate sends one request with the fields above, including `avoid_existing: true` and the day's Items as `existing_events`
+  - [x] Test: tabs and timelines render from the response; an option's `excluded` shows as "Didn't fit"
+  - [x] Test: Use This Schedule passes Items whose `scheduled_time`s are the server's entry starts
+  - [x] Test: reordering on Your Order calls `generate` again with the new activity order
+  - [x] Test: a failed generate shows an error and no timeline
 
 ### B28.impl — Web: plans come from the server's Generate
 - **Status:** PENDING
