@@ -25,7 +25,7 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
 | D41 | Block length | **Snapshot** of the Activity's average at placement, stored on the Schedule Item. Changeable for that one placement only; never feeds back into the Activity |
 | D42 | Resizing | **Edit mode per Block.** Tap a Block → "Edit block" toggles edit mode: bottom-edge resize only, 5-minute snap, no move. Toggle off → move only, 15-minute snap. Replaces the old always-on grip that stole holds |
 | D43 | Exported Blocks | **Revised 2026-10-03 (B12 step 3):** moving or resizing an Exported Block makes **no** Google call; the Item is marked *changed since push* and shows a marker. Push day creates events for new Items and updates changed ones, then clears the marks (labelled **Push changes** when only changed Items remain). Removals — Remove from Google, Remove day, drag-to-Bank with delete — still call Google immediately. Was: every edit patched the event at once. The app only ever changes or deletes Google events whose id it stored on a Schedule Item |
-| D44 | Save and Apply on an occupied date | **Append** to the day's Schedule. Generation receives the day's existing Items as `existing_events`, so it plans around them |
+| D44 | Save and Apply on an occupied date | **Append** to the day's Schedule. Generation receives the day's existing Items as `existing_events`, so it plans around them. **Amended 2026-10-03 (B12 step 5):** the four Strategies the clients use only order Activities and ignore `existing_events`, so plans landed on top of existing Blocks. Generate gains an opt-in `avoid_existing` layout (B26) that both clients send; the D13 parity fixture, which sends no flag, is unchanged |
 | D45 | Removing | Drag to Bank deletes that Item; if Exported, first ask whether to delete its Google event. **Remove day** opens one up-front dialog: **Clear all** (delete the day's Google events, then its Items) / **Remove from Google only** (delete the events, keep the Items) / **Cancel** |
 | D46 | Recordings | **History only.** Recording scheduling and Recording push are removed — columns, routes, client code, both clients. The one Recording event still on Google is left for the user to delete by hand |
 | D47 | Hand entry | A Recording entered by hand: name, Activity (optional), duration, and a **required** start prefilled to now minus the duration. Same create route as a stopwatch save |
@@ -504,6 +504,101 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
 - **Acceptance Criteria:**
   - [ ] All B18.tests pass; web tsc clean; `npm run build` succeeds
 
+### B26.tests — Backend: generated plans avoid busy time
+- **Status:** PENDING
+- **Description:** Found in B12 step 5 (2026-10-03). `your-order`, `shortest-first`,
+  `longest-first` and `best-fit` only order Activities; `_build_timeline` then lays them back to
+  back from `start_time` through any existing Block or Google event. The D13 parity fixture
+  freezes that, so the fix is opt-in. Extend `backend/tests/test_generate.py`.
+- **Contract:** `GenerateRequest` gains `avoid_existing: bool = False`. When true, every Strategy
+  whose result has no `timeline` of its own is laid out by a new helper instead of
+  `_build_timeline`: take the Activities in the Strategy's order; place each at the cursor
+  (starting at `start_time`); if it would overlap any `existing_events` interval, move it to the
+  end of that interval and check again; then advance the cursor to its end. An Activity whose
+  end would pass `day_end` is not placed and is listed in `excluded` with reason
+  `"no-free-slot"`; later ones are still tried. `best-fit-slots` is unchanged. With the flag
+  false or absent, output is byte-identical to today.
+- **Acceptance Criteria:**
+  - [ ] Test: the parity fixture still passes untouched (no flag)
+  - [ ] Test: with the flag, no entry of any of the four Strategies overlaps an existing event, using the parity input
+  - [ ] Test: with the flag, entries keep the Strategy's order and never overlap each other
+  - [ ] Test: an event starting exactly at an entry's end is not an overlap
+  - [ ] Test: an Activity that cannot fit before `day_end` is excluded with `no-free-slot`, and a shorter later one still places
+  - [ ] Test: the flag with no events gives the same timeline as without it
+
+### B26.impl — Backend: generated plans avoid busy time
+- **Status:** PENDING
+- **Description:** Implement to the contract in `services/strategies.py` and the generate route.
+  Do not edit `generate_parity.json`.
+- **Acceptance Criteria:**
+  - [ ] All B26.tests pass; full suite passes
+
+### B27.tests — Mobile: Schedule tab date picker, plans avoid busy time
+- **Status:** PENDING
+- **Description:** Found in B12 step 5. The Schedule tab has only Start time and Day end pickers,
+  so it always plans for today. Extend `mobile/src/__tests__/ScheduleScreen.test.tsx`.
+- **Contract:** A `picker-date` (`mode="date"`, the existing `PickerField`) above Start time,
+  defaulting to today. Changing it keeps Start time's and Day end's clock times but moves them to
+  the picked date. Generate fetches that date's Items and Google events (local `YYYY-MM-DD` of
+  the picked date) and sends `avoid_existing: true`. Save sends that date as `target_date`.
+  Excluded Activities show under the chosen plan as "Didn't fit: <names>".
+- **Acceptance Criteria:**
+  - [ ] Test: the date picker defaults to today; picking tomorrow moves `start_time`/`day_end` to tomorrow at the same clock times
+  - [ ] Test: Generate after picking tomorrow fetches tomorrow's Items and events and sends `avoid_existing: true`
+  - [ ] Test: Save after picking tomorrow sends tomorrow's local date as `target_date`
+  - [ ] Test: excluded Activities are listed
+
+### B27.impl — Mobile: Schedule tab date picker, plans avoid busy time
+- **Status:** PENDING
+- **Description:** Implement to the contract in `src/app/(tabs)/schedule.tsx` and `types/index.ts`.
+- **Acceptance Criteria:**
+  - [ ] All B27.tests pass; tsc clean; export succeeds
+
+### B28.tests — Web: plans avoid busy time
+- **Status:** PENDING
+- **Description:** The web `ScheduleBuilder` already has a date input. Extend
+  `frontend/src/__tests__/ScheduleBuilder.test.tsx`.
+- **Contract:** Generate sends `avoid_existing: true`; excluded Activities are listed as on mobile.
+- **Acceptance Criteria:**
+  - [ ] Test: the generate request carries `avoid_existing: true`
+  - [ ] Test: excluded Activities are listed
+
+### B28.impl — Web: plans avoid busy time
+- **Status:** PENDING
+- **Description:** Implement to the contract.
+- **Acceptance Criteria:**
+  - [ ] All B28.tests pass; web tsc clean; `npm run build` succeeds
+
+### B29.tests — Mobile: short Blocks drawn at their true length
+- **Status:** PENDING
+- **Description:** Found in B12 step 5. Mobile Blocks have a 44 px minimum height
+  (`MIN_BLOCK_HEIGHT` in `src/app/(tabs)/calendar.tsx`), about 15 minutes at 3 px/min, so a
+  10-minute Block is drawn over the first 5 minutes of the Block after it. Times are right; the
+  drawing is not. Extend `mobile/src/__tests__/CalendarDayScreen.test.tsx`.
+- **Contract:**
+  - A Block's drawn height is its true length (3 px/min), with a floor of **12 px** (4 min) so a
+    very short Block is still visible. The resize preview in edit mode uses the same floor.
+  - Short Blocks stay grabbable without being drawn taller: a Block shorter than 44 px gets a
+    vertical `hitSlop` on its move gesture and its select `Pressable` making the touch area 44 px
+    tall, centred on the Block.
+  - Later-starting Blocks render above earlier ones (`zIndex` ascending by start), so where two
+    touch areas overlap, the later Block wins and is never hidden.
+  - A Block under 44 px shows only its name, on one line, truncated; the resize handle in edit
+    mode stays 44 px and may extend past the Block.
+- **Acceptance Criteria:**
+  - [ ] Test: a 10-minute Block is 30 px tall and a 1.5-minute Block is 12 px; the existing double-duration ratio test still passes
+  - [ ] Test: a 10-minute Block's move gesture and Pressable carry a hitSlop totalling 14 px vertically; a 30-minute Block carries none
+  - [ ] Test: of two Blocks, the later-starting one has the higher `zIndex`
+  - [ ] Test: a short Block renders its name with `numberOfLines={1}`
+
+### B29.impl — Mobile: short Blocks drawn at their true length
+- **Status:** PENDING
+- **Description:** Implement to the contract. If the gesture mock lacks `hitSlop`, follow the
+  B7.impl gotcha: do not call methods the per-file mocks don't have; pass `hitSlop` as a prop
+  where the mock can see it, or mark BLOCKED naming the mock gap.
+- **Acceptance Criteria:**
+  - [ ] All B29.tests pass; tsc clean; export succeeds
+
 ### B19. USER — Migrate the live database for `calendar_stale`
 - **Status:** USER
 - **Description:** B16 added a column; live MySQL needs it before the app is used again. In
@@ -535,7 +630,8 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
      Your own Google events are shown but cannot be dragged or changed.
   4. Drag a pushed Block to the Bank and choose "Also delete from Google". Remove day → Remove
      from Google only: the Blocks stay, the events go. Push again, then Remove day → Clear all.
-  5. Schedule tab: generate for a day that already has Blocks — the plan avoids them. Save; it
+  5. Schedule tab: pick tomorrow, generate for a day that already has Blocks — the plan comes in
+     above or below them, never on top (B26–B27). Save; it
      appears on the calendar beside them, with visible "saved" feedback.
   6. Apply a Regimen to a day; its items land at the Regimen's times on that day.
   7. Add a Recording by hand for a run earlier today; it appears in Recordings and the CSV
