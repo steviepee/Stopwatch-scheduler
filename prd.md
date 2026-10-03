@@ -640,11 +640,11 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] Test (mobile and web): both empty → Save disabled
 
 ### B30.impl — Hand entry: hours and minutes start empty
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract in both clients. Acceptance runs both clients'
   checks.
 - **Acceptance Criteria:**
-  - [ ] All B30.tests pass; mobile tsc clean and export succeeds; web tsc clean and `npm run build` succeeds
+  - [x] All B30.tests pass; mobile tsc clean and export succeeds; web tsc clean and `npm run build` succeeds
 
 ### B31.tests — Web: Block actions outside the Block
 - **Status:** PENDING

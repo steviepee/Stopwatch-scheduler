@@ -1215,3 +1215,11 @@ Each iteration appends its results here so the next session knows what worked, w
   - Mobile asserts `props.value === ''` and `props.placeholder === '0'`; web asserts `toHaveValue(null)` (an empty `type="number"` input) and the `placeholder` attribute `'0'`.
   - Mobile: pass `placeholderTextColor={colors.placeholder}` like the other inputs; the test doesn't check it.
   - `cd X && cmd > file` needs approval in this sandbox; run commands via a `python3 -c` subprocess with `cwd=` and write the log from Python.
+
+## B30.impl. Hand entry: hours and minutes start empty
+- **Date:** 2026-10-03
+- **Status:** DONE
+- **Summary:** The hand-entry `hours`/`minutes` state now starts as `''` in both clients, and both inputs get `placeholder="0"` (mobile also passes `placeholderTextColor={colors.placeholder}`). The existing duration math already treats an empty field as 0, so Save stays disabled while both are empty.
+- **Files changed:** mobile/src/app/(tabs)/recordings.tsx, frontend/src/components/SessionList.tsx, prd.md, progress.md
+- **Verification:** (via python3 subprocess) mobile `npx jest --ci --forceExit` 210/210 passed, `npx tsc --noEmit` clean, `npx expo export --platform android` succeeded (to `/tmp/b30i_export`); web `npx vitest run` 70/70 passed, `npx tsc --noEmit` clean, `npm run build` succeeded.
+- **Gotchas:** None.

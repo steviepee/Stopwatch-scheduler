@@ -20,8 +20,8 @@ function ManualForm({ tasks, onClose }: { tasks: Task[]; onClose: () => void }) 
   const [name, setName] = useState('');
   const [searchText, setSearchText] = useState('');
   const [selectedTask, setSelectedTask] = useState<Task | undefined>(undefined);
-  const [hours, setHours] = useState('0');
-  const [minutes, setMinutes] = useState('0');
+  const [hours, setHours] = useState('');
+  const [minutes, setMinutes] = useState('');
   const [editedStart, setEditedStart] = useState<Date | null>(null);
 
   const durationSeconds = (parseInt(hours, 10) || 0) * 3600 + (parseInt(minutes, 10) || 0) * 60;
@@ -110,6 +110,8 @@ function ManualForm({ tasks, onClose }: { tasks: Task[]; onClose: () => void }) 
             testID="manual-hours"
             style={styles.input}
             keyboardType="number-pad"
+            placeholder="0"
+            placeholderTextColor={colors.placeholder}
             value={hours}
             onChangeText={setHours}
           />
@@ -120,6 +122,8 @@ function ManualForm({ tasks, onClose }: { tasks: Task[]; onClose: () => void }) 
             testID="manual-minutes"
             style={styles.input}
             keyboardType="number-pad"
+            placeholder="0"
+            placeholderTextColor={colors.placeholder}
             value={minutes}
             onChangeText={setMinutes}
           />

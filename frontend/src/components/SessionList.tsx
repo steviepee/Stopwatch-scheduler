@@ -31,8 +31,8 @@ function ManualForm({
   });
   const [name, setName] = useState('');
   const [activityId, setActivityId] = useState('');
-  const [hours, setHours] = useState('0');
-  const [minutes, setMinutes] = useState('0');
+  const [hours, setHours] = useState('');
+  const [minutes, setMinutes] = useState('');
   const [editedStart, setEditedStart] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
@@ -88,6 +88,7 @@ function ManualForm({
           type="number"
           min="0"
           data-testid="manual-hours"
+          placeholder="0"
           value={hours}
           onChange={e => setHours(e.target.value)}
           className="glass-input w-20 px-3 py-2 rounded-lg text-sm"
@@ -98,6 +99,7 @@ function ManualForm({
           min="0"
           max="59"
           data-testid="manual-minutes"
+          placeholder="0"
           value={minutes}
           onChange={e => setMinutes(e.target.value)}
           className="glass-input w-20 px-3 py-2 rounded-lg text-sm"
