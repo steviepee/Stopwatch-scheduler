@@ -78,6 +78,7 @@ export interface ScheduleItem {
   position: number;
   scheduled_time?: string;
   calendar_event_id?: string;
+  calendar_stale?: boolean;
   task?: Task;
   created_at: string;
 }

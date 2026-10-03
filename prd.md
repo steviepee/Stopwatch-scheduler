@@ -484,10 +484,10 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] Test: moving an Exported Block calls `updateItem` only
 
 ### B17.impl — Mobile: changed marker and Push changes
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract in `src/app/(tabs)/calendar.tsx` and `types/index.ts`.
 - **Acceptance Criteria:**
-  - [ ] All B17.tests pass; tsc clean; export succeeds
+  - [x] All B17.tests pass; tsc clean; export succeeds
 
 ### B18.tests — Web: changed marker and Push changes
 - **Status:** PENDING

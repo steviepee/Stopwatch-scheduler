@@ -1067,3 +1067,11 @@ Each iteration appends its results here so the next session knows what worked, w
   - The marker must be **inside** `item-block-{id}` (`within(block).getByTestId`). An empty `<View testID=…-changed />` is enough for the test. Give it a visible style in the impl.
   - Fixtures use `staleItem`/`freshItem` helpers that cast, so tsc stays clean before `calendar_stale` is added to `ScheduleItem`. Add it as `calendar_stale?: boolean` in `types/index.ts`.
   - Running the full suite in parallel timed out the first test in 7 unrelated files (5 s limit, machine load). `--runInBand` was clean, so use it if that happens.
+
+## B17.impl. Mobile: changed marker and Push changes
+- **Date:** 2026-10-03
+- **Status:** DONE
+- **Summary:** `ScheduleItem` gains `calendar_stale?: boolean`. In `calendar.tsx`, a stale Block renders an 8 pt `item-block-{id}-changed` dot (top-right, `primaryDeep`) inside the Block. `btn-push-day` shows when any Item is new or stale and reads "Push day" if any is new, else "Push changes". The success text is `Pushed {new} new, {updated} updated`, counted from the pre-push `dayItems`, not the response.
+- **Files changed:** mobile/src/types/index.ts, mobile/src/app/(tabs)/calendar.tsx, prd.md, progress.md
+- **Verification:** from `mobile/` (via python3 subprocess): `npx jest --ci --forceExit --runInBand` 198/198 passed; `npx tsc --noEmit` clean; `npx expo export --platform android` succeeded (to `/tmp/b17i_export`).
+- **Gotchas:** The counts come from `dayItems` (timed Items only), the same set the button visibility uses. An untimed Item would be pushed by the server but not counted; none exist from the mobile UI. Moves and resizes needed no change: they already call only `updateItem` and invalidate the range query. A heredoc append (`cat >> progress.md <<'EOF'`) was refused by the sandbox parser; use the Edit tool.

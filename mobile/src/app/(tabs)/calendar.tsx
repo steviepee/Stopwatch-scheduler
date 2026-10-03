@@ -211,11 +211,12 @@ export default function CalendarDayScreen() {
   }
 
   function pushDay(schedule: Schedule) {
+    const created = dayItems.filter((item) => !item.calendar_event_id).length;
+    const updated = dayItems.filter((item) => item.calendar_event_id && item.calendar_stale).length;
     dayAction.mutate({
       run: async () => {
-        const pushed = await scheduleAPI.pushToCalendar(schedule.id);
-        const count = pushed.items.filter((item) => item.calendar_event_id).length;
-        return `Pushed ${count} event${count === 1 ? '' : 's'} to Google`;
+        await scheduleAPI.pushToCalendar(schedule.id);
+        return `Pushed ${created} new, ${updated} updated`;
       },
       failure: 'Push failed',
     });
@@ -424,14 +425,16 @@ export default function CalendarDayScreen() {
 
       {daySchedule && dayItems.length > 0 && (
         <View style={styles.actionRow}>
-          {dayItems.some((item) => !item.calendar_event_id) && (
+          {dayItems.some((item) => !item.calendar_event_id || item.calendar_stale) && (
             <Pressable
               testID="btn-push-day"
               accessibilityRole="button"
               disabled={dayAction.isPending}
               style={styles.actionButton}
               onPress={() => pushDay(daySchedule)}>
-              <Text style={styles.buttonLabel}>Push day</Text>
+              <Text style={styles.buttonLabel}>
+                {dayItems.some((item) => !item.calendar_event_id) ? 'Push day' : 'Push changes'}
+              </Text>
             </Pressable>
           )}
           <Pressable
@@ -678,6 +681,7 @@ function DayBlock({
         testID={`item-block-${item.id}`}
         style={[styles.block, { top }, heightStyle, selected && styles.selectedBlock, dimmed && styles.dimmed]}>
         {children}
+        {item.calendar_stale && <View testID={`item-block-${item.id}-changed`} style={styles.changedMarker} />}
         {editing && (
           <GestureDetector gesture={resizeGesture}>
             <View testID={`item-block-${item.id}-resize-handle`} style={styles.resizeHandle}>
@@ -954,6 +958,15 @@ const styles = StyleSheet.create({
   },
   selectedBlock: {
     borderColor: colors.primary,
+  },
+  changedMarker: {
+    position: 'absolute',
+    top: spacing.xs,
+    right: spacing.xs,
+    width: 8,
+    height: 8,
+    borderRadius: radii.pill,
+    backgroundColor: colors.primaryDeep,
   },
   resizeHandle: {
     position: 'absolute',
