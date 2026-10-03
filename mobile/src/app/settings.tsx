@@ -91,7 +91,7 @@ export default function SettingsScreen() {
     try {
       const response = await axios.post(
         `${apiUrl}/exports`,
-        { resource, format },
+        { resource, format, disposition: 'inline' },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const origin = apiUrl.replace(/\/api\/?$/, '');

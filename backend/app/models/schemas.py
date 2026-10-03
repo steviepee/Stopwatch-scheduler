@@ -256,6 +256,7 @@ class GenerateResponse(BaseModel):
 class ExportRequest(BaseModel):
     resource: Literal["sessions", "tasks"]
     format: Literal["csv", "json"]
+    disposition: Literal["attachment", "inline"] = "attachment"
 
 
 class ExportLink(BaseModel):

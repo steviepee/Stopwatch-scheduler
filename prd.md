@@ -692,11 +692,11 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] Test (mobile): each export button POSTs `disposition: "inline"` with its resource and format
 
 ### B32.impl — Phone exports open readable in the browser
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract in the backend and `mobile/src/app/settings.tsx`.
   Acceptance runs the backend suite and the mobile checks.
 - **Acceptance Criteria:**
-  - [ ] All B32.tests pass; backend suite passes; mobile tsc clean and export succeeds
+  - [x] All B32.tests pass; backend suite passes; mobile tsc clean and export succeeds
 
 ### B19. USER — Migrate the live database for `calendar_stale`
 - **Status:** USER

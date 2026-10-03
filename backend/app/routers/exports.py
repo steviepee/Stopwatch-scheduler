@@ -30,6 +30,7 @@ def create_export(req: schemas.ExportRequest):
     _tokens[token] = {
         "resource": req.resource,
         "format": req.format,
+        "disposition": req.disposition,
         "expires_at": expires_at,
     }
     return {"url": f"/api/exports/{token}", "expires_at": expires_at}
@@ -56,11 +57,11 @@ def download_export(token: str, db: Session = Depends(get_db)):
         for row in data:
             writer.writerow({k: ("" if v is None else v) for k, v in row.items()})
         content = output.getvalue()
-        media_type = "text/csv"
+        media_type = "text/plain" if entry["disposition"] == "inline" else "text/csv"
 
     filename = f"{entry['resource']}.{entry['format']}"
     return Response(
         content=content,
         media_type=media_type,
-        headers={"Content-Disposition": f"attachment; filename={filename}"},
+        headers={"Content-Disposition": f"{entry['disposition']}; filename={filename}"},
     )
