@@ -127,6 +127,13 @@ export function ItemBlock({
           </svg>
         </div>
       )}
+      {item.calendar_stale && (
+        <div
+          className="changed-indicator"
+          data-testid={`item-block-${item.id}-changed`}
+          title="Changed since push"
+        />
+      )}
       {editing && (
         <div
           className="resize-handle"

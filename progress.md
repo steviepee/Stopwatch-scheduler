@@ -1087,3 +1087,11 @@ Each iteration appends its results here so the next session knows what worked, w
   - Keep the testID `btn-push-day-{date}` for both labels. The label is read with `toHaveTextContent`.
   - The resize test drags the Exported Block 21 (1800 s) by +15 px and expects `{ estimated_duration: 2700 }`.
   - A Bash call that combines `cp` with a `cd … && git` command is refused whole, so the `cp` silently doesn't run. Restore files in a call of their own and confirm with md5sum.
+
+## B18.impl. Web: changed marker and Push changes
+- **Date:** 2026-10-03
+- **Status:** DONE
+- **Summary:** `ScheduleItem` gains `calendar_stale?: boolean`. `ItemBlock` renders an 8 px amber `item-block-{id}-changed` dot (top-right, new `.changed-indicator` class in `index.css`) for stale Items. `CalendarGrid`'s `btn-push-day-{date}` shows when any Item is new or stale and reads "Push day" if any is new, else "Push changes". `handlePushDay` counts from the pre-push `schedule` and says `Pushed {new} new, {updated} updated on Google Calendar.`
+- **Files changed:** frontend/src/types/index.ts, frontend/src/components/calendar/ItemBlock.tsx, frontend/src/components/calendar/CalendarGrid.tsx, frontend/src/components/calendar/CalendarView.tsx, frontend/src/index.css, prd.md, progress.md
+- **Verification:** from `frontend/`: `npx vitest run` 62/62 passed; `npx tsc --noEmit` clean; `npm run build` succeeded.
+- **Gotchas:** Moves and resizes needed no change; they already call only `updateItem` and refetch. A Bash command using `$?` (e.g. `echo tsc=$?`) is refused as "simple_expansion"; use `&& echo OK || echo FAIL` instead.

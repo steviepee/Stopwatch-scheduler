@@ -675,6 +675,16 @@ body {
   color: rgba(255, 255, 255, 0.8);
 }
 
+.changed-indicator {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fbbf24;
+}
+
 /* Current Time Indicator */
 .current-time-indicator {
   position: absolute;

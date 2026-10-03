@@ -118,13 +118,13 @@ export function CalendarGrid({
               {formatDayShort(day)}
               {schedule && items.length > 0 && (
                 <div className="day-header-actions">
-                  {items.some((i) => !i.calendar_event_id) && (
+                  {items.some((i) => !i.calendar_event_id || i.calendar_stale) && (
                     <button
                       className="action-btn"
                       data-testid={`btn-push-day-${key}`}
                       onClick={() => onPushDay(schedule)}
                     >
-                      Push day
+                      {items.some((i) => !i.calendar_event_id) ? 'Push day' : 'Push changes'}
                     </button>
                   )}
                   <button

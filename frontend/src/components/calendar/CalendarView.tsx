@@ -188,9 +188,10 @@ export function CalendarView({ tasks }: CalendarViewProps) {
 
   const handlePushDay = useCallback((schedule: Schedule) =>
     dayAction(async () => {
-      const pushed = await scheduleAPI.pushToCalendar(schedule.id);
-      const count = pushed.items.filter((i) => i.calendar_event_id).length;
-      return `Pushed ${count} event${count === 1 ? '' : 's'} to Google Calendar.`;
+      const created = schedule.items.filter((i) => !i.calendar_event_id).length;
+      const updated = schedule.items.filter((i) => i.calendar_event_id && i.calendar_stale).length;
+      await scheduleAPI.pushToCalendar(schedule.id);
+      return `Pushed ${created} new, ${updated} updated on Google Calendar.`;
     }, 'Could not push the day to Google Calendar.'), [dayAction]);
 
   const handleSlotClick = useCallback((date: Date, minutesFromStart: number) => {

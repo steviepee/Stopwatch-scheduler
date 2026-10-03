@@ -499,10 +499,10 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] Test: moving or resizing an Exported Block calls `updateItem` only
 
 ### B18.impl — Web: changed marker and Push changes
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
-  - [ ] All B18.tests pass; web tsc clean; `npm run build` succeeds
+  - [x] All B18.tests pass; web tsc clean; `npm run build` succeeds
 
 ### B26.tests — Backend: generated plans avoid busy time
 - **Status:** PENDING
