@@ -599,6 +599,79 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
 - **Acceptance Criteria:**
   - [ ] All B29.tests pass; tsc clean; export succeeds
 
+### B30.tests — Hand entry: hours and minutes start empty
+- **Status:** PENDING
+- **Description:** From the B12 check (2026-10-03). The Add manually form's hours and minutes
+  fields start with the value `0` (`useState('0')` in mobile `src/app/(tabs)/recordings.tsx`
+  and web `frontend/src/components/SessionList.tsx`), so typing appends to it ("015"). Extend
+  `mobile/src/__tests__/RecordingsScreen.test.tsx` and
+  `frontend/src/__tests__/ManualRecording.test.tsx`.
+- **Contract:** Both fields start empty with a placeholder of `0`. An empty field counts as 0.
+  Save stays disabled while the total is 0, as now. Both clients.
+- **Acceptance Criteria:**
+  - [ ] Test (mobile and web): both fields render empty with placeholder `0`
+  - [ ] Test (mobile and web): typing `15` into minutes gives a duration of 900 s, with hours left empty
+  - [ ] Test (mobile and web): both empty → Save disabled
+
+### B30.impl — Hand entry: hours and minutes start empty
+- **Status:** PENDING
+- **Description:** Implement to the contract in both clients. Acceptance runs both clients'
+  checks.
+- **Acceptance Criteria:**
+  - [ ] All B30.tests pass; mobile tsc clean and export succeeds; web tsc clean and `npm run build` succeeds
+
+### B31.tests — Web: Block actions outside the Block
+- **Status:** PENDING
+- **Description:** From the B12 check (2026-10-03). On the web calendar, a selected Block's
+  actions (Edit block / Done, Remove from Google) render inside the Block
+  ([ItemBlock.tsx](frontend/src/components/calendar/ItemBlock.tsx)), so on a short Block they are
+  clipped or hard to see. Extend `frontend/src/__tests__/CalendarView.test.tsx`.
+- **Contract:** The actions move to an action bar in `CalendarView`, above the grid beside the
+  day-action status line, shown while a Block is selected. It names the selected Block (Activity
+  name and start time) and holds the same buttons with the same test ids
+  (`btn-edit-block-{id}`, `btn-remove-google-{id}`), plus a close button that clears the
+  selection. `ItemBlock` keeps only the selected/editing styling and, in edit mode, the resize
+  handle. Changing the week clears the selection, as now.
+- **Acceptance Criteria:**
+  - [ ] Test: selecting a Block shows the action bar with its name and time; no action button is inside the Block's element
+  - [ ] Test: Edit block from the bar toggles edit mode on that Block (resize handle appears, move ignored); Done ends it
+  - [ ] Test: Remove from Google from the bar confirms first and appears only for an Exported Block
+  - [ ] Test: closing the bar clears the selection
+
+### B31.impl — Web: Block actions outside the Block
+- **Status:** PENDING
+- **Description:** Implement to the contract.
+- **Acceptance Criteria:**
+  - [ ] All B31.tests pass; web tsc clean; `npm run build` succeeds
+
+### B32.tests — Phone exports open readable in the browser
+- **Status:** PENDING
+- **Description:** From the B12 check (2026-10-03). Exports are served as
+  `Content-Disposition: attachment` ([exports.py](backend/app/routers/exports.py)); the phone's
+  browser shows the JSON but downloads the CSV, which needs a spreadsheet app to open. Extend
+  `backend/tests/test_exports.py` and `mobile/src/__tests__/ExportSettings.test.tsx`.
+- **Contract:**
+  - `ExportRequest` gains `disposition: "attachment" | "inline"`, default `"attachment"`; it is
+    stored with the token. With `"inline"`, the GET returns `Content-Disposition: inline;
+    filename=...`, and a CSV is served as `text/plain; charset=utf-8` so the browser displays it.
+    JSON stays `application/json`. With `"attachment"` (or absent), the response is unchanged.
+  - Mobile Settings' four export buttons send `disposition: "inline"`. The web app sends nothing
+    and keeps downloading files.
+  - The single-use, 60-second token rules (D37) are unchanged.
+- **Acceptance Criteria:**
+  - [ ] Test: inline CSV → `text/plain; charset=utf-8`, `inline` disposition, same body as the attachment CSV
+  - [ ] Test: inline JSON → `application/json`, `inline` disposition
+  - [ ] Test: no `disposition` → exactly today's headers
+  - [ ] Test: an invalid `disposition` → 422
+  - [ ] Test (mobile): each export button POSTs `disposition: "inline"` with its resource and format
+
+### B32.impl — Phone exports open readable in the browser
+- **Status:** PENDING
+- **Description:** Implement to the contract in the backend and `mobile/src/app/settings.tsx`.
+  Acceptance runs the backend suite and the mobile checks.
+- **Acceptance Criteria:**
+  - [ ] All B32.tests pass; backend suite passes; mobile tsc clean and export succeeds
+
 ### B19. USER — Migrate the live database for `calendar_stale`
 - **Status:** USER
 - **Description:** B16 added a column; live MySQL needs it before the app is used again. In
