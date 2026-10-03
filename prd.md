@@ -588,12 +588,12 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] Test: a failed generate shows an error and no timeline
 
 ### B28.impl — Web: plans come from the server's Generate
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract in `frontend/src/services/api.ts`,
   `types/index.ts`, `components/ScheduleBuilder.tsx`, `components/ScheduleTimeline.tsx`.
 - **Acceptance Criteria:**
-  - [ ] All B28.tests pass; web tsc clean; `npm run build` succeeds
-  - [ ] `git grep -n "buildTimeline\|bestFitOrder" frontend/src` is empty
+  - [x] All B28.tests pass; web tsc clean; `npm run build` succeeds
+  - [x] `git grep -n "buildTimeline\|bestFitOrder" frontend/src` is empty
 
 ### B29.tests — Mobile: short Blocks drawn at their true length
 - **Status:** DONE

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Task, TaskCreate, TaskStats, TimeLogCreate, TimeLog, StopwatchSession, StopwatchSessionCreate, StopwatchSessionUpdate, StopwatchSessionWithTask, Schedule, ScheduleCreate, ScheduleUpdate, ScheduleItem, ScheduleItemCreate, ScheduleItemPlace, ScheduleItemUpdate, ApplyRegimen } from '../types';
+import { Task, TaskCreate, TaskStats, TimeLogCreate, TimeLog, StopwatchSession, StopwatchSessionCreate, StopwatchSessionUpdate, StopwatchSessionWithTask, Schedule, ScheduleCreate, ScheduleUpdate, ScheduleItem, ScheduleItemCreate, ScheduleItemPlace, ScheduleItemUpdate, ApplyRegimen, GenerateRequest, GenerateResponse } from '../types';
 
 const API_BASE_URL = '/api';
 
@@ -185,6 +185,11 @@ export const scheduleAPI = {
 
   removeFromCalendar: async (id: number): Promise<void> => {
     await api.delete(`/schedules/${id}/calendar`);
+  },
+
+  generate: async (request: GenerateRequest): Promise<GenerateResponse> => {
+    const response = await api.post('/schedules/generate', request);
+    return response.data;
   },
 };
 

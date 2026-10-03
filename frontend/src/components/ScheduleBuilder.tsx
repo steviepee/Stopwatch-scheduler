@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { Task, Schedule, ScheduleCreate, ScheduleItemCreate, UserOptions, DEFAULT_USER_OPTIONS } from '../types';
+import { useState, useCallback, useRef } from 'react';
+import { Task, Schedule, ScheduleCreate, ScheduleItemCreate, UserOptions, DEFAULT_USER_OPTIONS, GenerateActivity, GenerateEvent, StrategyOption } from '../types';
 import { scheduleAPI, calendarImportAPI, googleCalendarAPI } from '../services/api';
 import ActivityInput from './ActivityInput';
 import ScheduleTimeline from './ScheduleTimeline';
@@ -35,9 +35,10 @@ export default function ScheduleBuilder({ tasks, options, onScheduleCreated }: S
   const [startHour, setStartHour] = useState('08:00');
   const [activities, setActivities] = useState<ActivityEntry[]>([]);
   const [chosenItems, setChosenItems] = useState<ScheduleItemCreate[]>([]);
-  const [chosenOrder, setChosenOrder] = useState<ActivityEntry[]>([]);
-  const [existingEvents, setExistingEvents] = useState<{ name: string; start: string; end: string }[]>([]);
-  const [dayEvents, setDayEvents] = useState<{ name: string; start: string; end: string }[]>([]);
+  const [existingEvents, setExistingEvents] = useState<GenerateEvent[]>([]);
+  const [dayEvents, setDayEvents] = useState<GenerateEvent[]>([]);
+  const [planOptions, setPlanOptions] = useState<StrategyOption[]>([]);
+  const generateSeq = useRef(0);
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState(false);
   const [importingCal, setImportingCal] = useState(false);
@@ -62,9 +63,41 @@ export default function ScheduleBuilder({ tasks, options, onScheduleCreated }: S
     setActivities(prev => prev.filter((_, i) => i !== idx));
   }, []);
 
-  const handleReorder = useCallback((reordered: ActivityEntry[]) => {
-    setActivities(reordered);
-  }, []);
+  const runGenerate = async (list: ActivityEntry[], events: GenerateEvent[]) => {
+    const seq = ++generateSeq.current;
+    const dayStart = new Date(startTime);
+    dayStart.setHours(6, 0, 0, 0);
+    const dayEnd = new Date(startTime);
+    dayEnd.setHours(23, 0, 0, 0);
+    const response = await scheduleAPI.generate({
+      start_time: startTime.toISOString(),
+      day_start: dayStart.toISOString(),
+      day_end: dayEnd.toISOString(),
+      activities: list.map(a => ({ task_id: a.taskId, name: a.name, estimated_duration: a.estimatedDuration })),
+      existing_events: events,
+      strategies: ['your-order', 'shortest-first', 'longest-first', 'best-fit'],
+      avoid_existing: true,
+    });
+    if (seq !== generateSeq.current) return;
+    setPlanOptions(response.options);
+    setStep('generate');
+  };
+
+  const handleReorder = async (reordered: GenerateActivity[]) => {
+    const list = reordered.map(a => ({
+      taskId: a.task_id ?? undefined,
+      name: a.name,
+      estimatedDuration: a.estimated_duration,
+    }));
+    setActivities(list);
+    setGenerateError(false);
+    try {
+      await runGenerate(list, [...existingEvents, ...dayEvents]);
+    } catch {
+      setGenerateError(true);
+      setStep('setup');
+    }
+  };
 
   const handleImportCalendar = async () => {
     setImportingCal(true);
@@ -107,7 +140,7 @@ export default function ScheduleBuilder({ tasks, options, onScheduleCreated }: S
           };
         });
       setDayEvents(events);
-      setStep('generate');
+      await runGenerate(activities, [...existingEvents, ...events]);
     } catch {
       setGenerateError(true);
     } finally {
@@ -115,8 +148,7 @@ export default function ScheduleBuilder({ tasks, options, onScheduleCreated }: S
     }
   };
 
-  const handleSelectSchedule = useCallback((ordered: ActivityEntry[], items: ScheduleItemCreate[]) => {
-    setChosenOrder(ordered);
+  const handleSelectSchedule = useCallback((items: ScheduleItemCreate[]) => {
     setChosenItems(items);
     setScheduleName('');
     setStep('save');
@@ -137,9 +169,9 @@ export default function ScheduleBuilder({ tasks, options, onScheduleCreated }: S
       setStep('setup');
       setActivities([]);
       setChosenItems([]);
-      setChosenOrder([]);
       setExistingEvents([]);
       setDayEvents([]);
+      setPlanOptions([]);
       setCalImported(false);
       setSaveAsRegimen(false);
     } catch {
@@ -232,7 +264,7 @@ export default function ScheduleBuilder({ tasks, options, onScheduleCreated }: S
           )}
 
           {generateError && (
-            <p className="text-red-300 text-sm">Couldn't load that day's schedule. Try again.</p>
+            <p data-testid="generate-error" className="text-red-300 text-sm">Couldn't generate plans for that day. Try again.</p>
           )}
 
           <button
@@ -248,9 +280,7 @@ export default function ScheduleBuilder({ tasks, options, onScheduleCreated }: S
       {/* Step: Generate — pick from 4 options */}
       {step === 'generate' && (
         <ScheduleTimeline
-          activities={activities}
-          startTime={startTime}
-          existingEvents={[...existingEvents, ...dayEvents]}
+          options={planOptions}
           onSelect={handleSelectSchedule}
           onReorder={handleReorder}
         />
@@ -260,10 +290,10 @@ export default function ScheduleBuilder({ tasks, options, onScheduleCreated }: S
       {step === 'save' && (
         <div className="space-y-4">
           <div className="glass-inner rounded-xl px-4 py-3 space-y-1">
-            {chosenOrder.map((a, i) => (
+            {chosenItems.map((item, i) => (
               <div key={i} className="flex justify-between text-sm">
-                <span className="text-white">{a.name}</span>
-                <span className="text-white/50">{formatDuration(a.estimatedDuration)}</span>
+                <span className="text-white">{tasks.find(t => t.id === item.task_id)?.name ?? item.custom_name}</span>
+                <span className="text-white/50">{formatDuration(item.estimated_duration)}</span>
               </div>
             ))}
           </div>

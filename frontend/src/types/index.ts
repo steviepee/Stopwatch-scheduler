@@ -155,3 +155,53 @@ export const DEFAULT_USER_OPTIONS: UserOptions = {
   showPrevious: true,
   backgroundImage: null,
 };
+
+export interface GenerateActivity {
+  task_id?: number | null;
+  name: string;
+  estimated_duration: number;
+  is_urgent?: boolean;
+  is_important?: boolean;
+  is_frog?: boolean;
+}
+
+export interface GenerateEvent {
+  name: string;
+  start: string;
+  end: string;
+}
+
+export interface GenerateRequest {
+  start_time: string;
+  day_start: string;
+  day_end: string;
+  activities: GenerateActivity[];
+  existing_events?: GenerateEvent[];
+  strategies?: string[] | null;
+  avoid_existing?: boolean;
+}
+
+export interface TimelineEntry {
+  task_id: number | null;
+  name: string;
+  start: string;
+  end: string;
+}
+
+export interface FlaggedEntry {
+  name: string;
+  reason: string;
+}
+
+export interface StrategyOption {
+  strategy: string;
+  label: string;
+  description: string;
+  timeline: TimelineEntry[];
+  flagged: FlaggedEntry[];
+  excluded: FlaggedEntry[];
+}
+
+export interface GenerateResponse {
+  options: StrategyOption[];
+}
