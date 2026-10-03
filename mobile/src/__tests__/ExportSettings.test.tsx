@@ -28,6 +28,10 @@ import SettingsScreen from '../app/settings';
 // nothing. Offline (`onlineManager.isOnline() === false`) short-circuits to
 // "Needs a connection" without ever calling axios — unlike a recording save,
 // an export is not queued as a paused mutation.
+//
+// B32 contract: the body also carries `disposition: 'inline'`, so the phone's
+// browser displays the export (a CSV comes back as text/plain) instead of
+// downloading it. The web app sends no disposition and keeps downloading.
 jest.mock('../services/auth', () => ({
   getApiUrl: jest.fn(),
   setApiUrl: jest.fn(),
@@ -103,7 +107,7 @@ describe('export buttons', () => {
     ['btn-export-tasks-json', 'tasks', 'json'],
   ];
 
-  it('posts the right resource and format for each of the four buttons', async () => {
+  it('posts the right resource and format, with inline disposition, for each of the four buttons', async () => {
     await renderScreen();
     mockAxiosPost.mockResolvedValue({ data: { url: '/api/exports/tok', expires_at: '2026-01-01T00:00:01.000Z' } });
 
@@ -114,7 +118,7 @@ describe('export buttons', () => {
       await waitFor(() =>
         expect(mockAxiosPost).toHaveBeenCalledWith(
           `${STORED_URL}/exports`,
-          { resource, format },
+          { resource, format, disposition: 'inline' },
           { headers: { Authorization: `Bearer ${STORED_TOKEN}` } }
         )
       );

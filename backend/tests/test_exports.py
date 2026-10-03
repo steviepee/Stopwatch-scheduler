@@ -89,3 +89,55 @@ def test_unknown_token_is_404(client):
 def test_malformed_token_is_404_not_a_stack_trace(client):
     dl = client.get("/api/exports/%20%20%20")
     assert dl.status_code == 404
+
+
+def _download(client, **req):
+    r = client.post("/api/exports", json=req)
+    assert r.status_code == 200
+    return client.get(r.json()["url"])
+
+
+def test_inline_csv_is_plain_text_with_same_body(client):
+    client.post("/api/tasks/", json={"name": "Gym"})
+    client.post("/api/tasks/", json={"name": "Reading"})
+
+    attached = _download(client, resource="tasks", format="csv")
+    inline = _download(client, resource="tasks", format="csv", disposition="inline")
+
+    assert inline.status_code == 200
+    assert inline.headers["content-type"] == "text/plain; charset=utf-8"
+    assert inline.headers["content-disposition"] == "inline; filename=tasks.csv"
+    assert inline.text == attached.text
+
+
+def test_inline_json_stays_json(client):
+    client.post("/api/tasks/", json={"name": "Gym"})
+
+    dl = _download(client, resource="tasks", format="json", disposition="inline")
+
+    assert dl.status_code == 200
+    assert dl.headers["content-type"] == "application/json"
+    assert dl.headers["content-disposition"] == "inline; filename=tasks.json"
+    assert [row["name"] for row in json.loads(dl.content)] == ["Gym"]
+
+
+def test_no_disposition_keeps_todays_headers(client):
+    csv_dl = _download(client, resource="sessions", format="csv")
+    assert csv_dl.headers["content-type"] == "text/csv; charset=utf-8"
+    assert csv_dl.headers["content-disposition"] == "attachment; filename=sessions.csv"
+
+    json_dl = _download(client, resource="tasks", format="json")
+    assert json_dl.headers["content-type"] == "application/json"
+    assert json_dl.headers["content-disposition"] == "attachment; filename=tasks.json"
+
+    explicit = _download(client, resource="sessions", format="csv", disposition="attachment")
+    assert explicit.headers["content-type"] == "text/csv; charset=utf-8"
+    assert explicit.headers["content-disposition"] == "attachment; filename=sessions.csv"
+
+
+def test_invalid_disposition_is_422(client):
+    r = client.post(
+        "/api/exports",
+        json={"resource": "tasks", "format": "csv", "disposition": "download"},
+    )
+    assert r.status_code == 422

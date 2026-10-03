@@ -671,7 +671,7 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] All B31.tests pass; web tsc clean; `npm run build` succeeds
 
 ### B32.tests — Phone exports open readable in the browser
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** From the B12 check (2026-10-03). Exports are served as
   `Content-Disposition: attachment` ([exports.py](backend/app/routers/exports.py)); the phone's
   browser shows the JSON but downloads the CSV, which needs a spreadsheet app to open. Extend
@@ -685,11 +685,11 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
     and keeps downloading files.
   - The single-use, 60-second token rules (D37) are unchanged.
 - **Acceptance Criteria:**
-  - [ ] Test: inline CSV → `text/plain; charset=utf-8`, `inline` disposition, same body as the attachment CSV
-  - [ ] Test: inline JSON → `application/json`, `inline` disposition
-  - [ ] Test: no `disposition` → exactly today's headers
-  - [ ] Test: an invalid `disposition` → 422
-  - [ ] Test (mobile): each export button POSTs `disposition: "inline"` with its resource and format
+  - [x] Test: inline CSV → `text/plain; charset=utf-8`, `inline` disposition, same body as the attachment CSV
+  - [x] Test: inline JSON → `application/json`, `inline` disposition
+  - [x] Test: no `disposition` → exactly today's headers
+  - [x] Test: an invalid `disposition` → 422
+  - [x] Test (mobile): each export button POSTs `disposition: "inline"` with its resource and format
 
 ### B32.impl — Phone exports open readable in the browser
 - **Status:** PENDING
