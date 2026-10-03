@@ -565,7 +565,8 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [ ] Test: excluded Activities are listed
 
 ### B28.impl — Web: plans avoid busy time
-- **Status:** PENDING
+- **Status:** BLOCKED
+- **Failure Notes:** Depends on B28.tests, which is BLOCKED. No tests exist to make pass. The user must choose a design: (a) the web calls `POST /api/schedules/generate`, or (b) the browser-side `buildTimeline` avoids busy time. Then B28.tests must be rewritten and run first.
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
   - [ ] All B28.tests pass; web tsc clean; `npm run build` succeeds

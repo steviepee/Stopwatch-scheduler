@@ -1150,3 +1150,11 @@ Each iteration appends its results here so the next session knows what worked, w
     - (a) Port mobile's approach. Add `scheduleAPI.generate` (POST `/schedules/generate`, as in `mobile/src/services/api.ts:188`) and the Generate types. Have `ScheduleBuilder`/`ScheduleTimeline` render the server's `options[].timeline` and `excluded`. This changes how the web's drag-to-reorder and its four browser-side strategies work.
     - (b) Keep generation in the browser. Change `buildTimeline` to push entries past `existingEvents` and drop ones past day end, then list those as "Didn't fit". This needs no API work, but the D13 parity intent then lives in two places.
   - The existing tests mock `ScheduleTimeline` out entirely (`vi.mock('../components/ScheduleTimeline')`). New tests for either option need the real component, or a separate test file.
+
+## B28.impl. Web: plans avoid busy time
+- **Date:** 2026-10-03
+- **Status:** BLOCKED
+- **Summary:** Not started. B28.tests is BLOCKED, so there are no tests to implement against. The web builds plans in the browser (`ScheduleTimeline.tsx`), not through `POST /api/schedules/generate`, so the contract's `avoid_existing` has no request to carry it.
+- **Files changed:** prd.md, progress.md
+- **Verification:** none run. No code changed.
+- **Gotchas:** Unblock order: the user picks option (a) or (b) from the B28.tests entry and rewrites the B28.tests contract. Then reset both B28 tasks to PENDING. Until then, the loop should skip to B29.tests.
