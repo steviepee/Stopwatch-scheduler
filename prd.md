@@ -665,10 +665,10 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] Test: closing the bar clears the selection
 
 ### B31.impl — Web: Block actions outside the Block
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
-  - [ ] All B31.tests pass; web tsc clean; `npm run build` succeeds
+  - [x] All B31.tests pass; web tsc clean; `npm run build` succeeds
 
 ### B32.tests — Phone exports open readable in the browser
 - **Status:** PENDING

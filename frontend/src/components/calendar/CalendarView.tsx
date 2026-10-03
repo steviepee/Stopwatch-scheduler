@@ -37,6 +37,10 @@ function slotTime(key: string, minutes: number): Date {
   return new Date(y, m - 1, d, START_HOUR, minutes);
 }
 
+function hhmm(date: Date): string {
+  return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+}
+
 export function CalendarView({ tasks }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'week' | 'day'>('week');
@@ -229,10 +233,14 @@ export function CalendarView({ tasks }: CalendarViewProps) {
     }
   };
 
-  const navigate = (date: Date) => {
-    setCurrentDate(date);
+  const clearSelection = () => {
     setSelectedId(null);
     setEditingId(null);
+  };
+
+  const navigate = (date: Date) => {
+    setCurrentDate(date);
+    clearSelection();
     setStatus(null);
   };
 
@@ -249,6 +257,9 @@ export function CalendarView({ tasks }: CalendarViewProps) {
   };
 
   const pickerTime = picker ? slotTime(dateKey(picker.date), picker.minutes) : null;
+  const selectedItem = selectedId === null
+    ? null
+    : schedules.flatMap((s) => s.items).find((i) => i.id === selectedId) ?? null;
 
   return (
     <DndContext
@@ -305,6 +316,38 @@ export function CalendarView({ tasks }: CalendarViewProps) {
           </div>
         )}
 
+        {selectedItem && (
+          <div className="block-action-bar" data-testid="block-action-bar">
+            <span className="block-action-name">
+              {selectedItem.task?.name ?? selectedItem.custom_name} · {hhmm(new Date(selectedItem.scheduled_time!))}
+            </span>
+            <button
+              className="action-btn"
+              data-testid={`btn-edit-block-${selectedItem.id}`}
+              onClick={() => handleToggleEdit(selectedItem.id)}
+            >
+              {editingId === selectedItem.id ? 'Done' : 'Edit block'}
+            </button>
+            {selectedItem.calendar_event_id && (
+              <button
+                className="action-btn remove-btn"
+                data-testid={`btn-remove-google-${selectedItem.id}`}
+                onClick={() => handleRemoveFromGoogle(selectedItem)}
+              >
+                Remove from Google
+              </button>
+            )}
+            <button
+              className="action-btn"
+              data-testid="btn-close-block-actions"
+              onClick={clearSelection}
+              aria-label="Close"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
         {/* Main content area */}
         <div className="calendar-content">
           <ActivityBank tasks={tasks} />
@@ -321,8 +364,6 @@ export function CalendarView({ tasks }: CalendarViewProps) {
             selectedId={selectedId}
             editingId={editingId}
             onSelect={handleSelect}
-            onToggleEdit={handleToggleEdit}
-            onRemoveFromGoogle={handleRemoveFromGoogle}
             onResize={handleResize}
             onSlotClick={handleSlotClick}
             onPushDay={handlePushDay}
@@ -345,7 +386,7 @@ export function CalendarView({ tasks }: CalendarViewProps) {
       {picker && pickerTime && (
         <ActivityPicker
           date={picker.date}
-          time={`${pickerTime.getHours().toString().padStart(2, '0')}:${pickerTime.getMinutes().toString().padStart(2, '0')}`}
+          time={hhmm(pickerTime)}
           tasks={tasks}
           onClose={() => setPicker(null)}
           onPick={handlePick}

@@ -579,21 +579,6 @@ body {
   white-space: nowrap;
 }
 
-.session-block-actions {
-  position: absolute;
-  top: 0.25rem;
-  right: 0.25rem;
-  display: flex;
-  gap: 0.25rem;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.session-block:hover .session-block-actions,
-.session-block.selected .session-block-actions {
-  opacity: 1;
-}
-
 .session-block.selected {
   outline: 2px solid rgba(255, 255, 255, 0.8);
   z-index: 15;
@@ -630,6 +615,25 @@ body {
 
 .day-action-status.error {
   background: rgba(239, 68, 68, 0.35);
+}
+
+.block-action-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.5rem 1rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  color: white;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.block-action-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .picker-options {

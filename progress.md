@@ -1235,3 +1235,11 @@ Each iteration appends its results here so the next session knows what worked, w
   - The time is matched as `HH:MM` 24-hour (`08:00` for Item 11), with no digit on either side. Format it like the Activity picker's `time` string in `CalendarView`.
   - The test asserts `within(item-block-{id}).queryAllByRole('button')` is empty. The resize handle is a `div`, so it can stay; do not make it a `<button>`.
   - The bar must disappear on close: the impl must clear `selectedId` and `editingId` (the test checks the `selected` class and the handle are gone).
+
+## B31.impl. Web: Block actions outside the Block
+- **Date:** 2026-10-03
+- **Status:** DONE
+- **Summary:** `ItemBlock` no longer renders the Edit block / Remove from Google buttons, and it loses its `onToggleEdit`/`onRemoveFromGoogle` props, as does `CalendarGrid`. While a Block is selected, `CalendarView` renders a `block-action-bar` after the day-action status line. The bar shows "Name · HH:MM", Edit block / Done, Remove from Google (Exported only, same confirm), and `btn-close-block-actions`, which clears the selection and edit mode. The selected Item is looked up from `schedules`, so the bar disappears if the Item is gone after a reload.
+- **Files changed:** frontend/src/components/calendar/ItemBlock.tsx, frontend/src/components/calendar/CalendarGrid.tsx, frontend/src/components/calendar/CalendarView.tsx, frontend/src/index.css, prd.md, progress.md
+- **Verification:** from `frontend/` (via python3 subprocess): `npx vitest run` 75/75 passed; `npx tsc --noEmit` clean; `npm run build` succeeded.
+- **Gotchas:** A small `hhmm(date)` helper in `CalendarView` now formats both the bar time and the Activity picker time. The old `.session-block-actions` CSS is removed; the bar is styled by `.block-action-bar` / `.block-action-name` in `index.css`. A Bash heredoc append to `progress.md` was rejected by the sandbox parser ("Parser skipped input"), so use the Edit tool for it. `cd X && git …` also needs approval, so run git from the current directory.

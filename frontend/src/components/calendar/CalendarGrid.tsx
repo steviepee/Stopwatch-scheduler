@@ -20,8 +20,6 @@ interface CalendarGridProps {
   selectedId: number | null;
   editingId: number | null;
   onSelect: (itemId: number) => void;
-  onToggleEdit: (itemId: number) => void;
-  onRemoveFromGoogle: (item: ScheduleItem) => void;
   onResize: (item: ScheduleItem, newDurationSeconds: number) => void;
   onSlotClick: (date: Date, minutesFromStart: number) => void;
   onPushDay: (schedule: Schedule) => void;
@@ -78,8 +76,6 @@ export function CalendarGrid({
   selectedId,
   editingId,
   onSelect,
-  onToggleEdit,
-  onRemoveFromGoogle,
   onResize,
   onSlotClick,
   onPushDay,
@@ -193,8 +189,6 @@ export function CalendarGrid({
                 selected={selectedId === item.id}
                 editing={editingId === item.id}
                 onSelect={onSelect}
-                onToggleEdit={onToggleEdit}
-                onRemoveFromGoogle={onRemoveFromGoogle}
                 onResize={onResize}
               />
             ))}
