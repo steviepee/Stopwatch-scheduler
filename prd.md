@@ -469,7 +469,7 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] All B16.tests pass; full suite passes; `alembic check` clean
 
 ### B17.tests — Mobile: changed marker and Push changes
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Update `mobile/src/__tests__/GooglePush.test.tsx` (and any test asserting a
   401 from a move or resize, which can no longer happen).
 - **Contract:** `ScheduleItem` gets `calendar_stale`. A Block with `calendar_stale` shows
@@ -478,10 +478,10 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   changes**. Its success message counts new and updated events. Moves and resizes of Exported
   Blocks still call only `updateItem`, and the range query refetches so the marker appears.
 - **Acceptance Criteria:**
-  - [ ] Test: a stale Block shows the marker; a fresh pushed Block does not
-  - [ ] Test: all Items pushed and none stale → no push button
-  - [ ] Test: only stale Items → "Push changes"; any new Item → "Push day"; both call `pushToCalendar` once
-  - [ ] Test: moving an Exported Block calls `updateItem` only
+  - [x] Test: a stale Block shows the marker; a fresh pushed Block does not
+  - [x] Test: all Items pushed and none stale → no push button
+  - [x] Test: only stale Items → "Push changes"; any new Item → "Push day"; both call `pushToCalendar` once
+  - [x] Test: moving an Exported Block calls `updateItem` only
 
 ### B17.impl — Mobile: changed marker and Push changes
 - **Status:** PENDING

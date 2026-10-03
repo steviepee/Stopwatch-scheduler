@@ -43,6 +43,17 @@ import type { Schedule, ScheduleItem, StrategyOption, Task } from '../types';
 // only through Push day (D35). Gesture-driven Google changes are server-side (B3) and
 // only for Items already Exported.
 //
+// B17 contract (D43 revised 2026-10-03): edits to Exported Blocks wait for Push.
+//   - `ScheduleItem.calendar_stale` (server-set). A Block whose Item is stale shows
+//     `item-block-{itemId}-changed`; a pushed, unchanged Block does not.
+//   - `btn-push-day` shows when any Item has no `calendar_event_id` OR is stale. Its label is
+//     "Push day" if any Item is new, else "Push changes". Either way it calls
+//     `pushToCalendar(scheduleId)` once.
+//   - Push success counts new and updated events separately: the number of Items that had no
+//     event id before the push, and the number that were stale.
+//   - Moving or resizing an Exported Block calls only `updateItem` (no Google route), then the
+//     range query refetches so the marker appears.
+//
 // The Schedule-tab push tests at the bottom are P17's and unchanged; B8 owns that tab.
 jest.mock('../services/api', () => ({
   taskAPI: { getAll: jest.fn() },
@@ -203,6 +214,15 @@ function item(overrides: Partial<ScheduleItem>): ScheduleItem {
     created_at: '2026-01-01T00:00:00.000Z',
     ...overrides,
   };
+}
+
+// `calendar_stale` is added to `ScheduleItem` by B17.impl; the cast keeps tsc clean until then.
+function staleItem(overrides: Partial<ScheduleItem>): ScheduleItem {
+  return { ...item(overrides), calendar_stale: true } as ScheduleItem;
+}
+
+function freshItem(overrides: Partial<ScheduleItem>): ScheduleItem {
+  return { ...item(overrides), calendar_stale: false } as ScheduleItem;
 }
 
 function today(items: ScheduleItem[]): DaySchedule {
@@ -551,6 +571,156 @@ describe('Push day', () => {
 
     await screen.findByText(/authorize from a laptop/i);
     expect(screen.queryByTestId('day-action-success')).toBeNull();
+  });
+});
+
+describe('B17: changed marker', () => {
+  it('a stale Block shows the marker; a fresh pushed Block and a new Block do not', async () => {
+    schedules = [
+      today([
+        staleItem({ id: 1, calendar_event_id: 'evt-1' }),
+        freshItem({ id: 2, calendar_event_id: 'evt-2', scheduled_time: todayAt(11) }),
+        item({ id: 3, scheduled_time: todayAt(13) }),
+      ]),
+    ];
+    await renderCalendar();
+
+    const staleBlock = await screen.findByTestId('item-block-1');
+    expect(within(staleBlock).getByTestId('item-block-1-changed')).toBeTruthy();
+    await screen.findByTestId('item-block-2');
+    expect(screen.queryByTestId('item-block-2-changed')).toBeNull();
+    expect(screen.queryByTestId('item-block-3-changed')).toBeNull();
+  });
+});
+
+describe('B17: push button', () => {
+  it('is absent when every Item is pushed and none is stale', async () => {
+    schedules = [
+      today([
+        freshItem({ id: 1, calendar_event_id: 'evt-1' }),
+        freshItem({ id: 2, calendar_event_id: 'evt-2', scheduled_time: todayAt(11) }),
+      ]),
+    ];
+    await renderCalendar();
+
+    await screen.findByTestId('btn-remove-day');
+    expect(screen.queryByTestId('btn-push-day')).toBeNull();
+  });
+
+  it('reads "Push changes" when only stale Items need pushing, and calls pushToCalendar once', async () => {
+    schedules = [
+      today([
+        staleItem({ id: 1, calendar_event_id: 'evt-1' }),
+        freshItem({ id: 2, calendar_event_id: 'evt-2', scheduled_time: todayAt(11) }),
+        freshItem({ id: 3, calendar_event_id: 'evt-3', scheduled_time: todayAt(13) }),
+      ]),
+    ];
+    mockedPushToCalendar.mockResolvedValue(
+      today([
+        freshItem({ id: 1, calendar_event_id: 'evt-1' }),
+        freshItem({ id: 2, calendar_event_id: 'evt-2', scheduled_time: todayAt(11) }),
+        freshItem({ id: 3, calendar_event_id: 'evt-3', scheduled_time: todayAt(13) }),
+      ])
+    );
+    await renderCalendar();
+
+    const button = await screen.findByTestId('btn-push-day');
+    expect(button).toHaveTextContent(/push changes/i);
+    expect(button).not.toHaveTextContent(/push day/i);
+
+    await fireEvent.press(button);
+
+    await waitFor(() => expect(mockedPushToCalendar).toHaveBeenCalledWith(50));
+    expect(mockedPushToCalendar).toHaveBeenCalledTimes(1);
+    const success = await screen.findByTestId('day-action-success');
+    expect(success).toHaveTextContent(/1/);
+    expect(success).not.toHaveTextContent(/3/);
+  });
+
+  it('reads "Push day" when any Item is new, even with stale Items, and calls pushToCalendar once', async () => {
+    schedules = [
+      today([
+        staleItem({ id: 1, calendar_event_id: 'evt-1' }),
+        item({ id: 2, scheduled_time: todayAt(11) }),
+        item({ id: 3, scheduled_time: todayAt(13) }),
+        freshItem({ id: 4, calendar_event_id: 'evt-4', scheduled_time: todayAt(15) }),
+      ]),
+    ];
+    mockedPushToCalendar.mockResolvedValue(
+      today([
+        freshItem({ id: 1, calendar_event_id: 'evt-1' }),
+        freshItem({ id: 2, calendar_event_id: 'evt-2', scheduled_time: todayAt(11) }),
+        freshItem({ id: 3, calendar_event_id: 'evt-3', scheduled_time: todayAt(13) }),
+        freshItem({ id: 4, calendar_event_id: 'evt-4', scheduled_time: todayAt(15) }),
+      ])
+    );
+    await renderCalendar();
+
+    const button = await screen.findByTestId('btn-push-day');
+    expect(button).toHaveTextContent(/push day/i);
+    expect(button).not.toHaveTextContent(/push changes/i);
+
+    await fireEvent.press(button);
+
+    await waitFor(() => expect(mockedPushToCalendar).toHaveBeenCalledWith(50));
+    expect(mockedPushToCalendar).toHaveBeenCalledTimes(1);
+    const success = await screen.findByTestId('day-action-success');
+    expect(success).toHaveTextContent(/2/);
+    expect(success).toHaveTextContent(/1/);
+    expect(success).not.toHaveTextContent(/4/);
+  });
+});
+
+describe('B17: edits to Exported Blocks wait for Push', () => {
+  it('moving an Exported Block calls updateItem only, then the marker appears after the refetch', async () => {
+    schedules = [today([freshItem({ id: 5, calendar_event_id: 'evt-5' })])];
+    mockedUpdateItem.mockImplementation((_scheduleId: number, itemId: number, body: Partial<ScheduleItem>) => {
+      schedules = [today([staleItem({ id: itemId, calendar_event_id: 'evt-5', ...body })])];
+      return Promise.resolve(schedules[0].items[0]);
+    });
+    await renderCalendar();
+
+    await screen.findByTestId('item-block-5');
+    await layoutBank();
+    expect(screen.queryByTestId('item-block-5-changed')).toBeNull();
+    const rangeCallsBefore = mockedGetRange.mock.calls.length;
+
+    gestureRegistry()['item-block-5'].onEnd({ translationY: 90, absoluteY: 300 });
+
+    await waitFor(() => expect(mockedUpdateItem).toHaveBeenCalledTimes(1));
+    expect(Object.keys(mockedUpdateItem.mock.calls[0][2])).toEqual(['scheduled_time']);
+    await screen.findByTestId('item-block-5-changed');
+    expect(mockedGetRange.mock.calls.length).toBeGreaterThan(rangeCallsBefore);
+
+    expect(mockedPushToCalendar).not.toHaveBeenCalled();
+    expect(mockedRemoveItemFromCalendar).not.toHaveBeenCalled();
+    expect(mockedRemoveScheduleCalendar).not.toHaveBeenCalled();
+    expect(mockedClearDay).not.toHaveBeenCalled();
+    expect(mockedDeleteItem).not.toHaveBeenCalled();
+    expect(alertSpy).not.toHaveBeenCalled();
+  });
+
+  it('resizing an Exported Block calls updateItem only, then the marker appears', async () => {
+    schedules = [today([freshItem({ id: 5, calendar_event_id: 'evt-5', estimated_duration: 1800 })])];
+    mockedUpdateItem.mockImplementation((_scheduleId: number, itemId: number, body: Partial<ScheduleItem>) => {
+      schedules = [today([staleItem({ id: itemId, calendar_event_id: 'evt-5', ...body })])];
+      return Promise.resolve(schedules[0].items[0]);
+    });
+    await renderCalendar();
+
+    await pressEditBlock(5);
+    await screen.findByTestId('item-block-5-resize-handle');
+    gestureRegistry()['item-block-5-resize-handle'].onEnd({ translationY: 45 });
+
+    await waitFor(() => expect(mockedUpdateItem).toHaveBeenCalledTimes(1));
+    expect(Object.keys(mockedUpdateItem.mock.calls[0][2])).toEqual(['estimated_duration']);
+    await screen.findByTestId('item-block-5-changed');
+
+    expect(mockedPushToCalendar).not.toHaveBeenCalled();
+    expect(mockedRemoveItemFromCalendar).not.toHaveBeenCalled();
+    expect(mockedRemoveScheduleCalendar).not.toHaveBeenCalled();
+    expect(mockedClearDay).not.toHaveBeenCalled();
+    expect(mockedDeleteItem).not.toHaveBeenCalled();
   });
 });
 
