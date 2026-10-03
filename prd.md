@@ -554,22 +554,46 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
 - **Acceptance Criteria:**
   - [x] All B27.tests pass; tsc clean; export succeeds
 
-### B28.tests — Web: plans avoid busy time
-- **Status:** BLOCKED
-- **Failure Notes:** The contract assumes the web sends a generate request, but it doesn't. Web plans are computed in the browser by `ScheduleTimeline.tsx` (`buildTimeline` / `bestFitOrder`), and `frontend/src/services/api.ts` has no `scheduleAPI.generate`. So there is no request to carry `avoid_existing`, and no `excluded` list to show. Testing this needs a design decision first: move the web to `POST /api/schedules/generate` (as mobile does), or add busy-time avoidance to the browser layout. B28.impl depends on this task and cannot run until it is rewritten.
-- **Description:** The web `ScheduleBuilder` already has a date input. Extend
-  `frontend/src/__tests__/ScheduleBuilder.test.tsx`.
-- **Contract:** Generate sends `avoid_existing: true`; excluded Activities are listed as on mobile.
+### B28.tests — Web: plans come from the server's Generate
+- **Status:** PENDING
+- **Description:** Rewritten 2026-10-03 after the first B28 was BLOCKED: the web never calls
+  `POST /api/schedules/generate`. [ScheduleTimeline.tsx](frontend/src/components/ScheduleTimeline.tsx)
+  computes its four options in the browser (`buildTimeline`, `bestFitOrder`), so B26's
+  `avoid_existing` cannot reach it. The user chose to move the web onto the server's Generate,
+  as mobile does (one planner, and Build 2b's selectable Strategies need it anyway). Extend
+  `frontend/src/__tests__/ScheduleBuilder.test.tsx`; its `ScheduleTimeline` mock and any test of
+  the browser-side ordering may be rewritten for the new props.
+- **Contract:**
+  - Web `scheduleAPI.generate(req)` POSTs to `/schedules/generate` (no trailing slash), with
+    `GenerateRequest`/`GenerateResponse` types matching mobile's.
+  - `ScheduleBuilder`'s Generate fetches the date's Items (as B11) plus any imported Google
+    events, then calls `generate` once with `start_time`, `day_start` (06:00 local on the
+    date), `day_end` (23:00 local), the Activities in list order, `existing_events`,
+    `strategies: ['your-order', 'shortest-first', 'longest-first', 'best-fit']` and
+    `avoid_existing: true`. A failed call shows an inline error and stays on setup.
+  - `ScheduleTimeline` becomes a presenter: props `options` (the response's `options`),
+    `onSelect(items)`, `onReorder(activities)`. It renders one tab per option with the
+    server's label and description, the selected option's timeline (start–end per entry), and
+    its `excluded` as "Didn't fit: <names>". "Use This Schedule" calls `onSelect` with Items
+    built from the entries (`task_id`, `custom_name` when no task, `estimated_duration` = end −
+    start, `position`, `scheduled_time` = entry start).
+  - Drag-to-reorder stays on the Your Order tab: it calls `onReorder`, and the builder calls
+    `generate` again with the new order.
+  - `buildTimeline` and `bestFitOrder` are deleted; nothing else uses them.
 - **Acceptance Criteria:**
-  - [ ] Test: the generate request carries `avoid_existing: true`
-  - [ ] Test: excluded Activities are listed
+  - [ ] Test: Generate sends one request with the fields above, including `avoid_existing: true` and the day's Items as `existing_events`
+  - [ ] Test: tabs and timelines render from the response; an option's `excluded` shows as "Didn't fit"
+  - [ ] Test: Use This Schedule passes Items whose `scheduled_time`s are the server's entry starts
+  - [ ] Test: reordering on Your Order calls `generate` again with the new activity order
+  - [ ] Test: a failed generate shows an error and no timeline
 
-### B28.impl — Web: plans avoid busy time
-- **Status:** BLOCKED
-- **Failure Notes:** Depends on B28.tests, which is BLOCKED. No tests exist to make pass. The user must choose a design: (a) the web calls `POST /api/schedules/generate`, or (b) the browser-side `buildTimeline` avoids busy time. Then B28.tests must be rewritten and run first.
-- **Description:** Implement to the contract.
+### B28.impl — Web: plans come from the server's Generate
+- **Status:** PENDING
+- **Description:** Implement to the contract in `frontend/src/services/api.ts`,
+  `types/index.ts`, `components/ScheduleBuilder.tsx`, `components/ScheduleTimeline.tsx`.
 - **Acceptance Criteria:**
   - [ ] All B28.tests pass; web tsc clean; `npm run build` succeeds
+  - [ ] `git grep -n "buildTimeline\|bestFitOrder" frontend/src` is empty
 
 ### B29.tests — Mobile: short Blocks drawn at their true length
 - **Status:** DONE
