@@ -527,11 +527,11 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] Test: the flag with no events gives the same timeline as without it
 
 ### B26.impl — Backend: generated plans avoid busy time
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract in `services/strategies.py` and the generate route.
   Do not edit `generate_parity.json`.
 - **Acceptance Criteria:**
-  - [ ] All B26.tests pass; full suite passes
+  - [x] All B26.tests pass; full suite passes
 
 ### B27.tests — Mobile: Schedule tab date picker, plans avoid busy time
 - **Status:** PENDING

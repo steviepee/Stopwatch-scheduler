@@ -224,6 +224,7 @@ class GenerateRequest(BaseModel):
     activities: List[GenerateActivity]
     existing_events: List[GenerateEvent] = []
     strategies: Optional[List[str]] = None
+    avoid_existing: bool = False
 
 
 class TimelineEntry(BaseModel):

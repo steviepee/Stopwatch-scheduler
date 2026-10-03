@@ -8,7 +8,7 @@ from app.database import get_db
 from app.models.schedule import Schedule, ScheduleItem
 from app.models.task import Task
 from app.models import schemas
-from app.services.strategies import STRATEGY_REGISTRY, _build_timeline
+from app.services.strategies import STRATEGY_REGISTRY, _build_timeline, _build_timeline_avoiding
 from app.services.google_calendar import GoogleCalendarService
 
 router = APIRouter()
@@ -434,6 +434,10 @@ def generate_schedules(body: schemas.GenerateRequest, db: Session = Depends(get_
         )
         if "timeline" in result:
             timeline = result["timeline"]
+        elif body.avoid_existing:
+            timeline = _build_timeline_avoiding(
+                result["ordered"], start_time, body.day_end, existing_events, result["excluded"]
+            )
         else:
             timeline = _build_timeline(result["ordered"], start_time)
         options.append(schemas.StrategyOption(

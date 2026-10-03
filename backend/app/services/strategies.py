@@ -18,6 +18,31 @@ def _build_timeline(ordered, start_time):
     return timeline
 
 
+def _build_timeline_avoiding(ordered, start_time, day_end, existing_events, excluded):
+    timeline = []
+    cursor = start_time
+    for act in ordered:
+        duration = timedelta(seconds=act["estimated_duration"])
+        start = cursor
+        while True:
+            end = start + duration
+            clash = next((e for e in existing_events if start < e["end"] and end > e["start"]), None)
+            if clash is None:
+                break
+            start = clash["end"]
+        if end > day_end:
+            excluded.append({"name": act["name"], "reason": "no-free-slot"})
+            continue
+        timeline.append({
+            "task_id": act.get("task_id"),
+            "name": act["name"],
+            "start": start,
+            "end": end,
+        })
+        cursor = end
+    return timeline
+
+
 def _your_order(activities, **kwargs):
     ordered = list(activities)
     return {
