@@ -152,6 +152,8 @@ while [[ $iteration -lt $MAX_ITERATIONS ]]; do
   echo "-----------------------------------------"
   echo ""
 
+  head_before=$(git rev-parse HEAD)
+
   # Spawn a fresh Claude Code session with the prompt
   # --print mode sends the prompt and gets a response without interactive mode
   # The prompt file tells Claude to read CLAUDE.md, prd.md, and progress.md
@@ -165,6 +167,18 @@ while [[ $iteration -lt $MAX_ITERATIONS ]]; do
 
   echo ""
   echo "  Iteration $iteration finished at $(timestamp)"
+
+  # Every finished task commits (DONE or BLOCKED). No commit means the session failed,
+  # was cut off, or hit a usage limit; further iterations would fail the same way.
+  if [[ $(git rev-parse HEAD) == "$head_before" ]]; then
+    echo ""
+    echo "========================================="
+    echo "  No progress this iteration (no new commit). Stopping."
+    echo "  Rerun when your usage resets; it resumes at the first PENDING task."
+    echo "  Pending:  $(pending_count)"
+    echo "========================================="
+    exit 1
+  fi
 
   # Brief pause between iterations to avoid rate limiting
   sleep 2
