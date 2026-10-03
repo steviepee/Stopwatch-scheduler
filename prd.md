@@ -460,13 +460,13 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] Test: Alembic revision present; `test_migrations.py` passes
 
 ### B16.impl — Backend: edits to pushed Items wait for Push
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract: model field, Alembic revision
   (`TINYINT(1) NOT NULL DEFAULT 0` on MySQL, with a server default so existing rows backfill),
   `update_item` drops its Google call, `push_schedule_to_calendar` patches stale Items via
   `calendar_service.update_event`. Live MySQL is B19's.
 - **Acceptance Criteria:**
-  - [ ] All B16.tests pass; full suite passes; `alembic check` clean
+  - [x] All B16.tests pass; full suite passes; `alembic check` clean
 
 ### B17.tests — Mobile: changed marker and Push changes
 - **Status:** PENDING

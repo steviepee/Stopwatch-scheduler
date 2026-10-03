@@ -146,6 +146,7 @@ class ScheduleItem(ScheduleItemBase):
     schedule_id: int
     task: Optional[Task] = None
     calendar_event_id: Optional[str] = None
+    calendar_stale: bool = False
     created_at: UTCDateTime
 
     class Config:

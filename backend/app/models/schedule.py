@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Date, DateTime, ForeignKey, Boolean, Text
+from sqlalchemy import Column, Integer, String, Float, Date, DateTime, ForeignKey, Boolean, Text, false
 from sqlalchemy.orm import relationship
 from app.database import Base, utcnow
 
@@ -31,6 +31,7 @@ class ScheduleItem(Base):
     scheduled_time = Column(DateTime, nullable=True)
     is_frog = Column(Boolean, nullable=False, default=False)
     calendar_event_id = Column(String(255), nullable=True)
+    calendar_stale = Column(Boolean, nullable=False, default=False, server_default=false())
     created_at = Column(DateTime, default=utcnow)
 
     schedule = relationship("Schedule", back_populates="items")

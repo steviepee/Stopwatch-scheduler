@@ -239,23 +239,15 @@ def update_item(
         raise HTTPException(status_code=404, detail="Item not found")
 
     update_data = item.model_dump(exclude_unset=True)
-    sync_google = db_item.calendar_event_id is not None and (
+    if db_item.calendar_event_id is not None and (
         "scheduled_time" in update_data or "estimated_duration" in update_data
-    )
-    if sync_google:
-        _require_google()
+    ):
+        db_item.calendar_stale = True
 
     for field, value in update_data.items():
         setattr(db_item, field, value)
     if db_item.is_frog:
         _clear_other_frogs(db, db_item)
-
-    if sync_google:
-        calendar_service.update_event(
-            db_item.calendar_event_id,
-            db_item.scheduled_time.isoformat(),
-            db_item.estimated_duration
-        )
 
     db.commit()
     db.refresh(db_item)
@@ -295,6 +287,7 @@ def remove_item_from_calendar(schedule_id: int, item_id: int, db: Session = Depe
         _require_google()
         _delete_event(db_item.calendar_event_id)
         db_item.calendar_event_id = None
+        db_item.calendar_stale = False
         db.commit()
         db.refresh(db_item)
     return db_item
@@ -302,7 +295,8 @@ def remove_item_from_calendar(schedule_id: int, item_id: int, db: Session = Depe
 
 @router.post("/{schedule_id}/calendar", response_model=schemas.Schedule)
 def push_schedule_to_calendar(schedule_id: int, db: Session = Depends(get_db)):
-    """Create a Google Calendar event for each scheduled item that doesn't have one yet"""
+    """Create a Google Calendar event for each scheduled item that doesn't have one yet,
+    and update the event of each item edited since it was pushed"""
     db_schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
     if not db_schedule:
         raise HTTPException(status_code=404, detail="Schedule not found")
@@ -312,7 +306,16 @@ def push_schedule_to_calendar(schedule_id: int, db: Session = Depends(get_db)):
 
     try:
         for item in db_schedule.items:
-            if item.scheduled_time is None or item.calendar_event_id is not None:
+            if item.calendar_event_id is not None:
+                if item.calendar_stale:
+                    calendar_service.update_event(
+                        item.calendar_event_id,
+                        item.scheduled_time.isoformat(),
+                        item.estimated_duration
+                    )
+                    item.calendar_stale = False
+                continue
+            if item.scheduled_time is None:
                 continue
 
             title = item.custom_name or (item.task.name if item.task else "Untitled")
@@ -346,6 +349,7 @@ def remove_schedule_from_calendar(schedule_id: int, db: Session = Depends(get_db
                 continue
             _delete_event(item.calendar_event_id)
             item.calendar_event_id = None
+            item.calendar_stale = False
 
         db.commit()
         return {"message": "Schedule removed from calendar"}
