@@ -572,7 +572,7 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [ ] All B28.tests pass; web tsc clean; `npm run build` succeeds
 
 ### B29.tests — Mobile: short Blocks drawn at their true length
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Found in B12 step 5. Mobile Blocks have a 44 px minimum height
   (`MIN_BLOCK_HEIGHT` in `src/app/(tabs)/calendar.tsx`), about 15 minutes at 3 px/min, so a
   10-minute Block is drawn over the first 5 minutes of the Block after it. Times are right; the
@@ -588,10 +588,10 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - A Block under 44 px shows only its name, on one line, truncated; the resize handle in edit
     mode stays 44 px and may extend past the Block.
 - **Acceptance Criteria:**
-  - [ ] Test: a 10-minute Block is 30 px tall and a 1.5-minute Block is 12 px; the existing double-duration ratio test still passes
-  - [ ] Test: a 10-minute Block's move gesture and Pressable carry a hitSlop totalling 14 px vertically; a 30-minute Block carries none
-  - [ ] Test: of two Blocks, the later-starting one has the higher `zIndex`
-  - [ ] Test: a short Block renders its name with `numberOfLines={1}`
+  - [x] Test: a 10-minute Block is 30 px tall and a 1.5-minute Block is 12 px; the existing double-duration ratio test still passes
+  - [x] Test: a 10-minute Block's move gesture and Pressable carry a hitSlop totalling 14 px vertically; a 30-minute Block carries none
+  - [x] Test: of two Blocks, the later-starting one has the higher `zIndex`
+  - [x] Test: a short Block renders its name with `numberOfLines={1}`
 
 ### B29.impl — Mobile: short Blocks drawn at their true length
 - **Status:** PENDING

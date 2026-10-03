@@ -24,6 +24,12 @@ import type { ScheduleItem, Task } from '../types';
 //
 // Drag is exercised through the mocked gesture-handler registry (keyed by the
 // gestured child's testID), calling `.onEnd(event)` directly — see P15.tests.
+//
+// B29 contract: a Block is drawn at its true length (3 px/min) with a 12 px floor.
+// A Block under 44 px gets a vertical hitSlop — via the gesture's `.hitSlop({ top, bottom })`
+// (recorded by the mock below) and the select Pressable's `hitSlop` prop — topping its touch
+// area up to 44 px, centred. Later-starting Blocks get a higher `zIndex`. A short Block's name
+// renders with `numberOfLines={1}`.
 jest.mock('../services/api', () => ({
   taskAPI: { getAll: jest.fn() },
   scheduleAPI: {
@@ -40,10 +46,10 @@ jest.mock('../services/api', () => ({
 }));
 
 jest.mock('react-native-gesture-handler', () => {
-  const registry: Record<string, { onEnd: (e: Record<string, unknown>) => void }> = {};
+  const registry: Record<string, { onEnd: (e: Record<string, unknown>) => void; hitSlop?: Record<string, number> }> = {};
 
   function makeGesture() {
-    const handlers: { onEnd?: (e: Record<string, unknown>) => void } = {};
+    const handlers: { onEnd?: (e: Record<string, unknown>) => void; hitSlop?: Record<string, number> } = {};
     const gesture: any = {
       onBegin: () => gesture,
       onUpdate: () => gesture,
@@ -52,6 +58,10 @@ jest.mock('react-native-gesture-handler', () => {
       activeOffsetY: () => gesture,
       activeOffsetX: () => gesture,
       activateAfterLongPress: () => gesture,
+      hitSlop: (slop: Record<string, number>) => {
+        handlers.hitSlop = slop;
+        return gesture;
+      },
       onEnd: (fn: (e: Record<string, unknown>) => void) => {
         handlers.onEnd = fn;
         return gesture;
@@ -71,7 +81,7 @@ jest.mock('react-native-gesture-handler', () => {
     GestureDetector: ({ children, gesture }: { children: any; gesture: any }) => {
       const testID = children?.props?.testID;
       if (testID) {
-        registry[testID] = { onEnd: (e) => gesture.__handlers.onEnd?.(e) };
+        registry[testID] = { onEnd: (e) => gesture.__handlers.onEnd?.(e), hitSlop: gesture.__handlers.hitSlop };
       }
       return children;
     },
@@ -91,8 +101,17 @@ const mockedGetEvents = calendarImportAPI.getEvents as jest.Mock;
 type DaySchedule = { id: number; target_date: string; is_regimen: false; items: ScheduleItem[] };
 let schedules: DaySchedule[] = [];
 
-function gestureRegistry(): Record<string, { onEnd: (e: Record<string, unknown>) => void }> {
+function gestureRegistry(): Record<string, { onEnd: (e: Record<string, unknown>) => void; hitSlop?: Record<string, number> }> {
   return (require('react-native-gesture-handler') as any).__registry;
+}
+
+function blockStyle(id: number) {
+  const { StyleSheet } = require('react-native');
+  return StyleSheet.flatten(screen.getByTestId(`item-block-${id}`).props.style);
+}
+
+function verticalSlop(slop: Record<string, number> | undefined): { top: number; bottom: number } {
+  return { top: slop?.top ?? 0, bottom: slop?.bottom ?? 0 };
 }
 
 function localKey(date: Date): string {
@@ -189,6 +208,63 @@ describe('Blocks from Schedule Items', () => {
     expect(lateStyle.height).toBe(earlyStyle.height * 2);
     expect(within(screen.getByTestId('item-block-1')).getByText('Reading')).toBeTruthy();
     expect(within(screen.getByTestId('item-block-2')).getByText('Gym')).toBeTruthy();
+  });
+});
+
+describe('short Blocks (B29)', () => {
+  it('draws a Block at its true length, 3 px/min, with a 12 px floor', async () => {
+    schedules = [
+      today([
+        item({ id: 1, scheduled_time: todayAt(9), estimated_duration: 600 }),
+        item({ id: 2, scheduled_time: todayAt(11), estimated_duration: 90 }),
+      ]),
+    ];
+    await renderScreen();
+
+    await screen.findByTestId('item-block-1');
+    expect(blockStyle(1).height).toBe(30);
+    expect(blockStyle(2).height).toBe(12);
+  });
+
+  it('gives a short Block a centred vertical hitSlop up to 44 px, and a long Block none', async () => {
+    schedules = [
+      today([
+        item({ id: 1, task_id: 11, task: task({ id: 11, name: 'Short' }), scheduled_time: todayAt(9), estimated_duration: 600 }),
+        item({ id: 2, task_id: 12, task: task({ id: 12, name: 'Long' }), scheduled_time: todayAt(11), estimated_duration: 1800 }),
+      ]),
+    ];
+    await renderScreen();
+
+    await screen.findByTestId('item-block-1');
+
+    expect(verticalSlop(gestureRegistry()['item-block-1'].hitSlop)).toEqual({ top: 7, bottom: 7 });
+    const shortPressable = within(screen.getByTestId('item-block-1')).getByRole('button');
+    expect(verticalSlop(shortPressable.props.hitSlop)).toEqual({ top: 7, bottom: 7 });
+
+    expect(verticalSlop(gestureRegistry()['item-block-2'].hitSlop)).toEqual({ top: 0, bottom: 0 });
+    const longPressable = within(screen.getByTestId('item-block-2')).getByRole('button');
+    expect(verticalSlop(longPressable.props.hitSlop)).toEqual({ top: 0, bottom: 0 });
+  });
+
+  it('stacks a later-starting Block above an earlier one', async () => {
+    schedules = [
+      today([
+        item({ id: 2, scheduled_time: todayAt(9, 10), estimated_duration: 600 }),
+        item({ id: 1, scheduled_time: todayAt(9), estimated_duration: 600 }),
+      ]),
+    ];
+    await renderScreen();
+
+    await screen.findByTestId('item-block-1');
+    expect(blockStyle(2).zIndex).toBeGreaterThan(blockStyle(1).zIndex ?? 0);
+  });
+
+  it('renders a short Block’s name on one line', async () => {
+    schedules = [today([item({ id: 1, task_id: 11, task: task({ id: 11, name: 'Stretch' }), estimated_duration: 600 })])];
+    await renderScreen();
+
+    await screen.findByTestId('item-block-1');
+    expect(within(screen.getByTestId('item-block-1')).getByText('Stretch').props.numberOfLines).toBe(1);
   });
 });
 
