@@ -1223,3 +1223,15 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Files changed:** mobile/src/app/(tabs)/recordings.tsx, frontend/src/components/SessionList.tsx, prd.md, progress.md
 - **Verification:** (via python3 subprocess) mobile `npx jest --ci --forceExit` 210/210 passed, `npx tsc --noEmit` clean, `npx expo export --platform android` succeeded (to `/tmp/b30i_export`); web `npx vitest run` 70/70 passed, `npx tsc --noEmit` clean, `npm run build` succeeded.
 - **Gotchas:** None.
+
+## B31.tests. Web: Block actions outside the Block
+- **Date:** 2026-10-03
+- **Status:** DONE
+- **Summary:** Added a `CalendarView — Block action bar` describe (5 tests) to `frontend/src/__tests__/CalendarView.test.tsx`, with the B31 contract in the header comment. The tests cover: the bar (`block-action-bar`) names the Activity and its `HH:MM` start, and the Block holds no buttons; Edit block / Done from the bar toggles the resize handle and the move lock; Remove from Google in the bar confirms first and shows only for Exported Block 21; `btn-close-block-actions` clears the selection and edit mode; changing the week hides the bar. No existing test was changed or deleted. The older tests that click `btn-edit-block-*` / `btn-remove-google-*` via `screen` still work wherever those buttons live.
+- **Files changed:** frontend/src/__tests__/CalendarView.test.tsx, prd.md, progress.md
+- **Verification:** from `frontend/` (via python3 subprocess), `npx vitest run` gave 4 failed, 71 passed. The 4 failures are the new bar tests, as expected before impl. The week-change test already passes and acts as a guard. `npx tsc --noEmit` is clean. Against a throwaway reference, 75/75 passed. The reference removed the actions div from `ItemBlock` and added a bar in `CalendarView` after the status line, finding the selected Item in `schedules`. Both files were then restored from `/tmp/b31t_orig/` (md5s match).
+- **Gotchas:**
+  - Test ids the contract left open, now fixed by the tests: the bar is `block-action-bar` and the close button is `btn-close-block-actions`.
+  - The time is matched as `HH:MM` 24-hour (`08:00` for Item 11), with no digit on either side. Format it like the Activity picker's `time` string in `CalendarView`.
+  - The test asserts `within(item-block-{id}).queryAllByRole('button')` is empty. The resize handle is a `div`, so it can stay; do not make it a `<button>`.
+  - The bar must disappear on close: the impl must clear `selectedId` and `editingId` (the test checks the `selected` class and the handle are gone).

@@ -647,7 +647,7 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] All B30.tests pass; mobile tsc clean and export succeeds; web tsc clean and `npm run build` succeeds
 
 ### B31.tests — Web: Block actions outside the Block
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** From the B12 check (2026-10-03). On the web calendar, a selected Block's
   actions (Edit block / Done, Remove from Google) render inside the Block
   ([ItemBlock.tsx](frontend/src/components/calendar/ItemBlock.tsx)), so on a short Block they are
@@ -659,10 +659,10 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   selection. `ItemBlock` keeps only the selected/editing styling and, in edit mode, the resize
   handle. Changing the week clears the selection, as now.
 - **Acceptance Criteria:**
-  - [ ] Test: selecting a Block shows the action bar with its name and time; no action button is inside the Block's element
-  - [ ] Test: Edit block from the bar toggles edit mode on that Block (resize handle appears, move ignored); Done ends it
-  - [ ] Test: Remove from Google from the bar confirms first and appears only for an Exported Block
-  - [ ] Test: closing the bar clears the selection
+  - [x] Test: selecting a Block shows the action bar with its name and time; no action button is inside the Block's element
+  - [x] Test: Edit block from the bar toggles edit mode on that Block (resize handle appears, move ignored); Done ends it
+  - [x] Test: Remove from Google from the bar confirms first and appears only for an Exported Block
+  - [x] Test: closing the bar clears the selection
 
 ### B31.impl — Web: Block actions outside the Block
 - **Status:** PENDING

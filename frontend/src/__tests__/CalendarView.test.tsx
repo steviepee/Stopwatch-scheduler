@@ -72,6 +72,16 @@ import type { Task } from '../types';
 //     = no event id, updated = stale. Keep other digits out of the success text.
 //   - Moving or resizing an Exported Block calls only `updateItem` (no Google route), then the
 //     refetch shows the marker.
+//
+// B31 contract: a selected Block's actions live in an action bar, not inside the Block.
+//   - `CalendarView` renders `data-testid="block-action-bar"` above the grid, beside the
+//     day-action status line, only while a Block is selected. It names the Block: the Activity
+//     name and its local start time as `HH:MM` (24-hour, as the Activity picker shows it).
+//   - The bar holds `btn-edit-block-{itemId}` ("Edit block" / "Done") and, for an Exported Block
+//     only, `btn-remove-google-{itemId}`, with today's behaviour, plus
+//     `btn-close-block-actions`, which clears the selection (and edit mode).
+//   - `ItemBlock` renders no buttons; it keeps the selected/editing styling and, in edit mode,
+//     `item-block-{itemId}-resize-handle`. Changing the week clears the selection.
 
 vi.mock('../services/api', () => ({
   taskAPI: { getAll: vi.fn(), getStats: vi.fn() },
@@ -493,6 +503,96 @@ describe('CalendarView — Block actions and edit mode', () => {
     const body = api.updateItem.mock.calls[0][2];
     expect(Object.keys(body)).toEqual(['scheduled_time']);
     expect(new Date(body.scheduled_time).toISOString()).toBe(iso(2026, 8, 30, 14, 0));
+  });
+});
+
+describe('CalendarView — Block action bar', () => {
+  const bar = () => screen.getByTestId('block-action-bar');
+
+  it('selecting a Block shows the bar with its name and time, and no button inside the Block', async () => {
+    await renderView();
+    expect(screen.queryByTestId('block-action-bar')).not.toBeInTheDocument();
+
+    await selectBlock(11);
+    expect(within(bar()).getByText(/Reading/)).toBeInTheDocument();
+    expect(bar().textContent).toMatch(/(^|\D)08:00(?!\d)/);
+    expect(within(bar()).getByTestId('btn-edit-block-11')).toBeInTheDocument();
+    const block = screen.getByTestId('item-block-11');
+    expect(within(block).queryAllByRole('button')).toHaveLength(0);
+    expect(within(block).queryByTestId('btn-edit-block-11')).not.toBeInTheDocument();
+    expect(block.contains(bar())).toBe(false);
+
+    await selectBlock(21);
+    expect(within(bar()).getByText(/Writing/)).toBeInTheDocument();
+    expect(bar().textContent).toMatch(/(^|\D)09:00(?!\d)/);
+    expect(within(bar()).queryByTestId('btn-edit-block-11')).not.toBeInTheDocument();
+    const exported = screen.getByTestId('item-block-21');
+    expect(within(exported).queryAllByRole('button')).toHaveLength(0);
+    expect(within(bar()).getByTestId('btn-remove-google-21')).toBeInTheDocument();
+  });
+
+  it('Edit block in the bar toggles edit mode on that Block; Done ends it', async () => {
+    await renderView();
+    await selectBlock(12);
+    const edit = within(bar()).getByTestId('btn-edit-block-12');
+    expect(edit).toHaveTextContent(/edit block/i);
+
+    fireEvent.click(edit);
+    const handle = await within(screen.getByTestId('item-block-12')).findByTestId('item-block-12-resize-handle');
+    expect(handle).toBeInTheDocument();
+    expect(within(bar()).getByTestId('btn-edit-block-12')).toHaveTextContent(/done/i);
+
+    await drag('block-12', 'column-2026-09-30', 300);
+    expect(api.updateItem).not.toHaveBeenCalled();
+
+    fireEvent.click(within(bar()).getByTestId('btn-edit-block-12'));
+    await waitFor(() =>
+      expect(screen.queryByTestId('item-block-12-resize-handle')).not.toBeInTheDocument());
+    expect(within(bar()).getByTestId('btn-edit-block-12')).toHaveTextContent(/edit block/i);
+
+    await drag('block-12', 'column-2026-09-30', 480); // 14:00
+    expect(api.updateItem).toHaveBeenCalledTimes(1);
+    expect(new Date(api.updateItem.mock.calls[0][2].scheduled_time).toISOString()).toBe(iso(2026, 8, 30, 14, 0));
+  });
+
+  it('Remove from Google in the bar confirms first and appears only for an Exported Block', async () => {
+    await renderView();
+    await selectBlock(12);
+    expect(within(bar()).queryByTestId('btn-remove-google-12')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('btn-remove-google-12')).not.toBeInTheDocument();
+
+    await selectBlock(21);
+    const remove = within(bar()).getByTestId('btn-remove-google-21');
+    (window.confirm as Mock).mockReturnValueOnce(false);
+    fireEvent.click(remove);
+    expect(window.confirm).toHaveBeenCalledTimes(1);
+    expect(api.removeItemFromCalendar).not.toHaveBeenCalled();
+
+    fireEvent.click(within(bar()).getByTestId('btn-remove-google-21'));
+    expect(window.confirm).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(api.removeItemFromCalendar).toHaveBeenCalledWith(101, 21));
+  });
+
+  it('closing the bar clears the selection and edit mode', async () => {
+    await renderView();
+    await selectBlock(12);
+    fireEvent.click(within(bar()).getByTestId('btn-edit-block-12'));
+    await screen.findByTestId('item-block-12-resize-handle');
+
+    fireEvent.click(within(bar()).getByTestId('btn-close-block-actions'));
+    await waitFor(() => expect(screen.queryByTestId('block-action-bar')).not.toBeInTheDocument());
+    expect(screen.queryByTestId('btn-edit-block-12')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('item-block-12-resize-handle')).not.toBeInTheDocument();
+    expect(screen.getByTestId('item-block-12')).not.toHaveClass('selected');
+    expect(screen.queryByTestId('activity-picker')).not.toBeInTheDocument();
+  });
+
+  it('changing the week clears the selection', async () => {
+    await renderView();
+    await selectBlock(11);
+    const [, next] = Array.from(document.querySelectorAll<HTMLButtonElement>('.nav-btn'));
+    fireEvent.click(next);
+    await waitFor(() => expect(screen.queryByTestId('block-action-bar')).not.toBeInTheDocument());
   });
 });
 
