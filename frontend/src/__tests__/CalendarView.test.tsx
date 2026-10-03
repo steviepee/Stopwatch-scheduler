@@ -61,6 +61,17 @@ import type { Task } from '../types';
 // `day-action-success` (a push's text includes the count of Items in the response with a
 // `calendar_event_id`) or `day-action-error`. A 401 shows /authorize from a laptop/i (D14);
 // no other error does. No gesture ever calls `pushToCalendar`.
+//
+// B18 contract (D43 revised 2026-10-03; B17 for the web): edits to Exported Blocks wait for Push.
+//   - `ScheduleItem.calendar_stale` (server-set). `ItemBlock` shows `item-block-{itemId}-changed`
+//     inside the Block for a stale Item; a pushed, unchanged Block and a new Block do not.
+//   - `btn-push-day-{date}` shows when any of the day's Items has no `calendar_event_id` OR is
+//     stale. Its label is "Push day" if any Item is new, else "Push changes". Either way it calls
+//     `pushToCalendar(scheduleId)` once.
+//   - Push success counts new and updated events separately, from the Items BEFORE the push: new
+//     = no event id, updated = stale. Keep other digits out of the success text.
+//   - Moving or resizing an Exported Block calls only `updateItem` (no Google route), then the
+//     refetch shows the marker.
 
 vi.mock('../services/api', () => ({
   taskAPI: { getAll: vi.fn(), getStats: vi.fn() },
@@ -155,7 +166,9 @@ const tasks: Task[] = [
 ];
 
 // "Today" is Wednesday 2026-09-30, so the week is 2026-09-27 (Sun) .. 2026-10-03 (Sat).
-function makeItem(id: number, scheduleId: number, task: Task, start: string, duration: number, eventId?: string) {
+function makeItem(
+  id: number, scheduleId: number, task: Task, start: string, duration: number, eventId?: string, stale = false,
+) {
   return {
     id,
     schedule_id: scheduleId,
@@ -165,6 +178,7 @@ function makeItem(id: number, scheduleId: number, task: Task, start: string, dur
     position: 0,
     scheduled_time: start,
     ...(eventId ? { calendar_event_id: eventId } : {}),
+    calendar_stale: stale,
     created_at: '',
   };
 }
@@ -248,6 +262,9 @@ beforeEach(() => {
   api.updateItem.mockImplementation(async (_sid: number, itemId: number, body: object) => {
     const item = schedules.flatMap((s) => s.items).find((i) => i.id === itemId)!;
     Object.assign(item, body);
+    if (item.calendar_event_id && ('scheduled_time' in body || 'estimated_duration' in body)) {
+      item.calendar_stale = true;
+    }
     return item;
   });
   api.deleteItem.mockResolvedValue(undefined);
@@ -256,7 +273,10 @@ beforeEach(() => {
   api.removeFromCalendar.mockResolvedValue(undefined);
   api.pushToCalendar.mockImplementation(async (id: number) => {
     const s = schedules.find((x) => x.id === id)!;
-    s.items.forEach((i, n) => Object.assign(i, { calendar_event_id: `evt-new-${n}` }));
+    s.items.forEach((i, n) => {
+      if (!i.calendar_event_id) Object.assign(i, { calendar_event_id: `evt-new-${n}` });
+      i.calendar_stale = false;
+    });
     return asSchedule(s);
   });
   window.confirm = vi.fn().mockReturnValue(true);
@@ -598,5 +618,119 @@ describe('CalendarView — Push day and Remove day', () => {
     fireEvent.click(screen.getByTestId('btn-remove-day-2026-10-01'));
     fireEvent.click(await screen.findByRole('button', { name: 'Clear all' }));
     expect(await screen.findByTestId('day-action-error')).toBeInTheDocument();
+  });
+});
+
+describe('CalendarView — changed marker and Push changes', () => {
+  // Schedule 103 on Friday 2026-10-02; `items` picks which Items it holds.
+  function addDay(items: ReturnType<typeof makeItem>[]) {
+    schedules.push({ id: 103, target_date: '2026-10-02', items });
+  }
+  const at = (h: number) => iso(2026, 9, 2, h, 0);
+  const stale = (id: number, h: number) => makeItem(id, 103, tasks[0], at(h), 1800, `evt-${id}`, true);
+  const fresh = (id: number, h: number) => makeItem(id, 103, tasks[0], at(h), 1800, `evt-${id}`);
+  const unpushed = (id: number, h: number) => makeItem(id, 103, tasks[2], at(h), 1800);
+
+  it('a stale Block shows the marker; a fresh pushed Block and a new Block do not', async () => {
+    addDay([stale(41, 8), fresh(42, 10), unpushed(43, 12)]);
+    await renderView();
+    const staleBlock = screen.getByTestId('item-block-41');
+    expect(within(staleBlock).getByTestId('item-block-41-changed')).toBeInTheDocument();
+    expect(screen.queryByTestId('item-block-42-changed')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('item-block-43-changed')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('item-block-21-changed')).not.toBeInTheDocument();
+  });
+
+  it('no push button when every Item is pushed and none is stale', async () => {
+    addDay([fresh(42, 10), fresh(44, 14)]);
+    await renderView();
+    expect(screen.getByTestId('btn-remove-day-2026-10-02')).toBeInTheDocument();
+    expect(screen.queryByTestId('btn-push-day-2026-10-02')).not.toBeInTheDocument();
+  });
+
+  it('reads "Push changes" when only stale Items need pushing, calls pushToCalendar once, and counts the update', async () => {
+    addDay([stale(41, 8), fresh(42, 10), fresh(44, 14)]);
+    await renderView();
+
+    const button = screen.getByTestId('btn-push-day-2026-10-02');
+    expect(button).toHaveTextContent(/push changes/i);
+    expect(button).not.toHaveTextContent(/push day/i);
+
+    fireEvent.click(button);
+    await waitFor(() => expect(api.pushToCalendar).toHaveBeenCalledWith(103));
+    expect(api.pushToCalendar).toHaveBeenCalledTimes(1);
+    const success = await screen.findByTestId('day-action-success');
+    expect(success.textContent).toMatch(/\b1\b/);
+    expect(success.textContent).not.toMatch(/\b3\b/);
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('btn-push-day-2026-10-02')).not.toBeInTheDocument());
+    expect(screen.queryByTestId('item-block-41-changed')).not.toBeInTheDocument();
+  });
+
+  it('reads "Push day" when any Item is new, even with stale Items, and calls pushToCalendar once', async () => {
+    addDay([stale(41, 8), unpushed(43, 10), unpushed(45, 12), fresh(44, 14)]);
+    await renderView();
+
+    const button = screen.getByTestId('btn-push-day-2026-10-02');
+    expect(button).toHaveTextContent(/push day/i);
+    expect(button).not.toHaveTextContent(/push changes/i);
+
+    fireEvent.click(button);
+    await waitFor(() => expect(api.pushToCalendar).toHaveBeenCalledWith(103));
+    expect(api.pushToCalendar).toHaveBeenCalledTimes(1);
+    const success = await screen.findByTestId('day-action-success');
+    expect(success.textContent).toMatch(/\b2\b/);
+    expect(success.textContent).toMatch(/\b1\b/);
+    expect(success.textContent).not.toMatch(/\b4\b/);
+  });
+
+  it('the B10 day with only new Items still reads "Push day"', async () => {
+    await renderView();
+    expect(screen.getByTestId('btn-push-day-2026-09-30')).toHaveTextContent(/push day/i);
+  });
+
+  it('moving an Exported Block calls updateItem only, then the marker and Push changes appear', async () => {
+    await renderView();
+    expect(screen.queryByTestId('item-block-21-changed')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('btn-push-day-2026-10-01')).not.toBeInTheDocument();
+    const callsBefore = api.getRange.mock.calls.length;
+
+    await drag('block-21', 'column-2026-10-01', 240); // 10:00
+
+    expect(api.updateItem).toHaveBeenCalledTimes(1);
+    expect(Object.keys(api.updateItem.mock.calls[0][2])).toEqual(['scheduled_time']);
+    expect(await screen.findByTestId('item-block-21-changed')).toBeInTheDocument();
+    expect(api.getRange.mock.calls.length).toBeGreaterThan(callsBefore);
+    expect(screen.getByTestId('btn-push-day-2026-10-01')).toHaveTextContent(/push changes/i);
+
+    expect(api.pushToCalendar).not.toHaveBeenCalled();
+    expect(api.removeItemFromCalendar).not.toHaveBeenCalled();
+    expect(api.removeFromCalendar).not.toHaveBeenCalled();
+    expect(api.clearDay).not.toHaveBeenCalled();
+    expect(api.deleteItem).not.toHaveBeenCalled();
+    expect(window.confirm).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('day-action-error')).not.toBeInTheDocument();
+  });
+
+  it('resizing an Exported Block calls updateItem only, then the marker appears', async () => {
+    await renderView();
+    await selectBlock(21);
+    fireEvent.click(screen.getByTestId('btn-edit-block-21'));
+    const handle = await screen.findByTestId('item-block-21-resize-handle');
+    fireEvent.mouseDown(handle, { clientY: 500 });
+    fireEvent.mouseMove(document, { clientY: 515 });
+    fireEvent.mouseUp(document, { clientY: 515 });
+
+    await waitFor(() => expect(api.updateItem).toHaveBeenCalledWith(101, 21, { estimated_duration: 2700 }));
+    expect(api.updateItem).toHaveBeenCalledTimes(1);
+    expect(await screen.findByTestId('item-block-21-changed')).toBeInTheDocument();
+
+    expect(api.pushToCalendar).not.toHaveBeenCalled();
+    expect(api.removeItemFromCalendar).not.toHaveBeenCalled();
+    expect(api.removeFromCalendar).not.toHaveBeenCalled();
+    expect(api.clearDay).not.toHaveBeenCalled();
+    expect(api.deleteItem).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('day-action-error')).not.toBeInTheDocument();
   });
 });

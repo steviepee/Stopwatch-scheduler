@@ -490,13 +490,13 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] All B17.tests pass; tsc clean; export succeeds
 
 ### B18.tests — Web: changed marker and Push changes
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Update `frontend/src/__tests__/CalendarView.test.tsx`.
 - **Contract:** B17 for the web calendar: `ItemBlock` shows `item-block-{id}-changed` for a
   stale Item; each day column's push button follows the same show/label rules.
 - **Acceptance Criteria:**
-  - [ ] Test: marker, button visibility and both labels, as B17
-  - [ ] Test: moving or resizing an Exported Block calls `updateItem` only
+  - [x] Test: marker, button visibility and both labels, as B17
+  - [x] Test: moving or resizing an Exported Block calls `updateItem` only
 
 ### B18.impl — Web: changed marker and Push changes
 - **Status:** PENDING
