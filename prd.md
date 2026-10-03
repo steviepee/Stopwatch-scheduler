@@ -24,7 +24,7 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
 | D40 | Bank | **All Activities**, with search. Placing never removes one; the same Activity may be placed any number of times, overlaps allowed. An Activity with no history is marked "no history" and places at **10 minutes** |
 | D41 | Block length | **Snapshot** of the Activity's average at placement, stored on the Schedule Item. Changeable for that one placement only; never feeds back into the Activity |
 | D42 | Resizing | **Edit mode per Block.** Tap a Block → "Edit block" toggles edit mode: bottom-edge resize only, 5-minute snap, no move. Toggle off → move only, 15-minute snap. Replaces the old always-on grip that stole holds |
-| D43 | Exported Blocks | Moving or resizing an Exported Block **updates its Google event** (amends D35: an already-pushed item mirrors edits; nothing is pushed for the first time as a side effect). The app only ever changes or deletes Google events whose id it stored on a Schedule Item |
+| D43 | Exported Blocks | **Revised 2026-10-03 (B12 step 3):** moving or resizing an Exported Block makes **no** Google call; the Item is marked *changed since push* and shows a marker. Push day creates events for new Items and updates changed ones, then clears the marks (labelled **Push changes** when only changed Items remain). Removals — Remove from Google, Remove day, drag-to-Bank with delete — still call Google immediately. Was: every edit patched the event at once. The app only ever changes or deletes Google events whose id it stored on a Schedule Item |
 | D44 | Save and Apply on an occupied date | **Append** to the day's Schedule. Generation receives the day's existing Items as `existing_events`, so it plans around them |
 | D45 | Removing | Drag to Bank deletes that Item; if Exported, first ask whether to delete its Google event. **Remove day** opens one up-front dialog: **Clear all** (delete the day's Google events, then its Items) / **Remove from Google only** (delete the events, keep the Items) / **Cancel** |
 | D46 | Recordings | **History only.** Recording scheduling and Recording push are removed — columns, routes, client code, both clients. The one Recording event still on Google is left for the user to delete by hand |
@@ -436,6 +436,90 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
 - **Acceptance Criteria:**
   - [x] All B15.tests pass; web tsc clean; `npm run build` succeeds
 
+### B16.tests — Backend: edits to pushed Items wait for Push
+- **Status:** PENDING
+- **Description:** D43 revised during the B12 check (2026-10-03): the user rearranges a pushed
+  day freely, then syncs once. Rewrite the B3 tests in `backend/tests/test_item_google_sync.py`
+  that expect `update_event` on a PUT, and extend `backend/tests/test_schedule_calendar.py`.
+- **Contract:**
+  - `ScheduleItem` gains `calendar_stale` (Boolean, NOT NULL, default false), in the Item response.
+  - `PUT /api/schedules/{id}/items/{item_id}` never calls Google and never needs Google auth.
+    When it changes `scheduled_time` or `estimated_duration` on an Item with a
+    `calendar_event_id`, it sets `calendar_stale = true`. A PUT that changes neither leaves it.
+  - `POST /api/schedules/{id}/calendar` (Push day) creates events for Items without an id, as
+    now, **and** calls `update_event` for each Item with an id and `calendar_stale`, then clears
+    the flag. Items pushed and unchanged get no call. Response unchanged (the Schedule).
+  - Every route that removes an event (`_delete_event` paths) also clears `calendar_stale`.
+  - Removals are unchanged and still call Google immediately.
+- **Acceptance Criteria:**
+  - [ ] Test: moving and resizing an Exported Item each make no Google call, need no auth, and set the flag
+  - [ ] Test: a PUT that only changes `is_frog` leaves the flag false
+  - [ ] Test: Push day patches exactly the stale Items, creates exactly the new ones, touches no others, and clears every flag
+  - [ ] Test: a second Push day right after makes no Google calls
+  - [ ] Test: Remove from Google only on a stale Item deletes its event and clears both the id and the flag
+  - [ ] Test: Alembic revision present; `test_migrations.py` passes
+
+### B16.impl — Backend: edits to pushed Items wait for Push
+- **Status:** PENDING
+- **Description:** Implement to the contract: model field, Alembic revision
+  (`TINYINT(1) NOT NULL DEFAULT 0` on MySQL, with a server default so existing rows backfill),
+  `update_item` drops its Google call, `push_schedule_to_calendar` patches stale Items via
+  `calendar_service.update_event`. Live MySQL is B19's.
+- **Acceptance Criteria:**
+  - [ ] All B16.tests pass; full suite passes; `alembic check` clean
+
+### B17.tests — Mobile: changed marker and Push changes
+- **Status:** PENDING
+- **Description:** Update `mobile/src/__tests__/GooglePush.test.tsx` (and any test asserting a
+  401 from a move or resize, which can no longer happen).
+- **Contract:** `ScheduleItem` gets `calendar_stale`. A Block with `calendar_stale` shows
+  `item-block-{id}-changed`. The day header's push button shows when any Item has no
+  `calendar_event_id` **or** is stale; it reads **Push day** if any Item is new, else **Push
+  changes**. Its success message counts new and updated events. Moves and resizes of Exported
+  Blocks still call only `updateItem`, and the range query refetches so the marker appears.
+- **Acceptance Criteria:**
+  - [ ] Test: a stale Block shows the marker; a fresh pushed Block does not
+  - [ ] Test: all Items pushed and none stale → no push button
+  - [ ] Test: only stale Items → "Push changes"; any new Item → "Push day"; both call `pushToCalendar` once
+  - [ ] Test: moving an Exported Block calls `updateItem` only
+
+### B17.impl — Mobile: changed marker and Push changes
+- **Status:** PENDING
+- **Description:** Implement to the contract in `src/app/(tabs)/calendar.tsx` and `types/index.ts`.
+- **Acceptance Criteria:**
+  - [ ] All B17.tests pass; tsc clean; export succeeds
+
+### B18.tests — Web: changed marker and Push changes
+- **Status:** PENDING
+- **Description:** Update `frontend/src/__tests__/CalendarView.test.tsx`.
+- **Contract:** B17 for the web calendar: `ItemBlock` shows `item-block-{id}-changed` for a
+  stale Item; each day column's push button follows the same show/label rules.
+- **Acceptance Criteria:**
+  - [ ] Test: marker, button visibility and both labels, as B17
+  - [ ] Test: moving or resizing an Exported Block calls `updateItem` only
+
+### B18.impl — Web: changed marker and Push changes
+- **Status:** PENDING
+- **Description:** Implement to the contract.
+- **Acceptance Criteria:**
+  - [ ] All B18.tests pass; web tsc clean; `npm run build` succeeds
+
+### B19. USER — Migrate the live database for `calendar_stale`
+- **Status:** USER
+- **Description:** B16 added a column; live MySQL needs it before the app is used again. In
+  the backend tab, stop uvicorn (Ctrl+C), then:
+  ```bash
+  cd /root/Stopwatch-scheduler/backend
+  ./venv/bin/alembic upgrade head
+  mysql -u root -p stopwatch_scheduler -e "SHOW COLUMNS FROM schedule_items LIKE 'calendar_stale';"
+  source venv/bin/activate && uvicorn app.main:app --host 0.0.0.0 --port 8000
+  ```
+  The SHOW COLUMNS line must list `calendar_stale` as `tinyint(1)`, `NO`, default `0`. Then press
+  `r` in Metro so the phone loads B17, and redo B12 step 3.
+- **Acceptance Criteria:**
+  - [ ] `alembic current` shows head; the column exists as above
+  - [ ] B12 step 3 passes under the revised D43
+
 ### B12. USER — Build 2a check, phone and browser
 - **Status:** USER
 - **Description:** B5 done and uvicorn restarted. Phone: `cd mobile && npx expo start --dev-client`
@@ -445,8 +529,10 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
      Activity with no history places at 10 minutes.
   2. Move a Block. Edit block → stretch it by 10 minutes → Edit block again → move it. Reopen the
      app; everything is where you left it. The Activity's average is unchanged.
-  3. Push day. The events appear in Google Calendar. Move and stretch a pushed Block; the Google
-     event follows. Your own Google events are shown but cannot be dragged or changed.
+  3. Push day. The events appear in Google Calendar. Move and stretch a pushed Block; Google does
+     **not** change, the Block shows a changed marker, and the button reads Push changes. Tap it;
+     the Google events move and stretch to match and the markers clear (D43 revised, B16–B18).
+     Your own Google events are shown but cannot be dragged or changed.
   4. Drag a pushed Block to the Bank and choose "Also delete from Google". Remove day → Remove
      from Google only: the Blocks stay, the events go. Push again, then Remove day → Clear all.
   5. Schedule tab: generate for a day that already has Blocks — the plan avoids them. Save; it
