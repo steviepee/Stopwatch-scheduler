@@ -69,6 +69,16 @@ import type { GenerateResponse, Schedule, ScheduleItem, StrategyOption, Task } f
 //   - If `scheduleAPI.getRange` rejects, `generate` is not called and `btn-retry-generate`
 //     shows, as before — planning over unknown Items could overlap the user's own plan.
 //   - When both succeed, `google-events-skipped` is not rendered.
+//
+// B27 contract: the plan's date is picked, and plans avoid busy time.
+//   - `picker-date` (a `PickerField`, `mode="date"`) sits above Start time and defaults to
+//     today. Picking a date keeps Start time's and Day end's clock times but moves both to
+//     the picked date.
+//   - The plan's date is the local `YYYY-MM-DD` of the picked date: Generate fetches that
+//     date's Items and Google events, and sends `avoid_existing: true`. Save sends that date
+//     as `target_date`.
+//   - The chosen plan's `excluded` Activities are listed under it as "Didn't fit: <names>".
+//     A plan that is not chosen, or has nothing excluded, shows no such line.
 jest.mock('../services/api', () => ({
   taskAPI: { getAll: jest.fn() },
   scheduleAPI: {
@@ -85,17 +95,30 @@ jest.mock('../services/api', () => ({
 }));
 
 let mockPickerValue = new Date('2026-02-01T09:00:00.000Z');
+const mockPickerProps: Record<string, { value: Date; mode: string }> = {};
 jest.mock('@react-native-community/datetimepicker', () => {
   const RN = require('react-native');
   const ReactLib = require('react');
   return {
     __esModule: true,
-    default: ({ testID, onChange }: { testID: string; onChange: (e: unknown, d: Date) => void }) =>
-      ReactLib.createElement(RN.Pressable, {
+    default: ({
+      testID,
+      value,
+      mode,
+      onChange,
+    }: {
+      testID: string;
+      value: Date;
+      mode: string;
+      onChange: (e: unknown, d: Date) => void;
+    }) => {
+      mockPickerProps[testID] = { value, mode };
+      return ReactLib.createElement(RN.Pressable, {
         testID,
         accessibilityRole: 'button',
         onPress: () => onChange({ type: 'set' }, mockPickerValue),
-      }),
+      });
+    },
   };
 });
 
@@ -425,6 +448,142 @@ describe('Generate when Google is unavailable', () => {
     await screen.findByTestId('option-card-your-order');
     expect(mockedGenerate).toHaveBeenCalledTimes(1);
     expect(screen.queryByTestId('google-events-skipped')).toBeNull();
+  });
+});
+
+describe('plan date picker and busy time', () => {
+  // Only Date is faked, so "today" is fixed and react-query/waitFor timers stay real.
+  const NOW = new Date(2026, 1, 3, 10, 7);
+  const TODAY = '2026-02-03';
+  const TOMORROW = '2026-02-04';
+
+  beforeEach(() => {
+    jest.useFakeTimers({
+      now: NOW,
+      doNotFake: [
+        'hrtime',
+        'nextTick',
+        'performance',
+        'queueMicrotask',
+        'requestAnimationFrame',
+        'cancelAnimationFrame',
+        'requestIdleCallback',
+        'cancelIdleCallback',
+        'setImmediate',
+        'clearImmediate',
+        'setInterval',
+        'clearInterval',
+        'setTimeout',
+        'clearTimeout',
+      ],
+    });
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  async function pickTomorrow() {
+    mockPickerValue = new Date(2026, 1, 4, 12, 0);
+    await fireEvent.press(screen.getByTestId('picker-date-open'));
+    await fireEvent.press(screen.getByTestId('picker-date'));
+  }
+
+  async function setupWithActivity() {
+    await renderScreen();
+    await screen.findByTestId('activity-row-7');
+    await selectActivity(7);
+  }
+
+  it('defaults to today, and picking tomorrow moves start_time and day_end to tomorrow at the same clock times', async () => {
+    mockedGenerate.mockResolvedValue({ options: [] } as GenerateResponse);
+    await setupWithActivity();
+
+    await fireEvent.press(screen.getByTestId('picker-date-open'));
+    expect(mockPickerProps['picker-date'].mode).toBe('date');
+    expect(localKey(mockPickerProps['picker-date'].value)).toBe(TODAY);
+    mockPickerValue = new Date(2026, 1, 3, 12, 0);
+    await fireEvent.press(screen.getByTestId('picker-date'));
+
+    await fireEvent.press(screen.getByTestId('btn-generate'));
+    await waitFor(() => expect(mockedGenerate).toHaveBeenCalledTimes(1));
+    expect(mockedGenerate.mock.calls[0][0].start_time).toBe(new Date(2026, 1, 3, 10, 15).toISOString());
+    expect(mockedGenerate.mock.calls[0][0].day_end).toBe(new Date(2026, 1, 3, 23, 0).toISOString());
+
+    await pickTomorrow();
+    await fireEvent.press(screen.getByTestId('btn-generate'));
+    await waitFor(() => expect(mockedGenerate).toHaveBeenCalledTimes(2));
+    const request = mockedGenerate.mock.calls[1][0];
+    expect(request.start_time).toBe(new Date(2026, 1, 4, 10, 15).toISOString());
+    expect(request.day_start).toBe(request.start_time);
+    expect(request.day_end).toBe(new Date(2026, 1, 4, 23, 0).toISOString());
+  });
+
+  it('keeps a picked Start time clock time when the date changes', async () => {
+    mockedGenerate.mockResolvedValue({ options: [] } as GenerateResponse);
+    await setupWithActivity();
+
+    await pickStart(new Date(2026, 1, 3, 14, 30));
+    await pickTomorrow();
+    await fireEvent.press(screen.getByTestId('btn-generate'));
+
+    await waitFor(() => expect(mockedGenerate).toHaveBeenCalledTimes(1));
+    expect(mockedGenerate.mock.calls[0][0].start_time).toBe(new Date(2026, 1, 4, 14, 30).toISOString());
+  });
+
+  it("Generate after picking tomorrow fetches tomorrow's Items and events and sends avoid_existing", async () => {
+    mockedGenerate.mockResolvedValue({ options: [] } as GenerateResponse);
+    await setupWithActivity();
+
+    await pickTomorrow();
+    await fireEvent.press(screen.getByTestId('btn-generate'));
+
+    await waitFor(() => expect(mockedGenerate).toHaveBeenCalledTimes(1));
+    expect(mockedGetRange).toHaveBeenCalledWith(TOMORROW, TOMORROW);
+    expect(mockedGetEvents).toHaveBeenCalledWith(TOMORROW);
+    expect(mockedGetRange).not.toHaveBeenCalledWith(TODAY, TODAY);
+    expect(mockedGenerate.mock.calls[0][0].avoid_existing).toBe(true);
+  });
+
+  it('Save after picking tomorrow sends tomorrow as target_date', async () => {
+    mockedGenerate.mockResolvedValue({ options: [option({ strategy: 'your-order', timeline: TIMELINE })] });
+    mockedCreate.mockResolvedValue({ ...REGIMEN, id: 55, name: null, is_regimen: false, items: [] });
+    await setupWithActivity();
+
+    await pickTomorrow();
+    await fireEvent.press(screen.getByTestId('btn-generate'));
+    await screen.findByTestId('option-card-your-order');
+    await fireEvent.press(screen.getByTestId('btn-select-your-order'));
+    await fireEvent.press(screen.getByTestId('btn-save'));
+
+    await waitFor(() => expect(mockedCreate).toHaveBeenCalledTimes(1));
+    expect(mockedCreate.mock.calls[0][0].target_date).toBe(TOMORROW);
+  });
+
+  it("lists the chosen plan's excluded Activities", async () => {
+    mockedGenerate.mockResolvedValue({
+      options: [
+        option({
+          strategy: 'your-order',
+          excluded: [
+            { name: 'Reading', reason: 'no-free-slot' },
+            { name: 'Gym', reason: 'no-free-slot' },
+          ],
+        }),
+        option({ strategy: 'shortest-first', label: 'Shortest First' }),
+      ],
+    });
+    await setupWithActivity();
+    await fireEvent.press(screen.getByTestId('btn-generate'));
+    await screen.findByTestId('option-card-your-order');
+
+    await fireEvent.press(screen.getByTestId('btn-select-shortest-first'));
+    expect(screen.queryAllByText(/Didn't fit/)).toHaveLength(0);
+
+    await fireEvent.press(screen.getByTestId('btn-select-your-order'));
+    const line = screen.getByText(/Didn't fit:/);
+    expect(line).toHaveTextContent(/Reading/);
+    expect(line).toHaveTextContent(/Gym/);
   });
 });
 

@@ -534,7 +534,7 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] All B26.tests pass; full suite passes
 
 ### B27.tests — Mobile: Schedule tab date picker, plans avoid busy time
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Found in B12 step 5. The Schedule tab has only Start time and Day end pickers,
   so it always plans for today. Extend `mobile/src/__tests__/ScheduleScreen.test.tsx`.
 - **Contract:** A `picker-date` (`mode="date"`, the existing `PickerField`) above Start time,
@@ -543,10 +543,10 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   the picked date) and sends `avoid_existing: true`. Save sends that date as `target_date`.
   Excluded Activities show under the chosen plan as "Didn't fit: <names>".
 - **Acceptance Criteria:**
-  - [ ] Test: the date picker defaults to today; picking tomorrow moves `start_time`/`day_end` to tomorrow at the same clock times
-  - [ ] Test: Generate after picking tomorrow fetches tomorrow's Items and events and sends `avoid_existing: true`
-  - [ ] Test: Save after picking tomorrow sends tomorrow's local date as `target_date`
-  - [ ] Test: excluded Activities are listed
+  - [x] Test: the date picker defaults to today; picking tomorrow moves `start_time`/`day_end` to tomorrow at the same clock times
+  - [x] Test: Generate after picking tomorrow fetches tomorrow's Items and events and sends `avoid_existing: true`
+  - [x] Test: Save after picking tomorrow sends tomorrow's local date as `target_date`
+  - [x] Test: excluded Activities are listed
 
 ### B27.impl — Mobile: Schedule tab date picker, plans avoid busy time
 - **Status:** PENDING
