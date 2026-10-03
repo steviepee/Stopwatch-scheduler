@@ -618,12 +618,12 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] Test: a short Block renders its name with `numberOfLines={1}`
 
 ### B29.impl — Mobile: short Blocks drawn at their true length
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract. If the gesture mock lacks `hitSlop`, follow the
   B7.impl gotcha: do not call methods the per-file mocks don't have; pass `hitSlop` as a prop
   where the mock can see it, or mark BLOCKED naming the mock gap.
 - **Acceptance Criteria:**
-  - [ ] All B29.tests pass; tsc clean; export succeeds
+  - [x] All B29.tests pass; tsc clean; export succeeds
 
 ### B30.tests — Hand entry: hours and minutes start empty
 - **Status:** PENDING

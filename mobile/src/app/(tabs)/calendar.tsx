@@ -34,7 +34,8 @@ const INTERVAL_MIN = 60;
 const SNAP_MIN = 15;
 const RESIZE_SNAP_SECONDS = 300;
 const GUTTER = 56; // hour labels sit left of the blocks
-const MIN_BLOCK_HEIGHT = 44;
+const MIN_BLOCK_HEIGHT = 12;
+const TOUCH_HEIGHT = 44;
 const INITIAL_SCROLL_HOUR = 8;
 // Drags start on a long press so a plain swipe still scrolls the grid and the bank.
 const DRAG_LONG_PRESS_MS = 300;
@@ -68,6 +69,14 @@ function shiftDays(date: Date, days: number): Date {
 
 function blockHeight(seconds: number): number {
   return Math.max(MIN_BLOCK_HEIGHT, heightFromDuration(seconds, HOUR_HEIGHT, INTERVAL_MIN));
+}
+
+// Tops a short Block's touch area up to 44 px, centred, without drawing it taller.
+function slopFor(seconds: number): { top: number; bottom: number } | undefined {
+  const height = blockHeight(seconds);
+  if (height >= TOUCH_HEIGHT) return undefined;
+  const pad = (TOUCH_HEIGHT - height) / 2;
+  return { top: pad, bottom: pad };
 }
 
 function itemName(item: ScheduleItem): string {
@@ -564,8 +573,15 @@ export default function CalendarDayScreen() {
             drag={drag}
             onMove={commitDrag}
             onResize={commitResize}>
-            <Pressable accessibilityRole="button" onPress={() => toggleSelected(item)}>
-              <Text style={styles.blockText}>{itemName(item)}</Text>
+            <Pressable
+              accessibilityRole="button"
+              hitSlop={slopFor(item.estimated_duration)}
+              onPress={() => toggleSelected(item)}>
+              <Text
+                style={styles.blockText}
+                numberOfLines={blockHeight(item.estimated_duration) < TOUCH_HEIGHT ? 1 : undefined}>
+                {itemName(item)}
+              </Text>
             </Pressable>
           </DayBlock>
         ))}
@@ -654,7 +670,7 @@ function DayBlock({
     });
 
   // In edit mode the Block resizes only; its move gesture does nothing (D42).
-  const dragGesture = Gesture.Pan()
+  let dragGesture = Gesture.Pan()
     .activateAfterLongPress(DRAG_LONG_PRESS_MS)
     .onUpdate((event) => {
       if (editing) return;
@@ -674,12 +690,14 @@ function DayBlock({
         runOnJS(finish)();
       }
     });
+  const slop = slopFor(item.estimated_duration);
+  if (slop) dragGesture = dragGesture.hitSlop(slop);
 
   return (
     <GestureDetector gesture={dragGesture}>
       <Animated.View
         testID={`item-block-${item.id}`}
-        style={[styles.block, { top }, heightStyle, selected && styles.selectedBlock, dimmed && styles.dimmed]}>
+        style={[styles.block, { top, zIndex: Math.round(top) + 3 }, heightStyle, selected && styles.selectedBlock, dimmed && styles.dimmed]}>
         {children}
         {item.calendar_stale && <View testID={`item-block-${item.id}-changed`} style={styles.changedMarker} />}
         {editing && (
