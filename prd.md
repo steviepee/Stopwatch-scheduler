@@ -555,7 +555,8 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] All B27.tests pass; tsc clean; export succeeds
 
 ### B28.tests — Web: plans avoid busy time
-- **Status:** PENDING
+- **Status:** BLOCKED
+- **Failure Notes:** The contract assumes the web sends a generate request, but it doesn't. Web plans are computed in the browser by `ScheduleTimeline.tsx` (`buildTimeline` / `bestFitOrder`), and `frontend/src/services/api.ts` has no `scheduleAPI.generate`. So there is no request to carry `avoid_existing`, and no `excluded` list to show. Testing this needs a design decision first: move the web to `POST /api/schedules/generate` (as mobile does), or add busy-time avoidance to the browser layout. B28.impl depends on this task and cannot run until it is rewritten.
 - **Description:** The web `ScheduleBuilder` already has a date input. Extend
   `frontend/src/__tests__/ScheduleBuilder.test.tsx`.
 - **Contract:** Generate sends `avoid_existing: true`; excluded Activities are listed as on mobile.

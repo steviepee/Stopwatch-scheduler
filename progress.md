@@ -1137,3 +1137,16 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Files changed:** mobile/src/app/(tabs)/schedule.tsx, mobile/src/types/index.ts, prd.md, progress.md
 - **Verification:** from `mobile/` (via python3 subprocess): `npx jest --ci --forceExit --runInBand` 203/203 passed; `npx tsc --noEmit` clean; `npx expo export --platform android` succeeded (to `/tmp/b27i_export`).
 - **Gotchas:** The Start time / Day end time pickers still replace the whole Date with what the picker returns. On device, the picker returns the date it was opened with (the picked date), so the plan date holds. A time picked before the date is kept because the date change only rewrites Y/M/D.
+
+## B28.tests. Web: plans avoid busy time
+- **Date:** 2026-10-03
+- **Status:** BLOCKED
+- **Summary:** I wrote no tests. The contract says "Generate sends `avoid_existing: true`", but the web never calls the backend generate route. `ScheduleBuilder` only fetches the day's Items (`getRange`) and hands them to `ScheduleTimeline`. `ScheduleTimeline` then builds the four plans in the browser with `buildTimeline` (back to back from the start, ignoring events) and `bestFitOrder` (order only). `frontend/src/services/api.ts` has no `scheduleAPI.generate`, and the web types have no `GenerateRequest` or `excluded`. There is nothing for the test to assert against without first deciding how the web should generate plans.
+- **Files changed:** prd.md, progress.md
+- **Verification:** none run. No code changed. Checked with `grep -rn "generate\|excluded\|avoid_existing" frontend/src` (non-test files): no API call, only the builder's step names.
+- **Gotchas:**
+  - **B28.impl is still PENDING but has no tests to make pass.** The next session should mark it BLOCKED on B28.tests and not invent a design.
+  - **Two ways to unblock, for the user to choose:**
+    - (a) Port mobile's approach. Add `scheduleAPI.generate` (POST `/schedules/generate`, as in `mobile/src/services/api.ts:188`) and the Generate types. Have `ScheduleBuilder`/`ScheduleTimeline` render the server's `options[].timeline` and `excluded`. This changes how the web's drag-to-reorder and its four browser-side strategies work.
+    - (b) Keep generation in the browser. Change `buildTimeline` to push entries past `existingEvents` and drop ones past day end, then list those as "Didn't fit". This needs no API work, but the D13 parity intent then lives in two places.
+  - The existing tests mock `ScheduleTimeline` out entirely (`vi.mock('../components/ScheduleTimeline')`). New tests for either option need the real component, or a separate test file.
