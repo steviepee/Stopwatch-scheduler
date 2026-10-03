@@ -25,6 +25,9 @@ import type { StopwatchSession, Task } from '../types';
 // when an Activity is chosen. Success calls `onSessionCreated` with the response and closes the
 // form. Failure shows `manual-save-error` and keeps the form, its values and an enabled Save.
 //
+// B30 contract: `manual-hours` and `manual-minutes` start empty with `placeholder="0"`, so typing
+// does not append to a 0. An empty field counts as 0.
+//
 // These tests run in America/Chicago with the clock frozen at 10:00:30 local on 2026-09-29.
 
 process.env.TZ = 'America/Chicago';
@@ -174,5 +177,42 @@ describe('hand-entered Recording', () => {
     expect(screen.getByTestId('manual-minutes')).toHaveValue(30);
     expect(screen.getByTestId('btn-manual-save')).toBeEnabled();
     expect(onSessionCreated).not.toHaveBeenCalled();
+  });
+
+  it('starts hours and minutes empty with a placeholder of 0', () => {
+    renderList();
+
+    for (const id of ['manual-hours', 'manual-minutes']) {
+      const field = screen.getByTestId(id);
+      expect(field).toHaveValue(null);
+      expect(field).toHaveAttribute('placeholder', '0');
+    }
+  });
+
+  it('counts an empty hours field as 0', async () => {
+    create.mockResolvedValue(CREATED);
+    renderList();
+
+    fireEvent.change(screen.getByTestId('manual-name'), { target: { value: 'Stretch' } });
+    fireEvent.change(screen.getByTestId('manual-minutes'), { target: { value: '15' } });
+    expect(screen.getByTestId('manual-hours')).toHaveValue(null);
+    expect(screen.getByTestId('manual-start')).toHaveValue('2026-09-29T09:45');
+    fireEvent.click(screen.getByTestId('btn-manual-save'));
+
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    expect(create.mock.calls[0][0].duration).toBe(900);
+  });
+
+  it('disables Save while both duration fields are empty', () => {
+    renderList();
+    fireEvent.change(screen.getByTestId('manual-name'), { target: { value: 'Nothing' } });
+    expect(screen.getByTestId('btn-manual-save')).toBeDisabled();
+
+    fireEvent.change(screen.getByTestId('manual-minutes'), { target: { value: '5' } });
+    expect(screen.getByTestId('btn-manual-save')).toBeEnabled();
+    fireEvent.change(screen.getByTestId('manual-minutes'), { target: { value: '' } });
+    expect(screen.getByTestId('btn-manual-save')).toBeDisabled();
+    fireEvent.click(screen.getByTestId('btn-manual-save'));
+    expect(create).not.toHaveBeenCalled();
   });
 });

@@ -626,7 +626,7 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] All B29.tests pass; tsc clean; export succeeds
 
 ### B30.tests — Hand entry: hours and minutes start empty
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** From the B12 check (2026-10-03). The Add manually form's hours and minutes
   fields start with the value `0` (`useState('0')` in mobile `src/app/(tabs)/recordings.tsx`
   and web `frontend/src/components/SessionList.tsx`), so typing appends to it ("015"). Extend
@@ -635,9 +635,9 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
 - **Contract:** Both fields start empty with a placeholder of `0`. An empty field counts as 0.
   Save stays disabled while the total is 0, as now. Both clients.
 - **Acceptance Criteria:**
-  - [ ] Test (mobile and web): both fields render empty with placeholder `0`
-  - [ ] Test (mobile and web): typing `15` into minutes gives a duration of 900 s, with hours left empty
-  - [ ] Test (mobile and web): both empty → Save disabled
+  - [x] Test (mobile and web): both fields render empty with placeholder `0`
+  - [x] Test (mobile and web): typing `15` into minutes gives a duration of 900 s, with hours left empty
+  - [x] Test (mobile and web): both empty → Save disabled
 
 ### B30.impl — Hand entry: hours and minutes start empty
 - **Status:** PENDING

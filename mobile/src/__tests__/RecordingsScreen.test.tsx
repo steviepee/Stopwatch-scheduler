@@ -26,6 +26,9 @@ import type { StopwatchSession, Task } from '../types';
 // `end_time` = start + duration, both UTC `Z`, and `task_id` only when an
 // Activity is chosen. Save is disabled at zero duration. A failed save shows
 // `manual-save-error` and keeps the form and its values.
+//
+// B30 contract: `manual-hours` and `manual-minutes` start empty (value '') with a placeholder of
+// '0', so typing does not append to a 0. An empty field counts as 0.
 jest.mock('../services/api', () => ({
   sessionAPI: { getAll: jest.fn(), delete: jest.fn(), create: jest.fn() },
   taskAPI: { getAll: jest.fn() },
@@ -387,5 +390,42 @@ describe('hand-entered recording', () => {
     expect(screen.getByTestId('manual-name').props.value).toBe('Swim');
     expect(screen.getByTestId('manual-minutes').props.value).toBe('30');
     expect(screen.getByTestId('btn-manual-save')).toBeEnabled();
+  });
+
+  it('starts hours and minutes empty with a placeholder of 0', async () => {
+    await openForm();
+
+    for (const id of ['manual-hours', 'manual-minutes']) {
+      const field = screen.getByTestId(id);
+      expect(field.props.value).toBe('');
+      expect(field.props.placeholder).toBe('0');
+    }
+  });
+
+  it('counts an empty hours field as 0', async () => {
+    mockedCreate.mockResolvedValue(session({ id: 54 }));
+    await openForm();
+
+    await fireEvent.changeText(screen.getByTestId('manual-name'), 'Stretch');
+    await fireEvent.changeText(screen.getByTestId('manual-minutes'), '15');
+    expect(screen.getByTestId('manual-hours').props.value).toBe('');
+    await fireEvent.press(screen.getByTestId('btn-manual-save'));
+
+    await waitFor(() => expect(mockedCreate).toHaveBeenCalled());
+    expect(sentBody().duration).toBe(900);
+  });
+
+  it('disables Save while both duration fields are empty', async () => {
+    await openForm();
+
+    await fireEvent.changeText(screen.getByTestId('manual-name'), 'Nothing');
+    expect(screen.getByTestId('btn-manual-save')).toBeDisabled();
+
+    await fireEvent.changeText(screen.getByTestId('manual-minutes'), '5');
+    expect(screen.getByTestId('btn-manual-save')).toBeEnabled();
+    await fireEvent.changeText(screen.getByTestId('manual-minutes'), '');
+    expect(screen.getByTestId('btn-manual-save')).toBeDisabled();
+    await fireEvent.press(screen.getByTestId('btn-manual-save'));
+    expect(mockedCreate).not.toHaveBeenCalled();
   });
 });
