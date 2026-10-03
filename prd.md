@@ -505,7 +505,7 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] All B18.tests pass; web tsc clean; `npm run build` succeeds
 
 ### B26.tests — Backend: generated plans avoid busy time
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Found in B12 step 5 (2026-10-03). `your-order`, `shortest-first`,
   `longest-first` and `best-fit` only order Activities; `_build_timeline` then lays them back to
   back from `start_time` through any existing Block or Google event. The D13 parity fixture
@@ -519,12 +519,12 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   `"no-free-slot"`; later ones are still tried. `best-fit-slots` is unchanged. With the flag
   false or absent, output is byte-identical to today.
 - **Acceptance Criteria:**
-  - [ ] Test: the parity fixture still passes untouched (no flag)
-  - [ ] Test: with the flag, no entry of any of the four Strategies overlaps an existing event, using the parity input
-  - [ ] Test: with the flag, entries keep the Strategy's order and never overlap each other
-  - [ ] Test: an event starting exactly at an entry's end is not an overlap
-  - [ ] Test: an Activity that cannot fit before `day_end` is excluded with `no-free-slot`, and a shorter later one still places
-  - [ ] Test: the flag with no events gives the same timeline as without it
+  - [x] Test: the parity fixture still passes untouched (no flag)
+  - [x] Test: with the flag, no entry of any of the four Strategies overlaps an existing event, using the parity input
+  - [x] Test: with the flag, entries keep the Strategy's order and never overlap each other
+  - [x] Test: an event starting exactly at an entry's end is not an overlap
+  - [x] Test: an Activity that cannot fit before `day_end` is excluded with `no-free-slot`, and a shorter later one still places
+  - [x] Test: the flag with no events gives the same timeline as without it
 
 ### B26.impl — Backend: generated plans avoid busy time
 - **Status:** PENDING

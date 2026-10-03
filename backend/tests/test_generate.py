@@ -531,3 +531,139 @@ def test_best_fit_parity_unchanged(client):
         assert actual_entry["name"] == expected_entry["name"]
         assert _parse_dt(actual_entry["start"]) == _parse_dt(expected_entry["start"])
         assert _parse_dt(actual_entry["end"]) == _parse_dt(expected_entry["end"])
+
+
+# B26: avoid_existing lays ordered Strategies out around existing events.
+ORDERING_STRATEGIES = ["your-order", "shortest-first", "longest-first", "best-fit"]
+
+
+def _generate(client, payload):
+    resp = client.post("/api/schedules/generate", json=payload)
+    assert resp.status_code == 200
+    return {o["strategy"]: o for o in resp.json()["options"]}
+
+
+def _spans(timeline):
+    return [(e["name"], _parse_dt(e["start"]), _parse_dt(e["end"])) for e in timeline]
+
+
+def test_avoid_existing_false_matches_parity_fixture(client):
+    payload = dict(PARITY_INPUT)
+    payload["strategies"] = ORDERING_STRATEGIES
+    payload["avoid_existing"] = False
+    options = _generate(client, payload)
+
+    with open(FIXTURE_PATH) as f:
+        fixture = json.load(f)
+    for name in ORDERING_STRATEGIES:
+        expected = fixture["strategies"][name]["timeline"]
+        assert _spans(options[name]["timeline"]) == _spans(expected), name
+
+
+def test_avoid_existing_no_overlap_with_events(client):
+    payload = dict(PARITY_INPUT)
+    payload["strategies"] = ORDERING_STRATEGIES
+    payload["avoid_existing"] = True
+    options = _generate(client, payload)
+
+    events = [(_parse_dt(e["start"]), _parse_dt(e["end"])) for e in PARITY_INPUT["existing_events"]]
+    for name in ORDERING_STRATEGIES:
+        timeline = options[name]["timeline"]
+        assert len(timeline) == len(PARITY_INPUT["activities"]), name
+        for entry_name, es, ee in _spans(timeline):
+            for ev_start, ev_end in events:
+                assert ee <= ev_start or es >= ev_end, (
+                    f"{name}: {entry_name} overlaps event [{ev_start}, {ev_end}]"
+                )
+
+
+def test_avoid_existing_your_order_exact_timeline(client):
+    payload = dict(PARITY_INPUT)
+    payload["strategies"] = ["your-order"]
+    payload["avoid_existing"] = True
+    opt = _generate(client, payload)["your-order"]
+
+    assert _spans(opt["timeline"]) == [
+        ("Write report", _parse_dt("2026-09-02T09:30:00Z"), _parse_dt("2026-09-02T11:00:00Z")),
+        ("Email sweep", _parse_dt("2026-09-02T11:00:00Z"), _parse_dt("2026-09-02T11:30:00Z")),
+        ("Gym", _parse_dt("2026-09-02T13:00:00Z"), _parse_dt("2026-09-02T14:00:00Z")),
+        ("Read chapter", _parse_dt("2026-09-02T14:00:00Z"), _parse_dt("2026-09-02T14:30:00Z")),
+        ("Plan tomorrow", _parse_dt("2026-09-02T14:30:00Z"), _parse_dt("2026-09-02T14:45:00Z")),
+    ]
+    assert opt["excluded"] == []
+
+
+def test_avoid_existing_keeps_order_and_no_self_overlap(client):
+    base = dict(PARITY_INPUT)
+    base["strategies"] = ORDERING_STRATEGIES
+    plain = _generate(client, base)
+    flagged = _generate(client, {**base, "avoid_existing": True})
+
+    for name in ORDERING_STRATEGIES:
+        plain_names = [e["name"] for e in plain[name]["timeline"]]
+        spans = _spans(flagged[name]["timeline"])
+        assert [s[0] for s in spans] == plain_names, name
+        for (_, _, prev_end), (_, next_start, _) in zip(spans, spans[1:]):
+            assert next_start >= prev_end, name
+
+
+def test_avoid_existing_event_at_entry_end_is_not_overlap(client):
+    payload = {
+        "start_time": "2026-09-02T08:00:00Z",
+        "day_start": "2026-09-02T06:00:00Z",
+        "day_end": "2026-09-02T23:00:00Z",
+        "activities": [
+            {"name": "A", "estimated_duration": 3600},
+            {"name": "B", "estimated_duration": 1800},
+        ],
+        "existing_events": [
+            {"name": "Before", "start": "2026-09-02T07:00:00Z", "end": "2026-09-02T08:00:00Z"},
+            {"name": "Meeting", "start": "2026-09-02T09:00:00Z", "end": "2026-09-02T09:30:00Z"},
+        ],
+        "strategies": ["your-order"],
+        "avoid_existing": True,
+    }
+    opt = _generate(client, payload)["your-order"]
+    assert _spans(opt["timeline"]) == [
+        ("A", _parse_dt("2026-09-02T08:00:00Z"), _parse_dt("2026-09-02T09:00:00Z")),
+        ("B", _parse_dt("2026-09-02T09:30:00Z"), _parse_dt("2026-09-02T10:00:00Z")),
+    ]
+
+
+def test_avoid_existing_excludes_what_cannot_fit_and_places_later_ones(client):
+    payload = {
+        "start_time": "2026-09-02T08:00:00Z",
+        "day_start": "2026-09-02T06:00:00Z",
+        "day_end": "2026-09-02T10:00:00Z",
+        "activities": [
+            {"name": "Big", "estimated_duration": 3600},
+            {"name": "Small", "estimated_duration": 1800},
+        ],
+        "existing_events": [
+            {"name": "Meeting", "start": "2026-09-02T08:30:00Z", "end": "2026-09-02T09:30:00Z"},
+        ],
+        "strategies": ["your-order"],
+        "avoid_existing": True,
+    }
+    opt = _generate(client, payload)["your-order"]
+    assert _spans(opt["timeline"]) == [
+        ("Small", _parse_dt("2026-09-02T08:00:00Z"), _parse_dt("2026-09-02T08:30:00Z")),
+    ]
+    assert opt["excluded"] == [{"name": "Big", "reason": "no-free-slot"}]
+
+
+def test_avoid_existing_without_events_matches_unflagged(client):
+    base = {
+        "start_time": "2026-09-02T08:00:00Z",
+        "day_start": "2026-09-02T06:00:00Z",
+        "day_end": "2026-09-02T23:00:00Z",
+        "activities": PARITY_INPUT["activities"],
+        "existing_events": [],
+        "strategies": ORDERING_STRATEGIES,
+    }
+    plain = _generate(client, base)
+    flagged = _generate(client, {**base, "avoid_existing": True})
+
+    for name in ORDERING_STRATEGIES:
+        assert _spans(flagged[name]["timeline"]) == _spans(plain[name]["timeline"]), name
+        assert flagged[name]["excluded"] == plain[name]["excluded"], name

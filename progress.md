@@ -1095,3 +1095,17 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Files changed:** frontend/src/types/index.ts, frontend/src/components/calendar/ItemBlock.tsx, frontend/src/components/calendar/CalendarGrid.tsx, frontend/src/components/calendar/CalendarView.tsx, frontend/src/index.css, prd.md, progress.md
 - **Verification:** from `frontend/`: `npx vitest run` 62/62 passed; `npx tsc --noEmit` clean; `npm run build` succeeded.
 - **Gotchas:** Moves and resizes needed no change; they already call only `updateItem` and refetch. A Bash command using `$?` (e.g. `echo tsc=$?`) is refused as "simple_expansion"; use `&& echo OK || echo FAIL` instead.
+
+## B26.tests. Backend: generated plans avoid busy time
+- **Date:** 2026-10-03
+- **Status:** DONE
+- **Summary:** I added seven B26 tests to the end of `backend/tests/test_generate.py`, with helpers `_generate` (posts and returns options keyed by strategy) and `_spans`. The tests cover: an explicit `avoid_existing: false` matching the parity fixture for your-order, shortest-first, longest-first and best-fit; with the flag, no entry overlaps the parity events, and every Activity is still placed; the exact your-order timeline with the flag; order kept and no self-overlap; an event starting at an entry's end, or ending at `start_time`, is not an overlap; an Activity that cannot fit is excluded with `no-free-slot` while a later, shorter one still places; and the flag with no events matches the unflagged output. No existing test was changed, and the fixture was not touched.
+- **Files changed:** backend/tests/test_generate.py, prd.md, progress.md
+- **Verification:** `./venv/bin/python -m pytest tests/` (via python3 subprocess from `backend/`) gave 4 failed, 202 passed. All 4 failures are new B26 tests, as expected before impl. The false-flag, order and no-events tests already pass and act as guards. Against a throwaway reference (the `avoid_existing: bool = False` schema field, plus an inline layout loop in `generate_schedules`), 206/206 passed. All three app files were then restored from `/tmp/b26t_orig/` (md5s match).
+- **Gotchas:**
+  - The expected your-order timeline with the parity input is: Write report 09:30–11:00 (pushed past Standup), Email 11:00–11:30, Gym 13:00–14:00 (pushed past Lunch), Read 14:00–14:30, Plan 14:30–14:45. `excluded` is `[]`.
+  - Overlap is strict: `start < ev.end and end > ev.start`. Touching endpoints are free.
+  - **An excluded Activity must not advance the cursor.** In the exclusion test, Big is pushed past the 08:30–09:30 Meeting and would end at 10:30, past `day_end` 10:00. Small must then place at 08:00–08:30, not after Big's attempted slot. Append to the Strategy's own `excluded` list. The four Strategies return `[]`, and the test asserts the whole list equals `[{"name": "Big", "reason": "no-free-slot"}]`.
+  - Compare with `day_end` after the Activity is pushed past events (`end > day_end` → excluded).
+  - The contract says the helper belongs in `services/strategies.py`. The reference was inline in the router only for speed. eat-the-frog and eisenhower also have no `timeline`, so the flag applies to them too, but no test covers them.
+  - Appending with Edit failed because the trailing block of the last test appears twice in the file. Appending through `python3 -c "open(p,'a').write(...)"` from a Write'd temp file worked. A Bash call that chains `cp`/append with `./venv/bin/python` is refused as a whole, so the earlier steps silently don't run. Check with grep afterwards.
