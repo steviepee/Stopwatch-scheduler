@@ -437,7 +437,7 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] All B15.tests pass; web tsc clean; `npm run build` succeeds
 
 ### B16.tests — Backend: edits to pushed Items wait for Push
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D43 revised during the B12 check (2026-10-03): the user rearranges a pushed
   day freely, then syncs once. Rewrite the B3 tests in `backend/tests/test_item_google_sync.py`
   that expect `update_event` on a PUT, and extend `backend/tests/test_schedule_calendar.py`.
@@ -452,12 +452,12 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - Every route that removes an event (`_delete_event` paths) also clears `calendar_stale`.
   - Removals are unchanged and still call Google immediately.
 - **Acceptance Criteria:**
-  - [ ] Test: moving and resizing an Exported Item each make no Google call, need no auth, and set the flag
-  - [ ] Test: a PUT that only changes `is_frog` leaves the flag false
-  - [ ] Test: Push day patches exactly the stale Items, creates exactly the new ones, touches no others, and clears every flag
-  - [ ] Test: a second Push day right after makes no Google calls
-  - [ ] Test: Remove from Google only on a stale Item deletes its event and clears both the id and the flag
-  - [ ] Test: Alembic revision present; `test_migrations.py` passes
+  - [x] Test: moving and resizing an Exported Item each make no Google call, need no auth, and set the flag
+  - [x] Test: a PUT that only changes `is_frog` leaves the flag false
+  - [x] Test: Push day patches exactly the stale Items, creates exactly the new ones, touches no others, and clears every flag
+  - [x] Test: a second Push day right after makes no Google calls
+  - [x] Test: Remove from Google only on a stale Item deletes its event and clears both the id and the flag
+  - [x] Test: Alembic revision present; `test_migrations.py` passes
 
 ### B16.impl — Backend: edits to pushed Items wait for Push
 - **Status:** PENDING

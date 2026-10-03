@@ -93,9 +93,38 @@ def test_update_event_patches_start_and_end():
     assert not events.delete.called
 
 
-# --- PUT item: moving and resizing ---
+# --- PUT item: moving and resizing wait for Push (D43 revised, B16) ---
 
-def test_moving_exported_item_updates_event_once(client):
+def _stale(client, sid, name):
+    return _item(client.get(f"/api/schedules/{sid}").json(), name)["calendar_stale"]
+
+
+@pytest.mark.parametrize("change", [
+    {"scheduled_time": T10},
+    {"estimated_duration": 1500.0},
+    {"scheduled_time": T11, "estimated_duration": 300.0},
+])
+def test_editing_exported_item_makes_no_google_call_needs_no_auth_and_marks_stale(client, change):
+    sched = _exported_schedule(client, [
+        {"custom_name": "Write", "estimated_duration": 600.0, "scheduled_time": T9},
+    ], ["evt-1"])
+    item = _item(sched, "Write")
+    assert item["calendar_stale"] is False
+
+    with _google(authenticated=False) as g:
+        r = client.put(f"/api/schedules/{sched['id']}/items/{item['id']}", json=change)
+
+    assert r.status_code == 200
+    _no_google_calls(g)
+    body = r.json()
+    assert body["calendar_stale"] is True
+    assert body["calendar_event_id"] == "evt-1"
+    for field, value in change.items():
+        assert body[field] == value
+    assert _stale(client, sched["id"], "Write") is True
+
+
+def test_editing_exported_item_authenticated_still_makes_no_google_call(client):
     sched = _exported_schedule(client, [
         {"custom_name": "Write", "estimated_duration": 600.0, "scheduled_time": T9},
     ], ["evt-1"])
@@ -105,43 +134,27 @@ def test_moving_exported_item_updates_event_once(client):
         r = client.put(f"/api/schedules/{sched['id']}/items/{item['id']}", json={"scheduled_time": T10})
 
     assert r.status_code == 200
-    g["update_event"].assert_called_once()
-    assert _update_values(g["update_event"].call_args) == ("evt-1", "2026-09-08T10:00:00", 600.0)
-    assert r.json()["scheduled_time"] == T10
-    assert r.json()["calendar_event_id"] == "evt-1"
+    _no_google_calls(g)
+    assert r.json()["calendar_stale"] is True
 
 
-def test_resizing_exported_item_updates_event_once(client):
+def test_put_changing_only_is_frog_leaves_flag_false(client):
     sched = _exported_schedule(client, [
         {"custom_name": "Write", "estimated_duration": 600.0, "scheduled_time": T9},
     ], ["evt-1"])
     item = _item(sched, "Write")
 
-    with _google() as g:
-        r = client.put(f"/api/schedules/{sched['id']}/items/{item['id']}", json={"estimated_duration": 1500.0})
+    with _google(authenticated=False) as g:
+        r = client.put(f"/api/schedules/{sched['id']}/items/{item['id']}", json={"is_frog": True})
 
     assert r.status_code == 200
-    g["update_event"].assert_called_once()
-    assert _update_values(g["update_event"].call_args) == ("evt-1", "2026-09-08T09:00:00", 1500.0)
-    assert r.json()["estimated_duration"] == 1500.0
+    _no_google_calls(g)
+    assert r.json()["is_frog"] is True
+    assert r.json()["calendar_stale"] is False
+    assert _stale(client, sched["id"], "Write") is False
 
 
-def test_move_and_resize_together_update_event_once(client):
-    sched = _exported_schedule(client, [
-        {"custom_name": "Write", "estimated_duration": 600.0, "scheduled_time": T9},
-    ], ["evt-1"])
-    item = _item(sched, "Write")
-
-    with _google() as g:
-        r = client.put(f"/api/schedules/{sched['id']}/items/{item['id']}",
-                       json={"scheduled_time": T11, "estimated_duration": 300.0})
-
-    assert r.status_code == 200
-    g["update_event"].assert_called_once()
-    assert _update_values(g["update_event"].call_args) == ("evt-1", "2026-09-08T11:00:00", 300.0)
-
-
-def test_editing_non_exported_item_calls_no_google_method(client):
+def test_editing_non_exported_item_calls_no_google_method_and_is_not_stale(client):
     sched = client.post("/api/schedules/", json={"target_date": DAY, "items": [
         {"custom_name": "Write", "estimated_duration": 600.0, "scheduled_time": T9},
     ]}).json()
@@ -156,25 +169,7 @@ def test_editing_non_exported_item_calls_no_google_method(client):
     _no_google_calls(g)
     assert resized.json()["scheduled_time"] == T10
     assert resized.json()["estimated_duration"] == 900.0
-
-
-def test_editing_exported_item_unauthenticated_401_nothing_saved(client):
-    sched = _exported_schedule(client, [
-        {"custom_name": "Write", "estimated_duration": 600.0, "scheduled_time": T9},
-    ], ["evt-1"])
-    item = _item(sched, "Write")
-
-    with _google(authenticated=False) as g:
-        moved = client.put(f"/api/schedules/{sched['id']}/items/{item['id']}", json={"scheduled_time": T10})
-        resized = client.put(f"/api/schedules/{sched['id']}/items/{item['id']}", json={"estimated_duration": 900.0})
-
-    assert moved.status_code == 401
-    assert resized.status_code == 401
-    _no_google_calls(g)
-    fetched = _item(client.get(f"/api/schedules/{sched['id']}").json(), "Write")
-    assert fetched["scheduled_time"] == T9
-    assert fetched["estimated_duration"] == 600.0
-    assert fetched["calendar_event_id"] == "evt-1"
+    assert resized.json()["calendar_stale"] is False
 
 
 # --- DELETE item, with and without delete_event ---
@@ -437,8 +432,10 @@ def test_no_route_touches_an_event_id_not_stored_on_its_item(client):
         assert client.delete(f"/api/schedules/{sid}/items/{b1}", params={"delete_event": "true"}).status_code == 404
         assert client.delete(f"/api/schedules/{sid}/items/{b1}/calendar").status_code == 404
 
+        g["create_event"].return_value = {"id": "evt-a-local"}
         client.put(f"/api/schedules/{sid}/items/{local}", json={"scheduled_time": T10})
         client.put(f"/api/schedules/{sid}/items/{a1}", json={"scheduled_time": T11})
+        client.post(f"/api/schedules/{sid}/calendar")
         client.delete(f"/api/schedules/{sid}/items/{a2}/calendar")
         client.delete(f"/api/schedules/{sid}/items/{a3}", params={"delete_event": "true"})
         client.delete(f"/api/schedules/{sid}", params={"delete_events": "true"})
@@ -447,7 +444,8 @@ def test_no_route_touches_an_event_id_not_stored_on_its_item(client):
     deleted = _deleted_event_ids(g)
     patched = [c.kwargs.get("eventId") for c in g["patch"].call_args_list]
     assert updated == ["evt-a1"]
-    assert sorted(deleted) == ["evt-a1", "evt-a2", "evt-a3"]
+    assert g["create_event"].call_count == 1
+    assert sorted(deleted) == ["evt-a-local", "evt-a1", "evt-a2", "evt-a3"]
     assert deleted.count("evt-a2") == 1
     assert all(e in {"evt-a1"} for e in patched)
     assert "evt-b1" not in updated + deleted + patched
@@ -649,3 +647,50 @@ def test_clear_all_retry_after_midway_failure_succeeds(client, db):
     assert retry.status_code == 200
     assert db.query(Schedule).filter(Schedule.id == sid).count() == 0
     assert db.query(ScheduleItem).filter(ScheduleItem.schedule_id == sid).count() == 0
+
+
+# --- Removing a stale Item's event clears the flag too (B16) ---
+
+def _stale_exported(client, names, event_ids):
+    """A pushed day whose Items were each resized afterwards, so every one is stale."""
+    sched = _exported_schedule(client, [
+        {"custom_name": n, "estimated_duration": 600.0, "scheduled_time": t}
+        for n, t in zip(names, [T9, T10, T11])
+    ], event_ids)
+    for name in names:
+        with _google(authenticated=False):
+            r = client.put(f"/api/schedules/{sched['id']}/items/{_item(sched, name)['id']}",
+                           json={"estimated_duration": 900.0})
+        assert r.json()["calendar_stale"] is True
+    return sched
+
+
+def test_item_calendar_removal_on_stale_item_clears_id_and_flag(client):
+    sched = _stale_exported(client, ["Write"], ["evt-1"])
+    item = _item(sched, "Write")
+
+    with _google() as g:
+        r = client.delete(f"/api/schedules/{sched['id']}/items/{item['id']}/calendar")
+
+    assert r.status_code == 200
+    g["delete"].assert_called_once_with(calendarId="primary", eventId="evt-1")
+    assert not g["update_event"].called
+    assert r.json()["calendar_event_id"] is None
+    assert r.json()["calendar_stale"] is False
+    fetched = _item(client.get(f"/api/schedules/{sched['id']}").json(), "Write")
+    assert fetched["calendar_event_id"] is None
+    assert fetched["calendar_stale"] is False
+
+
+def test_remove_from_google_only_on_stale_items_clears_every_id_and_flag(client):
+    sched = _stale_exported(client, ["Write", "Read"], ["evt-1", "evt-2"])
+    sid = sched["id"]
+
+    with _google() as g:
+        r = client.delete(f"/api/schedules/{sid}/calendar")
+
+    assert r.status_code == 200
+    assert sorted(_deleted_event_ids(g)) == ["evt-1", "evt-2"]
+    assert not g["update_event"].called
+    items = client.get(f"/api/schedules/{sid}").json()["items"]
+    assert [(i["calendar_event_id"], i["calendar_stale"]) for i in items] == [(None, False), (None, False)]
