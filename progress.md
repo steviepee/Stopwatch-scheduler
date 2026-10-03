@@ -1129,3 +1129,11 @@ Each iteration appends its results here so the next session knows what worked, w
   - **The datetimepicker mock now records `{ value, mode }` per testID** in `mockPickerProps`. That is how the test checks that `picker-date` is `mode="date"` and opens on today. Its `value` must be a `Date` whose local date is today; the current `startTime` works.
   - **The date picker's returned Date has a clock time (12:00) on purpose.** The impl must take only Y/M/D from it, e.g. `setFullYear(d.getFullYear(), d.getMonth(), d.getDate())` applied to both `startTime` and `dayEnd`. It must not replace either one whole.
   - **The reference impl** added `avoid_existing?: boolean` to `GenerateRequest` in `types/index.ts` and set it in `buildRequest`. It added a `picker-date` `PickerField` row above Start time, with `value={startTime}`. Inside the option card, it rendered `Didn't fit: {names.join(', ')}` only when `option.strategy === selectedStrategy && option.excluded.length > 0`. The test matches the names by regex, so the separator is free.
+
+## B27.impl. Mobile: Schedule tab date picker, plans avoid busy time
+- **Date:** 2026-10-03
+- **Status:** DONE
+- **Summary:** `GenerateRequest` gains `avoid_existing?: boolean`, and `buildRequest` sends `true`. `schedule.tsx` adds a `picker-date` `PickerField` (`mode="date"`, `value={startTime}`, short weekday/month/day label) above Start time. Picking a date applies only its Y/M/D to both `startTime` and `dayEnd` through a small `onDate` helper. The fetch date and Save's `target_date` already derive from `startTime`, so they follow the picked date. The chosen option card shows `Didn't fit: <names>` when its `excluded` list is non-empty.
+- **Files changed:** mobile/src/app/(tabs)/schedule.tsx, mobile/src/types/index.ts, prd.md, progress.md
+- **Verification:** from `mobile/` (via python3 subprocess): `npx jest --ci --forceExit --runInBand` 203/203 passed; `npx tsc --noEmit` clean; `npx expo export --platform android` succeeded (to `/tmp/b27i_export`).
+- **Gotchas:** The Start time / Day end time pickers still replace the whole Date with what the picker returns. On device, the picker returns the date it was opened with (the picked date), so the plan date holds. A time picked before the date is kept because the date change only rewrites Y/M/D.

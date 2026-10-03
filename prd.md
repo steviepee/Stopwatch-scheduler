@@ -549,10 +549,10 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] Test: excluded Activities are listed
 
 ### B27.impl — Mobile: Schedule tab date picker, plans avoid busy time
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract in `src/app/(tabs)/schedule.tsx` and `types/index.ts`.
 - **Acceptance Criteria:**
-  - [ ] All B27.tests pass; tsc clean; export succeeds
+  - [x] All B27.tests pass; tsc clean; export succeeds
 
 ### B28.tests — Web: plans avoid busy time
 - **Status:** PENDING

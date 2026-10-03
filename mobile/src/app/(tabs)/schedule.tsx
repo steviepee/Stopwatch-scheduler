@@ -61,6 +61,12 @@ function defaultDayEnd(base: Date): Date {
   return result;
 }
 
+function onDate(time: Date, date: Date): Date {
+  const result = new Date(time);
+  result.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+  return result;
+}
+
 function formatTime(date: Date): string {
   return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
@@ -250,7 +256,13 @@ export default function ScheduleScreen() {
       day_end: dayEnd.toISOString(),
       activities,
       strategies: STRATEGIES,
+      avoid_existing: true,
     };
+  }
+
+  function handleDateChange(date: Date) {
+    setStartTime((prev) => onDate(prev, date));
+    setDayEnd((prev) => onDate(prev, date));
   }
 
   function handleGenerate() {
@@ -322,6 +334,16 @@ export default function ScheduleScreen() {
       ))}
 
       <View style={styles.row}>
+        <Text style={styles.rowLabel}>Date</Text>
+        <PickerField
+          testID="picker-date"
+          label={startTime.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
+          value={startTime}
+          mode="date"
+          onChange={handleDateChange}
+        />
+      </View>
+      <View style={styles.row}>
         <Text style={styles.rowLabel}>Start time</Text>
         <PickerField
           testID="picker-start-time"
@@ -373,6 +395,11 @@ export default function ScheduleScreen() {
           style={[styles.card, option.strategy === selectedStrategy && styles.rowSelected]}>
           <Text style={styles.rowLabel}>{option.label}</Text>
           <Text style={styles.caption}>{option.description}</Text>
+          {option.strategy === selectedStrategy && option.excluded.length > 0 && (
+            <Text style={styles.caption}>
+              Didn't fit: {option.excluded.map((entry) => entry.name).join(', ')}
+            </Text>
+          )}
           <Pressable
             testID={`btn-select-${option.strategy}`}
             accessibilityRole="button"

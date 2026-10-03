@@ -178,6 +178,7 @@ export interface GenerateRequest {
   activities: GenerateActivity[];
   existing_events?: GenerateEvent[];
   strategies?: string[] | null;
+  avoid_existing?: boolean;
 }
 
 export interface TimelineEntry {
