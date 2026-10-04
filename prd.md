@@ -698,8 +698,35 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
 - **Acceptance Criteria:**
   - [x] All B32.tests pass; backend suite passes; mobile tsc clean and export succeeds
 
+### B33.tests — No-history Activities plan at 10 minutes, never 0
+- **Status:** PENDING
+- **Description:** Found in B12 step 5 (2026-10-04). The mobile Schedule tab sends an
+  Activity's `average_duration` when its duration field is untouched (`buildRequest` in
+  `src/app/(tabs)/schedule.tsx`), so a no-history Activity is generated at **0 seconds** and
+  stacks on the Item before it. The web `ActivityInput` falls back to **30 minutes**. D40 says
+  a no-history Activity is 10 minutes. Extend `backend/tests/test_generate.py`,
+  `mobile/src/__tests__/ScheduleScreen.test.tsx`, and a web test for `ActivityInput`
+  (`frontend/src/__tests__/ScheduleBuilder.test.tsx` or a new `ActivityInput.test.tsx`).
+- **Contract:**
+  - Server: `GenerateActivity.estimated_duration` must be > 0; 0 or negative → 422.
+  - Mobile: an Activity with no history (`average_duration` 0 or `total_recordings` 0) shows
+    **10** in its duration field and sends 600 s unless the user types another value.
+    Activities with history are unchanged.
+  - Web: `ActivityInput`'s fallback when there is no suggested duration and no custom one
+    becomes 600 s (was 1800).
+- **Acceptance Criteria:**
+  - [ ] Test (backend): a generate request with an activity of duration 0 → 422; the parity fixture still passes
+  - [ ] Test (mobile): a no-history Activity shows 10 and is sent as 600; an Activity with history is sent as its rounded average
+  - [ ] Test (web): adding a no-history Activity with no custom duration gives 600 s
+
+### B33.impl — No-history Activities plan at 10 minutes, never 0
+- **Status:** PENDING
+- **Description:** Implement to the contract. Acceptance runs all three clients' checks.
+- **Acceptance Criteria:**
+  - [ ] All B33.tests pass; backend suite passes; mobile tsc clean and export succeeds; web tsc clean and `npm run build` succeeds
+
 ### B19. USER — Migrate the live database for `calendar_stale`
-- **Status:** USER
+- **Status:** USER — DONE 2026-10-04. `alembic current` at `b8c9d0e1f2a3` (head); B12 step 3 passed under revised D43.
 - **Description:** B16 added a column; live MySQL needs it before the app is used again. In
   the backend tab, stop uvicorn (Ctrl+C), then:
   ```bash
