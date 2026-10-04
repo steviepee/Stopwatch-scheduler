@@ -18,12 +18,10 @@ Step 5 passed for busy-time avoidance but exposed B33: a no-history Activity was
 0 seconds on mobile (web fell back to 30 min instead of D40's 10).
 
 **Next actions, in order:**
-1. B12 quick looks: short Blocks on the phone, empty Add manually fields, the web action bar,
-   CSV readable in the phone's browser.
-2. Run the loop for **B33** (2 tasks): `PATH="/root/.local/bin:$PATH" ./ralph.sh --max 4 --model claude-opus-5-5`.
-3. Re-check B12 step 5 with a no-history Activity (10-minute Block). Then mark B12 USER-DONE.
-4. Phase 6 (deploy) design with the user. Recommended before Build 2b; the user has not confirmed the order yet.
-   Check the Azure subscription is still active first: the free trial started ~2026-09-03.
+1-3. Done 2026-10-04: B33 landed (backend 211, mobile 212, web 78), B12 passed in full.
+   **Build 2a is complete.**
+4. Phase 6 (deploy) design with the user. Order confirmed 2026-10-04: deploy single-user first (roadmap D51), then multi-user, with Build 2b around them as the user chooses.
+   Phase 6 must decide where the Google credential row lives and the web app's interim lock. Check the Azure subscription is still active first: the free trial started ~2026-09-03.
 
 Loose end: Recording 11's Google event ("To poydras: teleport", 2026-09-26 02:45 CDT) is still
 on the user's Google Calendar. Build 2a removed Recording push, so the app cannot remove it; the

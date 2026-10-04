@@ -742,7 +742,7 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [ ] B12 step 3 passes under the revised D43
 
 ### B12. USER — Build 2a check, phone and browser
-- **Status:** USER
+- **Status:** USER — DONE 2026-10-04. Steps 1, 2, 4, 6, 7, 8 passed 2026-10-03; steps 3 and 5 re-passed 2026-10-04 after B16–B18, B26–B28, B33 (Shower planned at 600 s). Quick looks for B29–B32 passed.
 - **Description:** B5 done and uvicorn restarted. Phone: `cd mobile && npx expo start --dev-client`
   (no native change in Build 2a, so no rebuild). Browser: `cd frontend && npm run dev`, open
   `http://localhost:3000`. On the phone unless marked:

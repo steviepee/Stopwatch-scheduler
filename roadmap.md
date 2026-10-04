@@ -60,6 +60,7 @@ the output surface. Single user by design.
 | D33 | Phase 5 PRD shape | Build 1 only, in its own file run with `--prd`. Opus for the native module, timer core, and offline queue; Sonnet for screens |
 | D21 | Deploy host | **Azure**, decided 2026-09-05. Chosen for practice with the platform, not cost; do not propose alternatives on price. Implies a managed MySQL, a containerised backend, and platform-issued TLS |
 | D20 | Test authorship | A fresh-context Ralph iteration writes each task's tests from its spec before the implementation iteration runs |
+| D51 | Multi-user vs deploy order | **Deploy single-user first, multi-user after** (Path B), decided 2026-10-04: the user will be the only user for a while. Phase 6 makes its forced choices multi-user-shaped where free: Google credentials become a stored database row, not a file; the web app gets an interim lock that the multi-user phase replaces. Precondition: nobody else has data before multi-user lands, so the owner backfill stays one value. See `docs/multi-user-transition.md` |
 
 ## Findings that shaped the plan
 
