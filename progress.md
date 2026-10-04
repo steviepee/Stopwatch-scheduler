@@ -1272,3 +1272,11 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Gotchas:**
   - Reference impl that passed: in `GenerateActivity`, `estimated_duration: float = Field(gt=0)`, with `Field` added to the pydantic import. In mobile `schedule.tsx`, add a `defaultMinutes(task)` that returns `toMinutes(task.average_duration)` when `average_duration > 0 && total_recordings > 0`, else `'10'`. Use it for both the input's default `value` and the untouched `estimated_duration` (`Number(defaultMinutes(task)) * 60`). In web `ActivityInput.tsx`, the fallback becomes `10 * 60`.
   - Web: the matched no-history case goes through `taskAPI.getStats` (mocked to `{ average: 0, median: null, previous: null }`), so `pickSuggested()` returns 0 and the fallback applies. The test waits for `getStats` before clicking Add.
+
+## B33.impl. No-history Activities plan at 10 minutes, never 0
+- **Date:** 2026-10-04
+- **Status:** DONE
+- **Summary:** `GenerateActivity.estimated_duration` is now `Field(gt=0)`, so 0 or negative gives 422. Mobile `schedule.tsx` gains `defaultMinutes(task)` (rounded-up average when `average_duration > 0 && total_recordings > 0`, else `'10'`), used for both the duration field's default and the untouched `estimated_duration`. Web `ActivityInput`'s fallback is now 10 minutes.
+- **Files changed:** backend/app/models/schemas.py, mobile/src/app/(tabs)/schedule.tsx, frontend/src/components/ActivityInput.tsx, prd.md, progress.md
+- **Verification:** (via python3 subprocess) backend `pytest tests/` 211 passed; mobile `npx jest --ci --forceExit` 212/212, `npx tsc --noEmit` clean, `npx expo export --platform android` succeeded (to `/tmp/b33i_export`); web `npx vitest run` 78/78, `npx tsc --noEmit` clean, `npm run build` succeeded.
+- **Gotchas:** None.

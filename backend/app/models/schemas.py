@@ -1,4 +1,4 @@
-from pydantic import BaseModel, AfterValidator, PlainSerializer, model_validator
+from pydantic import BaseModel, AfterValidator, Field, PlainSerializer, model_validator
 from datetime import date, datetime, timezone
 from typing import Optional, List, Annotated, Literal
 
@@ -205,7 +205,7 @@ class ApplyRegimen(BaseModel):
 class GenerateActivity(BaseModel):
     task_id: Optional[int] = None
     name: str
-    estimated_duration: float
+    estimated_duration: float = Field(gt=0)
     is_urgent: bool = False
     is_important: bool = False
     is_frog: bool = False

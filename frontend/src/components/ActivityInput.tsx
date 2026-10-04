@@ -89,7 +89,7 @@ export default function ActivityInput({ tasks, onAdd, options }: ActivityInputPr
     } else {
       duration = pickSuggested();
     }
-    if (!duration || duration <= 0) duration = 30 * 60; // default 30 min
+    if (!duration || duration <= 0) duration = 10 * 60; // default 10 min
 
     onAdd({ taskId: matchedTask?.id, name, estimatedDuration: duration });
     setQuery('');

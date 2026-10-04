@@ -720,10 +720,10 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] Test (web): adding a no-history Activity with no custom duration gives 600 s
 
 ### B33.impl — No-history Activities plan at 10 minutes, never 0
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract. Acceptance runs all three clients' checks.
 - **Acceptance Criteria:**
-  - [ ] All B33.tests pass; backend suite passes; mobile tsc clean and export succeeds; web tsc clean and `npm run build` succeeds
+  - [x] All B33.tests pass; backend suite passes; mobile tsc clean and export succeeds; web tsc clean and `npm run build` succeeds
 
 ### B19. USER — Migrate the live database for `calendar_stale`
 - **Status:** USER — DONE 2026-10-04. `alembic current` at `b8c9d0e1f2a3` (head); B12 step 3 passed under revised D43.

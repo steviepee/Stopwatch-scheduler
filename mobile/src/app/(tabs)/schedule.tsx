@@ -17,6 +17,10 @@ const STRATEGIES = ['your-order', 'shortest-first', 'longest-first', 'best-fit']
 // keeps the block on a minute boundary.
 const toMinutes = (seconds: number) => String(Math.ceil(seconds / 60));
 
+// D40: an Activity with no history plans at 10 minutes.
+const defaultMinutes = (task: Task) =>
+  task.average_duration > 0 && task.total_recordings > 0 ? toMinutes(task.average_duration) : '10';
+
 function statText(value: number | null): string {
   return value === null ? '—' : formatElapsed(value * 1000);
 }
@@ -246,7 +250,7 @@ export default function ScheduleScreen() {
         estimated_duration:
           durations[task.id] !== undefined
             ? Number(durations[task.id]) * 60
-            : Math.ceil(task.average_duration / 60) * 60,
+            : Number(defaultMinutes(task)) * 60,
       }));
 
     const startIso = startTime.toISOString();
@@ -324,7 +328,7 @@ export default function ScheduleScreen() {
                 testID={`input-duration-${task.id}`}
                 style={styles.input}
                 keyboardType="numeric"
-                value={durations[task.id] ?? toMinutes(task.average_duration)}
+                value={durations[task.id] ?? defaultMinutes(task)}
                 onChangeText={(text) => setDurations((prev) => ({ ...prev, [task.id]: text }))}
               />
               <DurationHints task={task} options={userOptions} />
