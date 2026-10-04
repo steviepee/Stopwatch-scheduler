@@ -1,19 +1,29 @@
 # Standing Orders — Phase 5 → 6
 
-Current as of 2026-09-29. Read this, then `prd.md`.
+Current as of 2026-10-04. Read this, then `prd.md`.
 
 ## 0. Pick up here
 
-**Build 2a is code-complete.** Every loop task in `prd.md` is DONE — B1–B4 (backend), B6–B9
-(mobile), B10–B11 (web), and the post-loop follow-ups B13–B15 — and B5 (live MySQL migration) is
-USER-DONE. Verified 2026-09-29 against the final commit: backend 192, mobile 192 (tsc clean,
-Android export builds), web 55 (`npm run build` clean). Per-task notes are in `progress.md`.
+**Build 2a is code-complete, including the B12 follow-ups.** Every loop task in `prd.md` is
+DONE (47), none blocked. Verified 2026-10-03 against the final commit: backend 210, mobile 210
+(tsc clean, Android export builds), web 75 (`npm run build` clean); the D13 parity fixture is
+untouched. B12 steps 1, 2, 4, 6, 7, 8 passed on 2026-10-03. Its findings became B16–B18 (edits
+to pushed Blocks wait for Push, D43 revised), B26–B28 (plans avoid busy time via opt-in
+`avoid_existing`; mobile date picker; web plans now come from the server's Generate), B29
+(true-length mobile Blocks), B30 (empty duration fields), B31 (web action bar), B32 (phone
+exports inline).
 
-**Next action: B12, the Build 2a phone and browser check** (`prd.md`, eight steps). Before it:
-uvicorn running, Metro started with `npx expo start --dev-client` and `r` pressed once the phone
-connects (a stale bundle has fooled a check before), Vite on 3000. Record any failure in
-`progress.md` with the task it reopens. After B12 passes: design Build 2b (the HOLD stubs
-B20–B25) with the user, then Phase 6 (deploy).
+**B19 is done** (2026-10-04, live MySQL at `b8c9d0e1f2a3`). B12 step 3 passed under revised D43.
+Step 5 passed for busy-time avoidance but exposed B33: a no-history Activity was generated at
+0 seconds on mobile (web fell back to 30 min instead of D40's 10).
+
+**Next actions, in order:**
+1. B12 quick looks: short Blocks on the phone, empty Add manually fields, the web action bar,
+   CSV readable in the phone's browser.
+2. Run the loop for **B33** (2 tasks): `PATH="/root/.local/bin:$PATH" ./ralph.sh --max 4 --model claude-opus-5-5`.
+3. Re-check B12 step 5 with a no-history Activity (10-minute Block). Then mark B12 USER-DONE.
+4. Phase 6 (deploy) design with the user. Recommended before Build 2b; the user has not confirmed the order yet.
+   Check the Azure subscription is still active first: the free trial started ~2026-09-03.
 
 Loose end: Recording 11's Google event ("To poydras: teleport", 2026-09-26 02:45 CDT) is still
 on the user's Google Calendar. Build 2a removed Recording push, so the app cannot remove it; the
