@@ -79,6 +79,10 @@ import type { GenerateResponse, Schedule, ScheduleItem, StrategyOption, Task } f
 //     as `target_date`.
 //   - The chosen plan's `excluded` Activities are listed under it as "Didn't fit: <names>".
 //     A plan that is not chosen, or has nothing excluded, shows no such line.
+//
+// B33 contract (D40): an Activity with no history (`average_duration` 0 or
+// `total_recordings` 0) shows 10 in `input-duration-{id}` and is sent as 600 s unless the
+// user types another value. Activities with history are unchanged.
 jest.mock('../services/api', () => ({
   taskAPI: { getAll: jest.fn() },
   scheduleAPI: {
@@ -263,6 +267,46 @@ describe('setup step', () => {
     const request = mockedGenerate.mock.calls[0][0];
     expect(request.activities).toEqual([
       expect.objectContaining({ task_id: 7, name: 'Gym', estimated_duration: 2400 }), // 40 min
+    ]);
+  });
+
+  it('a no-history Activity shows 10 and is sent as 600; one with history is sent as its rounded average', async () => {
+    const NEW: Task = { ...GYM, id: 9, name: 'New thing', average_duration: 0, total_recordings: 0 };
+    const ODD: Task = { ...GYM, id: 10, name: 'Odd', average_duration: 1530, total_recordings: 2 };
+    mockedTasksGetAll.mockResolvedValue([GYM, NEW, ODD]);
+    mockedGenerate.mockResolvedValue({ options: [] } as GenerateResponse);
+    await renderScreen();
+
+    await screen.findByTestId('activity-row-9');
+    await selectActivity(9);
+    await selectActivity(10);
+    expect(screen.getByTestId('input-duration-9')).toHaveProp('value', '10');
+    expect(screen.getByTestId('input-duration-10')).toHaveProp('value', '26');
+
+    await fireEvent.press(screen.getByTestId('btn-generate'));
+
+    await waitFor(() => expect(mockedGenerate).toHaveBeenCalledTimes(1));
+    const request = mockedGenerate.mock.calls[0][0];
+    expect(request.activities).toEqual([
+      expect.objectContaining({ task_id: 9, estimated_duration: 600 }),
+      expect.objectContaining({ task_id: 10, estimated_duration: 1560 }),
+    ]);
+  });
+
+  it('a no-history Activity sends what the user types instead of 600', async () => {
+    const NEW: Task = { ...GYM, id: 9, name: 'New thing', average_duration: 0, total_recordings: 0 };
+    mockedTasksGetAll.mockResolvedValue([NEW]);
+    mockedGenerate.mockResolvedValue({ options: [] } as GenerateResponse);
+    await renderScreen();
+
+    await screen.findByTestId('activity-row-9');
+    await selectActivity(9);
+    await fireEvent.changeText(screen.getByTestId('input-duration-9'), '25');
+    await fireEvent.press(screen.getByTestId('btn-generate'));
+
+    await waitFor(() => expect(mockedGenerate).toHaveBeenCalledTimes(1));
+    expect(mockedGenerate.mock.calls[0][0].activities).toEqual([
+      expect.objectContaining({ task_id: 9, estimated_duration: 1500 }),
     ]);
   });
 

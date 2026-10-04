@@ -76,6 +76,14 @@ def test_generate_empty_activities(client):
     assert data["options"][0]["timeline"] == []
 
 
+def test_generate_zero_duration_activity_422(client):
+    for duration in (0, -60):
+        payload = dict(PARITY_INPUT)
+        payload["activities"] = [{"name": "No history", "estimated_duration": duration}]
+        resp = client.post("/api/schedules/generate", json=payload)
+        assert resp.status_code == 422, duration
+
+
 def test_generate_your_order_parity(client):
     payload = dict(PARITY_INPUT)
     payload["strategies"] = ["your-order"]

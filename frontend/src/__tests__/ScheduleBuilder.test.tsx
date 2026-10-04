@@ -1,6 +1,7 @@
 import type { ComponentType, ReactNode } from 'react';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { vi, type Mock } from 'vitest';
+import ActivityInput from '../components/ActivityInput';
 import ScheduleBuilderComponent from '../components/ScheduleBuilder';
 import ScheduleListComponent from '../components/ScheduleList';
 import HomePage from '../pages/HomePage';
@@ -58,6 +59,9 @@ import type { Schedule, ScheduleItemCreate, Task } from '../types';
 //     entry's start.
 //   - Reordering rows on Your Order calls `onReorder` with the reordered activities (`name`,
 //     `estimated_duration`, `task_id`), and the builder calls `generate` again in that order.
+//
+// B33 contract (D40): `ActivityInput`'s fallback, when there is no suggested duration and no
+// custom one, is 600 s (was 1800). A suggested or custom duration is unchanged.
 
 process.env.TZ = 'America/Chicago';
 
@@ -349,6 +353,44 @@ describe('ScheduleBuilder: generating around the day', () => {
     expect(timeline.props).toBeNull();
     expect(screen.queryByText('Use This Schedule')).not.toBeInTheDocument();
     expect(screen.getByText('Generate Schedule Options')).toBeEnabled();
+  });
+});
+
+describe('ActivityInput: no-history fallback', () => {
+  const NEW_TASK: Task = { id: 5, name: 'New thing', average_duration: 0, total_recordings: 0, created_at: '', updated_at: '' };
+
+  function renderInput() {
+    const onAdd = vi.fn();
+    render(<ActivityInput tasks={[...TASKS, NEW_TASK]} onAdd={onAdd} />);
+    return onAdd;
+  }
+
+  function typeName(name: string) {
+    fireEvent.change(screen.getByPlaceholderText('Activity name (e.g. Go for a run)'), { target: { value: name } });
+  }
+
+  it('a new name with no custom duration is added at 600 s', () => {
+    const onAdd = renderInput();
+    typeName('Brand new');
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ name: 'Brand new', estimatedDuration: 600 }));
+  });
+
+  it('a no-history Activity with no custom duration is added at 600 s', async () => {
+    tasksApi.getStats.mockResolvedValue({ average: 0, median: null, previous: null });
+    const onAdd = renderInput();
+    typeName('New thing');
+    await waitFor(() => expect(tasksApi.getStats).toHaveBeenCalledWith(5));
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ taskId: 5, estimatedDuration: 600 }));
+  });
+
+  it('a custom duration still wins', () => {
+    const onAdd = renderInput();
+    typeName('Brand new');
+    fireEvent.change(screen.getByPlaceholderText('min'), { target: { value: '25' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ estimatedDuration: 1500 }));
   });
 });
 

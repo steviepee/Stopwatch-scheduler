@@ -699,7 +699,7 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - [x] All B32.tests pass; backend suite passes; mobile tsc clean and export succeeds
 
 ### B33.tests — No-history Activities plan at 10 minutes, never 0
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Found in B12 step 5 (2026-10-04). The mobile Schedule tab sends an
   Activity's `average_duration` when its duration field is untouched (`buildRequest` in
   `src/app/(tabs)/schedule.tsx`), so a no-history Activity is generated at **0 seconds** and
@@ -715,9 +715,9 @@ Push, and hand-entered Recordings. Designed with the user on 2026-09-27. Both cl
   - Web: `ActivityInput`'s fallback when there is no suggested duration and no custom one
     becomes 600 s (was 1800).
 - **Acceptance Criteria:**
-  - [ ] Test (backend): a generate request with an activity of duration 0 → 422; the parity fixture still passes
-  - [ ] Test (mobile): a no-history Activity shows 10 and is sent as 600; an Activity with history is sent as its rounded average
-  - [ ] Test (web): adding a no-history Activity with no custom duration gives 600 s
+  - [x] Test (backend): a generate request with an activity of duration 0 → 422; the parity fixture still passes
+  - [x] Test (mobile): a no-history Activity shows 10 and is sent as 600; an Activity with history is sent as its rounded average
+  - [x] Test (web): adding a no-history Activity with no custom duration gives 600 s
 
 ### B33.impl — No-history Activities plan at 10 minutes, never 0
 - **Status:** PENDING
