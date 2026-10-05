@@ -1280,3 +1280,14 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Files changed:** backend/app/models/schemas.py, mobile/src/app/(tabs)/schedule.tsx, frontend/src/components/ActivityInput.tsx, prd.md, progress.md
 - **Verification:** (via python3 subprocess) backend `pytest tests/` 211 passed; mobile `npx jest --ci --forceExit` 212/212, `npx tsc --noEmit` clean, `npx expo export --platform android` succeeded (to `/tmp/b33i_export`); web `npx vitest run` 78/78, `npx tsc --noEmit` clean, `npm run build` succeeded.
 - **Gotchas:** None.
+
+## C1.tests. Gate the Google login route
+- **Date:** 2026-10-04
+- **Status:** DONE
+- **Summary:** In `backend/tests/test_auth_gate.py`, `test_google_login_exempt` is replaced by `test_google_login_requires_token` (no token → 401 `Not authenticated`) and `test_google_login_with_token_returns_auth_url` (Flow mocked → 200, `{'auth_url': ...}`). Also added `test_callback_unknown_state_is_400_and_saves_nothing`: with no pending state, the callback with `state=never-issued` returns 400, never builds a `Flow`, and leaves `calendar_service.creds` unchanged. The health and callback exempt tests stay.
+- **Files changed:** backend/tests/test_auth_gate.py, prd.md, progress.md
+- **Verification:** (via python3 subprocess) backend `pytest tests/` gave 1 failed, 212 passed. The failure is the login-without-token test (got 200), as expected before impl. Against a throwaway reference, `test_auth_gate.py` + `test_auth_state.py` passed 15/15. The reference removed `/api/auth/google/login` from `_EXEMPT_PATHS` in `main.py`. `main.py` was then restored from `/tmp/c1t_main.py`.
+- **Gotchas:**
+  - The callback state check already exists (`GoogleCalendarService.authenticate` compares to `_pending_state`, single use), so the impl only needs the `_EXEMPT_PATHS` change in `main.py`.
+  - The "saves nothing" test checks that `Flow` is never built and `creds` is unchanged, not that `_save_credentials` is never called, so it should survive C2 replacing `token.pickle` with a DB row.
+  - `python3 - <<EOF` heredocs worked for edits this session. `cd X && git …` and `git -C` both need approval, so run git from the repo root.

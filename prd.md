@@ -84,16 +84,16 @@ still HOLD, carried at the end of this file.
   - [ ] `docker run --rm hello-world` prints its greeting
 
 ### C1.tests — Gate the Google login route
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D59. `/api/auth/google/login` is in `_EXEMPT_PATHS`
   ([main.py](backend/app/main.py)). Extend `backend/tests/test_auth_gate.py`.
 - **Contract:** `GET /api/auth/google/login` requires the bearer token (401 without it, as any
   gated route). `/api/health` and `/api/auth/callback` stay exempt. A callback whose `state` was
   not issued by an authenticated login call is 400 and stores no credentials.
 - **Acceptance Criteria:**
-  - [ ] Test: login without a token → 401; with it → 200 and an `auth_url` (Google flow mocked)
-  - [ ] Test: callback with an unknown `state` → 400; no credentials saved
-  - [ ] Test: `/api/health` and `/api/auth/callback` are still reachable without a token
+  - [x] Test: login without a token → 401; with it → 200 and an `auth_url` (Google flow mocked)
+  - [x] Test: callback with an unknown `state` → 400; no credentials saved
+  - [x] Test: `/api/health` and `/api/auth/callback` are still reachable without a token
 
 ### C1.impl — Gate the Google login route
 - **Status:** PENDING

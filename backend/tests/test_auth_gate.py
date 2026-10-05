@@ -3,6 +3,7 @@ import subprocess
 import sys
 
 import pytest
+from unittest.mock import MagicMock, patch
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -71,14 +72,36 @@ def test_health_exempt(client):
     assert resp.status_code != 401
 
 
-def test_google_login_exempt(client):
+def test_google_login_requires_token(client):
     resp = client.get('/api/auth/google/login')
-    assert resp.status_code != 401
+    assert resp.status_code == 401
+    assert resp.json() == {'detail': 'Not authenticated'}
+
+
+def test_google_login_with_token_returns_auth_url(authed_client):
+    flow = MagicMock()
+    flow.authorization_url.return_value = ('https://accounts.google.com/x', 'issued-state')
+    with patch('app.services.google_calendar.Flow') as F:
+        F.from_client_config.return_value = flow
+        resp = authed_client.get('/api/auth/google/login')
+    assert resp.status_code == 200
+    assert resp.json() == {'auth_url': 'https://accounts.google.com/x'}
 
 
 def test_callback_exempt(client):
     resp = client.get('/api/auth/callback')
     assert resp.status_code != 401
+
+
+def test_callback_unknown_state_is_400_and_saves_nothing(client):
+    from app.routers.calendar_auth import calendar_service
+    calendar_service._pending_state = None
+    creds_before = calendar_service.creds
+    with patch('app.services.google_calendar.Flow') as F:
+        resp = client.get('/api/auth/callback', params={'code': 'c', 'state': 'never-issued'})
+    assert resp.status_code == 400
+    F.from_client_config.assert_not_called()
+    assert calendar_service.creds is creds_before
 
 
 def test_startup_fails_without_api_token():
