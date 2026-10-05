@@ -170,7 +170,7 @@ still HOLD, carried at the end of this file.
   - [x] All C3.tests pass; full suite passes
 
 ### C4.tests — Web session cookie
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D60, backend half. Extend `backend/tests/test_auth_gate.py`.
 - **Contract:**
   - `POST /api/auth/web-session` (exempt from the gate) with body `{"token": "..."}`: if it
@@ -183,10 +183,10 @@ still HOLD, carried at the end of this file.
     header. Expired, tampered, or signed-with-another-token cookies → 401.
   - Nothing about the bearer header changes; the phone keeps using it.
 - **Acceptance Criteria:**
-  - [ ] Test: correct token → 204 with the cookie and every attribute above; wrong token → 401, no cookie
-  - [ ] Test: a gated route succeeds with only the cookie
-  - [ ] Test: tampered, expired, and other-token cookies → 401
-  - [ ] Test: DELETE clears the cookie; the bearer header alone still works everywhere
+  - [x] Test: correct token → 204 with the cookie and every attribute above; wrong token → 401, no cookie
+  - [x] Test: a gated route succeeds with only the cookie
+  - [x] Test: tampered, expired, and other-token cookies → 401
+  - [x] Test: DELETE clears the cookie; the bearer header alone still works everywhere
 
 ### C4.impl — Web session cookie
 - **Status:** PENDING

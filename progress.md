@@ -1340,3 +1340,15 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Files changed:** backend/app/database.py, backend/alembic/env.py, prd.md, progress.md
 - **Verification:** (via python3 subprocess) backend `pytest tests/` 231 passed.
 - **Gotchas:** None.
+
+## C4.tests. Web session cookie
+- **Date:** 2026-10-04
+- **Status:** DONE
+- **Summary:** Extended `backend/tests/test_auth_gate.py` with 16 C4 tests (contract in a comment block above them). They cover sign-in (204 plus every cookie attribute, wrong or missing token gives no cookie), cookie-only access to a gated route, and 401 for a tampered signature, tampered expiry, malformed, expired, other-token, or post-rotation cookie. DELETE is gated and clears the cookie (Max-Age=0, Path=/), and the bearer header alone still works on tasks, sessions, time-logs and schedules.
+- **Files changed:** backend/tests/test_auth_gate.py, prd.md, progress.md
+- **Verification:** (via python3 subprocess) backend `pytest tests/` gave 9 failed, 238 passed, all failures C4 tests, as expected before impl. Against a throwaway reference, 247/247 passed. Sources were then restored from `/tmp/c4t_orig/`.
+- **Gotchas:**
+  - The tests pin the cookie value format: `"<expiry>.<sig>"`, with expiry as integer Unix seconds and `sig = hmac.new(API_TOKEN.encode(), str(expiry).encode(), hashlib.sha256).hexdigest()`. Read `API_TOKEN` with `os.getenv` at request time (the rotation test changes it mid-test).
+  - Reference impl that passed. In `main.py`, the gate lets `POST /api/auth/web-session` through by method and path. Do not add it to `_EXEMPT_PATHS`, because DELETE must stay gated. It otherwise accepts the bearer header OR `_cookie_ok(request.cookies.get('sw_session', ''), token)`, which checks `expiry.isdigit()`, `int(expiry) >= time.time()`, and `hmac.compare_digest` on the sig. In `calendar_auth.py`, `POST /web-session` (status 204) takes a pydantic `{token: str}` body plus `response: Response` and uses `response.set_cookie(..., max_age=2592000, path="/", secure=True, httponly=True, samesite="strict")`. `DELETE /web-session` (204) calls `response.delete_cookie("sw_session", path="/")`.
+  - Tests send cookies as an explicit `Cookie:` header and clear `client.cookies`, because httpx will not send a Secure cookie to `http://testserver`.
+  - `/api/auth/status` was kept out of the bearer-alone test on purpose. With `CREDENTIAL_KEY` in `.env`, it opens a real `SessionLocal()` against live MySQL.
