@@ -218,7 +218,7 @@ still HOLD, carried at the end of this file.
   - [x] All C5.tests pass; full suite passes
 
 ### C6.tests — Web sign-in page
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D60, web half. Add `frontend/src/__tests__/SignIn.test.tsx`.
 - **Contract:** Any API response of 401 (outside Google-specific calls, which keep their own
   "authorize from a laptop" handling) switches the app to a **sign-in screen**: one password
@@ -229,11 +229,11 @@ still HOLD, carried at the end of this file.
   `sessionStorage` or a JS-readable cookie. In dev the Vite proxy still injects the header, so
   the screen never appears there.
 - **Acceptance Criteria:**
-  - [ ] Test: a 401 from a data call shows the sign-in screen
-  - [ ] Test: Sign in POSTs the token, and on 204 the normal view returns
-  - [ ] Test: a rejected token shows the error and stays
-  - [ ] Test: Sign out calls DELETE and shows the sign-in screen
-  - [ ] Test: nothing is written to `localStorage`/`sessionStorage`
+  - [x] Test: a 401 from a data call shows the sign-in screen
+  - [x] Test: Sign in POSTs the token, and on 204 the normal view returns
+  - [x] Test: a rejected token shows the error and stays
+  - [x] Test: Sign out calls DELETE and shows the sign-in screen
+  - [x] Test: nothing is written to `localStorage`/`sessionStorage`
 
 ### C6.impl — Web sign-in page
 - **Status:** PENDING

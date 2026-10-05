@@ -1379,3 +1379,17 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Files changed:** backend/app/main.py, prd.md, progress.md
 - **Verification:** (via python3 subprocess) backend `pytest tests/` 256 passed.
 - **Gotchas:** The catch-all must stay registered after every router, or it would shadow them. C7's Dockerfile should set `STATIC_DIR` to the built `frontend/dist` path inside the image.
+
+## C6.tests. Web sign-in page
+- **Date:** 2026-10-04
+- **Status:** DONE
+- **Summary:** Added `frontend/src/__tests__/SignIn.test.tsx` (8 tests, contract in the header). It renders `<App />` with the real `services/api.ts` and swaps `api.defaults.adapter` for a fake server, so the impl's real 401 hook runs. The tests cover: a 401 on load shows `signin-screen` (password input labelled "API token", "Sign in" button); Sign in POSTs exactly `{ token }` to `/auth/web-session` and on 204 refetches tasks/sessions/schedules and shows the tabs; a rejected token shows "That token didn't work" and stays, and a good token afterwards works; Options → "Sign out" sends DELETE and returns to the sign-in screen; a 401 from `/auth/status` or `/auth/google/login` does not show the sign-in screen; and `Storage.prototype.setItem` is never called, both storages stay empty, and `document.cookie` holds no token.
+- **Files changed:** frontend/src/__tests__/SignIn.test.tsx, prd.md, progress.md
+- **Verification:** from `frontend/`: `npx vitest run` 6 failed, 80 passed. The 6 failures are the new C6 tests, as expected before impl; "already signed in" and "Google 401" already pass as regression guards. `npx tsc --noEmit` clean. Against a throwaway reference, 86/86 passed and tsc was clean. The four sources were then restored from `/tmp/c6t_orig/` (md5s match).
+- **Gotchas:**
+  - Every call, including sign-in and sign-out, must go through the default-exported `api` axios instance, because the tests replace its adapter. A bare `fetch` or a second axios instance would bypass the fake server.
+  - The fake adapter throws an `AxiosError` carrying `response.status`, and `config.url` is the relative path (`/tasks/`), with `baseURL` kept separate. A response interceptor should check `error.response?.status === 401` and exempt `/auth/web-session`, `/auth/status`, `/auth/google/...` and `/auth/calendar/...`.
+  - Reference impl that passed: `api.ts` gets a module-level `onUnauthorized(handler)` setter, a response interceptor that calls it, and `authAPI.signIn(token)` / `authAPI.signOut()`. `App.tsx` registers the handler in a `useEffect` and keeps a `signedOut` state. When it is set, App renders a `SignIn` component instead of the router. Clearing it remounts `HomePage`, which reloads its data. `HomePage` takes an `onSignOut` prop and passes it to `OptionsPage`, which renders a "Sign out" button.
+  - `HomePage` already reads `userOptions` from localStorage and writes it only when an option changes, so the storage test passes as long as sign-in never writes.
+  - `CalendarView` is mocked to null in the test, as in ScheduleBuilder.test.
+  - In this sandbox a Bash heredoc containing apostrophes failed to parse ("Parser skipped input"); append to `progress.md` with Edit instead.
