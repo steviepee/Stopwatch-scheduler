@@ -67,7 +67,7 @@ still HOLD, carried at the end of this file.
 ## Tasks
 
 ### U1. USER — Install Docker Engine in WSL
-- **Status:** USER
+- **Status:** USER — DONE 2026-10-04. Docker 29.8.2 with buildx; service enabled.
 - **Description:** Needed before C7 (the loop builds the image to check the Dockerfile) and for
   every deploy. Free; this is Docker Engine, not Docker Desktop. In an Ubuntu tab:
   ```bash
@@ -81,7 +81,7 @@ still HOLD, carried at the end of this file.
   The last line prints "Hello from Docker!". Don't build images while a Ralph loop is running
   (memory). The loop's allow-list already permits `docker build`, `docker run` and `docker image`.
 - **Acceptance Criteria:**
-  - [ ] `docker run --rm hello-world` prints its greeting
+  - [x] `docker run --rm hello-world` prints its greeting
 
 ### C1.tests — Gate the Google login route
 - **Status:** DONE
