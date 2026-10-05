@@ -327,7 +327,7 @@ still HOLD, carried at the end of this file.
   - [ ] Cost Management → Free services checked for MySQL B1ms; noted here: ____
 
 ### U4. USER — Push the image and create the app
-- **Status:** USER
+- **Status:** USER — DONE 2026-10-05. Image `b2e8c59` public on GHCR; app `stopwatch-api` running at `stopwatch-api.jollycliff-79fefd85.southcentralus.azurecontainerapps.io`; all migrations ran on first start.
 - **Description:** Needs a GitHub personal access token (classic) with `write:packages`
   (github.com → Settings → Developer settings → Tokens). Generate the production secrets and keep
   all four in your password manager:
@@ -365,9 +365,9 @@ still HOLD, carried at the end of this file.
   curl -s https://$FQDN/api/health
   ```
 - **Acceptance Criteria:**
-  - [ ] `curl https://$FQDN/api/health` → `{"status":"healthy"}`
-  - [ ] `curl -s -o /dev/null -w "%{http_code}" https://$FQDN/api/tasks/` → 401
-  - [ ] `curl -s -o /dev/null -w "%{http_code}" https://$FQDN/api/auth/google/login` → 401 (C1)
+  - [x] `curl https://$FQDN/api/health` → `{"status":"healthy"}`
+  - [x] `curl -s -o /dev/null -w "%{http_code}" https://$FQDN/api/tasks/` → 401
+  - [x] `curl -s -o /dev/null -w "%{http_code}" https://$FQDN/api/auth/google/login` → 401 (C1)
 
 ### U5. USER — Domain, certificate, and Google redirect
 - **Status:** USER

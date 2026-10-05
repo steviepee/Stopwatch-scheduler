@@ -240,7 +240,14 @@ BROWSER=~/winbrowser.sh az login --tenant 1678bfa2-dd98-416b-aa4c-ceb51469ee49
 ```
 Expect a one-time MFA registration in the browser. Then `az account show --output table`.
 
-**Occurred:** 2026-09-06, first Azure login. Subscription `Azure subscription 1`.
+**Also:** without the helper, WSL's default opener cuts the sign-in URL at its first `&`, and the
+browser shows **"The request body must contain the following parameter: 'client_id'"**. Same fix:
+recreate `~/winbrowser.sh` (it is not in the repo and can go missing) and log in through it, or copy
+the whole URL that `az login` prints into the browser by hand. Newer `az` then asks which
+subscription to use: type the row number of `Azure subscription 1`.
+
+**Occurred:** 2026-09-06, first Azure login. Subscription `Azure subscription 1`. Again 2026-10-04
+(the `client_id` variant), creating the Phase 6 database.
 
 ---
 
@@ -532,3 +539,26 @@ thread-safety pattern. Reproduce or verify by firing seven parallel
 after, all 200.
 
 **Remember:** the backend has no `--reload`, so a fix is not live until uvicorn is restarted.
+
+---
+
+## Container App fails to provision: image `UNAUTHORIZED: authentication required`
+
+**Symptom:** `az containerapp create` (or `update`) prints a yellow notice that the
+`containerapp` extension altered the command, then fails with `Field
+'template.containers.stopwatch-api.image' is invalid ... ghcr.io/steviepee/stopwatch-scheduler:<tag>
+... UNAUTHORIZED: authentication required`. The app resource exists with `provisioningState:
+Failed`.
+
+**Cause:** packages pushed to GitHub Container Registry are **private by default**, separately
+from the repository's own visibility. Azure pulls anonymously. The yellow extension notice is
+harmless and unrelated.
+
+**Fix:** github.com → profile → Packages → `stopwatch-scheduler` → Package settings → Danger
+Zone → Change visibility → Public, and click the final confirm button (the change does not save
+without it). Check from WSL: `curl -s "https://ghcr.io/token?scope=repository:steviepee/stopwatch-scheduler:pull"`
+returns `{"token":...}`, not `UNAUTHORIZED`. Then retry without recreating:
+`az containerapp update -n stopwatch-api -g rg-stopwatch --image ghcr.io/steviepee/stopwatch-scheduler:<tag>`.
+The failed app keeps its secrets and env vars.
+
+**Occurred:** 2026-10-05, Phase 6 U4.
