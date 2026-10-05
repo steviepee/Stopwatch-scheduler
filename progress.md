@@ -1352,3 +1352,11 @@ Each iteration appends its results here so the next session knows what worked, w
   - Reference impl that passed. In `main.py`, the gate lets `POST /api/auth/web-session` through by method and path. Do not add it to `_EXEMPT_PATHS`, because DELETE must stay gated. It otherwise accepts the bearer header OR `_cookie_ok(request.cookies.get('sw_session', ''), token)`, which checks `expiry.isdigit()`, `int(expiry) >= time.time()`, and `hmac.compare_digest` on the sig. In `calendar_auth.py`, `POST /web-session` (status 204) takes a pydantic `{token: str}` body plus `response: Response` and uses `response.set_cookie(..., max_age=2592000, path="/", secure=True, httponly=True, samesite="strict")`. `DELETE /web-session` (204) calls `response.delete_cookie("sw_session", path="/")`.
   - Tests send cookies as an explicit `Cookie:` header and clear `client.cookies`, because httpx will not send a Secure cookie to `http://testserver`.
   - `/api/auth/status` was kept out of the bearer-alone test on purpose. With `CREDENTIAL_KEY` in `.env`, it opens a real `SessionLocal()` against live MySQL.
+
+## C4.impl. Web session cookie
+- **Date:** 2026-10-04
+- **Status:** DONE
+- **Summary:** `calendar_auth.py` gains `POST /web-session` (204, constant-time token compare, sets `sw_session` = `"<expiry>.<hmac-sha256>"` with HttpOnly/Secure/SameSite=Strict/Path=//Max-Age=2592000; wrong token 401) and `DELETE /web-session` (204, `delete_cookie`), plus `sign_session` / `session_cookie_valid` helpers. The gate in `main.py` lets `POST /api/auth/web-session` through by method+path (not `_EXEMPT_PATHS`, so DELETE stays gated) and accepts the bearer header or a valid cookie, reading `API_TOKEN` at request time. New `WebSessionRequest` schema in `schemas.py`.
+- **Files changed:** backend/app/main.py, backend/app/routers/calendar_auth.py, backend/app/models/schemas.py, prd.md, progress.md
+- **Verification:** (via python3 subprocess) backend `pytest tests/` 247 passed.
+- **Gotchas:** `main.py` imports `SESSION_COOKIE` and `session_cookie_valid` from `app.routers.calendar_auth`; C6 (web sign-in page) should POST `{token}` to `/api/auth/web-session` and rely on the cookie (same origin in prod, Vite proxy in dev). The cookie is `Secure`, so plain-http dev on a LAN IP won't store it; `localhost` is treated as secure by browsers.

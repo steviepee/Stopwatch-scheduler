@@ -1,7 +1,28 @@
-from fastapi import APIRouter, HTTPException
+import hashlib
+import hmac
+import os
+import time
+
+from fastapi import APIRouter, HTTPException, Response
+from app.models.schemas import WebSessionRequest
 from app.services.google_calendar import GoogleCalendarService
 
 router = APIRouter()
+
+SESSION_COOKIE = "sw_session"
+SESSION_MAX_AGE = 2592000
+
+
+def sign_session(expiry: int, token: str) -> str:
+    sig = hmac.new(token.encode(), str(expiry).encode(), hashlib.sha256).hexdigest()
+    return f"{expiry}.{sig}"
+
+
+def session_cookie_valid(value: str, token: str) -> bool:
+    expiry, _, _ = value.partition(".")
+    if not expiry.isdigit() or int(expiry) < time.time():
+        return False
+    return hmac.compare_digest(value, sign_session(int(expiry), token))
 
 # This will be used for Google Calendar OAuth
 calendar_service = GoogleCalendarService()
@@ -38,6 +59,28 @@ def create_calendar_event(task_name: str, duration_seconds: float, start_time: s
         return {"message": "Event created", "event": event}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/web-session", status_code=204)
+def create_web_session(body: WebSessionRequest, response: Response):
+    token = os.getenv("API_TOKEN")
+    if not hmac.compare_digest(body.token.encode(), token.encode()):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    expiry = int(time.time()) + SESSION_MAX_AGE
+    response.set_cookie(
+        SESSION_COOKIE,
+        sign_session(expiry, token),
+        max_age=SESSION_MAX_AGE,
+        path="/",
+        secure=True,
+        httponly=True,
+        samesite="strict",
+    )
+
+
+@router.delete("/web-session", status_code=204)
+def delete_web_session(response: Response):
+    response.delete_cookie(SESSION_COOKIE, path="/", secure=True, httponly=True, samesite="strict")
+
 
 @router.get("/status")
 def auth_status():

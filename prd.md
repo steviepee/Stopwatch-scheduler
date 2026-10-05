@@ -189,11 +189,11 @@ still HOLD, carried at the end of this file.
   - [x] Test: DELETE clears the cookie; the bearer header alone still works everywhere
 
 ### C4.impl — Web session cookie
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract in `main.py` (gate) and `routers/calendar_auth.py`
   or a small new router. Standard library only (`hmac`, `hashlib`, `time`).
 - **Acceptance Criteria:**
-  - [ ] All C4.tests pass; full suite passes
+  - [x] All C4.tests pass; full suite passes
 
 ### C5.tests — Backend serves the built web app
 - **Status:** PENDING

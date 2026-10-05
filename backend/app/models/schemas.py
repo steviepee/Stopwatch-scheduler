@@ -262,3 +262,7 @@ class ExportRequest(BaseModel):
 class ExportLink(BaseModel):
     url: str
     expires_at: UTCDateTime
+
+
+class WebSessionRequest(BaseModel):
+    token: str

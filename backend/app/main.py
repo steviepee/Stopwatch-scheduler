@@ -6,6 +6,7 @@ import hmac
 from dotenv import load_dotenv
 
 from app.routers import tasks, time_logs, calendar_auth, sessions, schedules, insights, exports
+from app.routers.calendar_auth import SESSION_COOKIE, session_cookie_valid
 import app.models.schedule
 
 load_dotenv()
@@ -34,9 +35,13 @@ async def bearer_gate(request: Request, call_next):
         return await call_next(request)
     if request.method == 'GET' and request.url.path.startswith('/api/exports/'):
         return await call_next(request)
+    if request.method == 'POST' and request.url.path == '/api/auth/web-session':
+        return await call_next(request)
     token = os.getenv('API_TOKEN')
     auth = request.headers.get('Authorization', '')
-    if not hmac.compare_digest(auth, f'Bearer {token}'):
+    if not hmac.compare_digest(auth, f'Bearer {token}') and not session_cookie_valid(
+        request.cookies.get(SESSION_COOKIE, ''), token
+    ):
         return JSONResponse(status_code=401, content={'detail': 'Not authenticated'})
     return await call_next(request)
 
