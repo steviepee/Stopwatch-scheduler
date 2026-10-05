@@ -50,34 +50,53 @@ def test_failed_refresh_reports_unauthenticated(service):
     assert service.service is None
 
 
-def test_credentials_loaded_lazily_from_disk(service):
-    creds = _creds(expired=False, valid=True)
+def _store_fake_creds(monkeypatch, expiry_delta):
+    from datetime import datetime
+    from google.oauth2.credentials import Credentials
+    from cryptography.fernet import Fernet
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    engine = create_engine("sqlite:///./test.db", connect_args={"check_same_thread": False})
+    monkeypatch.setenv("CREDENTIAL_KEY", Fernet.generate_key().decode())
+    monkeypatch.setattr("app.services.google_calendar.SessionLocal", sessionmaker(bind=engine))
+    with patch.object(GoogleCalendarService, "_load_credentials", return_value=None):
+        svc = GoogleCalendarService()
+    svc.creds = Credentials(
+        token="fake-access",
+        refresh_token="fake-refresh",
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id="fake-client-id",
+        client_secret="fake-client-secret",
+        expiry=datetime.utcnow() + expiry_delta,
+    )
+    svc._save_credentials()
+
+
+def test_credentials_loaded_lazily_from_db(service, monkeypatch):
+    from datetime import timedelta
+    _store_fake_creds(monkeypatch, timedelta(hours=1))
     service.creds = None
-    with patch("app.services.google_calendar.os.path.exists", return_value=True), \
-         patch("builtins.open", MagicMock()), \
-         patch("app.services.google_calendar.pickle.load", return_value=creds), \
-         patch("app.services.google_calendar.build") as build:
+    with patch("app.services.google_calendar.build") as build:
         assert service.is_authenticated() is True
+    assert service.creds.refresh_token == "fake-refresh"
     build.assert_called_once()
 
 
-def test_service_rebuilt_after_lazy_load(service):
-    creds = _creds(expired=False, valid=True)
+def test_service_rebuilt_after_lazy_load(service, monkeypatch):
+    from datetime import timedelta
+    _store_fake_creds(monkeypatch, timedelta(hours=1))
     service.creds = None
     service.service = None
-    with patch("app.services.google_calendar.os.path.exists", return_value=True), \
-         patch("builtins.open", MagicMock()), \
-         patch("app.services.google_calendar.pickle.load", return_value=creds), \
-         patch("app.services.google_calendar.build", return_value="built"):
+    with patch("app.services.google_calendar.build", return_value="built"):
         service.is_authenticated()
     assert service.service == "built"
 
 
-def test_startup_survives_dead_refresh_token():
-    creds = _creds(expired=True, valid=False)
-    creds.refresh.side_effect = Exception("invalid_grant: Bad Request")
-    with patch("app.services.google_calendar.os.path.exists", return_value=True), \
-         patch("builtins.open", MagicMock()), \
-         patch("app.services.google_calendar.pickle.load", return_value=creds):
+def test_startup_survives_dead_refresh_token(monkeypatch):
+    from datetime import timedelta
+    from google.oauth2.credentials import Credentials
+    _store_fake_creds(monkeypatch, timedelta(hours=-1))
+    with patch.object(Credentials, "refresh", side_effect=Exception("invalid_grant: Bad Request")):
         svc = GoogleCalendarService()
         assert svc.is_authenticated() is False

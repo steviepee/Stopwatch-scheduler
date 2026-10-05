@@ -103,7 +103,7 @@ still HOLD, carried at the end of this file.
   - [x] All C1.tests pass; full suite passes
 
 ### C2.tests — Google credentials as an encrypted database row
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D58. Today `GoogleCalendarService` pickles credentials to `token.pickle`
   ([google_calendar.py](backend/app/services/google_calendar.py)). Add
   `backend/tests/test_credential_store.py`; update any test that relies on the pickle file.
@@ -119,11 +119,11 @@ still HOLD, carried at the end of this file.
     (`/api/auth/status` → `authenticated: false`) and saving raises a clear error; the rest of the
     app works. If the stored row cannot be decrypted with the key, the same: not authenticated.
 - **Acceptance Criteria:**
-  - [ ] Test: save then load round-trips a credential (fake values), and the stored `data` does not contain the refresh token in plain text
-  - [ ] Test: no file named `token.pickle` is created or read (patch `open`/check the working dir)
-  - [ ] Test: unset key → not authenticated, and other routes still work
-  - [ ] Test: a row encrypted with a different key → not authenticated, no crash
-  - [ ] Test: Alembic revision present; `test_migrations.py` passes
+  - [x] Test: save then load round-trips a credential (fake values), and the stored `data` does not contain the refresh token in plain text
+  - [x] Test: no file named `token.pickle` is created or read (patch `open`/check the working dir)
+  - [x] Test: unset key → not authenticated, and other routes still work
+  - [x] Test: a row encrypted with a different key → not authenticated, no crash
+  - [x] Test: Alembic revision present; `test_migrations.py` passes
 
 ### C2.impl — Google credentials as an encrypted database row
 - **Status:** PENDING
