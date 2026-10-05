@@ -243,7 +243,7 @@ still HOLD, carried at the end of this file.
   - [x] All C6.tests pass; web tsc clean; `npm run build` succeeds
 
 ### C7. Container image, entrypoint, and deploy script
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D55, D61, D63. Depends on U1: if `docker --version` fails, change nothing,
   mark BLOCKED ("U1 not done") and exit. Create at the repo root:
   - `Dockerfile`, multi-stage: stage 1 `node:22-slim` (matches local Node 22) runs `npm ci && npm run build` in
@@ -261,11 +261,11 @@ still HOLD, carried at the end of this file.
     with uncommitted changes. Prints the app's URL at the end.
   No `.tests` pair: verified by building.
 - **Acceptance Criteria:**
-  - [ ] `docker build -t stopwatch-scheduler:local .` succeeds from the repo root
-  - [ ] `docker run --rm --entrypoint ls stopwatch-scheduler:local /app/static` lists `index.html`
-  - [ ] `docker run --rm --entrypoint python -e API_TOKEN=x stopwatch-scheduler:local -c "import app.main"` exits 0
-  - [ ] The image contains no `.env`, `token.pickle` or `venv` (`docker run --rm --entrypoint sh stopwatch-scheduler:local -c "find / -name .env -o -name token.pickle 2>/dev/null"` prints nothing)
-  - [ ] `bash -n deploy.sh docker-entrypoint.sh` passes; both are executable
+  - [x] `docker build -t stopwatch-scheduler:local .` succeeds from the repo root
+  - [x] `docker run --rm --entrypoint ls stopwatch-scheduler:local /app/static` lists `index.html`
+  - [x] `docker run --rm --entrypoint python -e API_TOKEN=x stopwatch-scheduler:local -c "import app.main"` exits 0
+  - [x] The image contains no `.env`, `token.pickle` or `venv` (`docker run --rm --entrypoint sh stopwatch-scheduler:local -c "find / -name .env -o -name token.pickle 2>/dev/null"` prints nothing)
+  - [x] `bash -n deploy.sh docker-entrypoint.sh` passes; both are executable
 
 ### C8.tests — Mobile app variants
 - **Status:** PENDING

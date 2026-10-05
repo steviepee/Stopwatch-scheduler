@@ -1,0 +1,12 @@
+.git
+mobile/
+**/node_modules
+**/venv
+**/.env
+**/.env.local
+**/*.pickle
+**/test.db
+**/__pycache__
+**/.pytest_cache
+frontend/dist
+frontend/dev-dist

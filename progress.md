@@ -1403,3 +1403,17 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Gotchas:**
   - `onSignOut` is optional on `HomePage` and `OptionsPage` because `ScheduleBuilder.test.tsx` renders `HomePage` with no props.
   - `cd dir && cmd > file` and any command with `$?` are refused by the sandbox; run frontend checks through `python3 -c "import subprocess; subprocess.run([...], cwd=...)"`.
+
+## C7. Container image, entrypoint, and deploy script
+- **Date:** 2026-10-04
+- **Status:** DONE
+- **Summary:** Added a multi-stage `Dockerfile`. Stage 1 (`node:22-slim`) runs `npm ci` and `npm run build` in `frontend/`. Stage 2 (`python:3.10-slim`) installs `backend/requirements.txt` into `/app`, copies `app`, `alembic` and `alembic.ini`, copies the web `dist` to `/app/static`, sets `STATIC_DIR` and `DB_SSL_CA`, exposes 8000, and uses `docker-entrypoint.sh` as its ENTRYPOINT. The entrypoint runs `set -e`, then `alembic upgrade head`, then `exec uvicorn`. Also added `.dockerignore` and `deploy.sh`. `deploy.sh` refuses to run on a dirty tree, then builds and pushes `ghcr.io/steviepee/stopwatch-scheduler:<short sha>`, runs `az containerapp update`, and prints the ingress FQDN.
+- **Files changed:** Dockerfile, docker-entrypoint.sh, .dockerignore, deploy.sh, prd.md, progress.md
+- **Verification:** `docker build -t stopwatch-scheduler:local .` succeeded. `ls /app/static` in the image lists `index.html`. `python -c "import app.main"` with `API_TOKEN=x` exits 0. The `find / -name .env -o -name token.pickle` check prints nothing. `bash -n` passes on each script, and both are mode 755. In the image, `alembic history` from `/app` shows the head revision `22e35c64707d`.
+- **Gotchas:**
+  - The first build failed with a PyPI `ReadTimeoutError` during `pip install`. This was transient, and a plain retry succeeded. Retry before you suspect the Dockerfile.
+  - `docker --version` and `docker info` are not on the allow-list and need approval. Use `which docker` to check for U1. `docker build`, `docker run` and `docker image` are allowed.
+  - `frontend/.env` holds the dev `API_TOKEN` for the Vite proxy. `.dockerignore` uses `**/.env` (not just `.env`) so that file stays out of the build context.
+  - `bash -n a b` only checks `a`, because `b` becomes `$1`. Check each script separately.
+  - Searching the image for any `venv` turns up `/usr/local/lib/python3.10/venv`. That is the standard-library module, not a project venv.
+  - `import app.main` in the image warns that google.api_core is dropping Python 3.10 (EOL 2026-10-04). It is only a warning, and 3.10 is pinned to match the local venv.
