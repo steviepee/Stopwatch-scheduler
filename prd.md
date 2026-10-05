@@ -135,7 +135,7 @@ still HOLD, carried at the end of this file.
   - [x] `git grep -n "pickle" backend/app` is empty
 
 ### U2. USER — Local `.env` after C2
-- **Status:** USER
+- **Status:** USER — DONE 2026-10-04. Local DB at head with `google_credentials`; one encrypted row; Google connected via Connect Calendar; `token.pickle` deleted.
 - **Description:** After C2 lands, the local backend needs an encryption key and one Google
   re-authorization, because credentials now live in the database instead of `token.pickle`.
   ```bash
@@ -143,10 +143,10 @@ still HOLD, carried at the end of this file.
   echo "CREDENTIAL_KEY=$(./venv/bin/python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')" >> .env
   ./venv/bin/alembic upgrade head
   ```
-  Restart uvicorn, then from the laptop browser use the web app's Connect Google button at
+  Restart uvicorn, then from the laptop browser click **Connect Calendar** (top-right of the Recordings card) at
   `localhost:3000` once. `token.pickle` can then be deleted: `rm token.pickle`.
 - **Acceptance Criteria:**
-  - [ ] `curl -s -H "Authorization: Bearer $(grep ^API_TOKEN .env | cut -d= -f2-)" http://localhost:8000/api/auth/status` shows `"authenticated": true`
+  - [x] `curl -s -H "Authorization: Bearer $(grep ^API_TOKEN .env | cut -d= -f2-)" http://localhost:8000/api/auth/status` shows `"authenticated": true`
 
 ### C3.tests — Database connection from separate settings, with optional TLS
 - **Status:** DONE
@@ -397,7 +397,7 @@ still HOLD, carried at the end of this file.
 ### U6. USER — Sign in on the web and connect Google
 - **Status:** USER
 - **Description:** On the laptop, open `https://api.stopwatchscheduler.app`. The sign-in page
-  appears; paste the **production** API token. Go to the Calendar tab's Connect Google button,
+  appears; paste the **production** API token. Click **Connect Calendar** in the top-right of the Recordings card (it shows only while Google is not connected),
   authorize (the "Google hasn't verified this app" screen is expected: Advanced → Go to…), and
   return. The Calendar shows today's Google events.
 - **Acceptance Criteria:**
