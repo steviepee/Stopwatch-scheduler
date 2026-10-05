@@ -164,10 +164,10 @@ still HOLD, carried at the end of this file.
   - [x] Test: `alembic/env.py`'s URL comes from the same helper (`db_url` override still wins)
 
 ### C3.impl — Database connection from separate settings, with optional TLS
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
-  - [ ] All C3.tests pass; full suite passes
+  - [x] All C3.tests pass; full suite passes
 
 ### C4.tests — Web session cookie
 - **Status:** PENDING

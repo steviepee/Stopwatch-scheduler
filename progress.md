@@ -1332,3 +1332,11 @@ Each iteration appends its results here so the next session knows what worked, w
   - Reference impl that passed. In `database.py`, `db_connection_settings()` builds `URL.create("mysql+pymysql", username=..., password=..., host=..., port=int(os.getenv("DB_PORT", "3306")), database=...)` and `connect_args = {"ssl": {"ca": ssl_ca}} if ssl_ca else {}`. The engine is `create_engine(url, connect_args=connect_args)`, and the old `DB_*` module constants and `SQLALCHEMY_DATABASE_URL` are removed (nothing else used them).
   - In `env.py`, `_get_settings()` returns `(x_args['db_url'], {})` on override, else `import app.database; return app.database.db_connection_settings()`. Alembic re-executes env.py on every command, so a `from app.database import db_connection_settings` inside env.py also picks up the monkeypatch. Online mode becomes `create_engine(url, connect_args=connect_args, poolclass=pool.NullPool)` in place of `engine_from_config`; offline uses just the url.
   - `port` must be an int for `URL.create`, and the test asserts `url.port == 3307`.
+
+## C3.impl. Database connection from separate settings, with optional TLS
+- **Date:** 2026-10-04
+- **Status:** DONE
+- **Summary:** `app/database.py` gains `db_connection_settings()`, which builds the URL with `URL.create("mysql+pymysql", ...)` from the `DB_*` env vars at call time and returns `{"ssl": {"ca": DB_SSL_CA}}` connect args when `DB_SSL_CA` is set, else `{}`; the engine is built from it and the old `DB_*` constants and `SQLALCHEMY_DATABASE_URL` are gone. `alembic/env.py`'s `_get_settings()` keeps the `-x db_url=` override and otherwise calls `app.database.db_connection_settings()`; online mode uses `create_engine(url, connect_args=..., poolclass=NullPool)` instead of `engine_from_config`.
+- **Files changed:** backend/app/database.py, backend/alembic/env.py, prd.md, progress.md
+- **Verification:** (via python3 subprocess) backend `pytest tests/` 231 passed.
+- **Gotchas:** None.

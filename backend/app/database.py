@@ -1,4 +1,5 @@
 from sqlalchemy import create_engine
+from sqlalchemy.engine import URL
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
@@ -6,16 +7,23 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# MySQL connection string
-DB_USER = os.getenv("DB_USER", "root")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "")
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = os.getenv("DB_PORT", "3306")
-DB_NAME = os.getenv("DB_NAME", "stopwatch_scheduler")
 
-SQLALCHEMY_DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+def db_connection_settings():
+    url = URL.create(
+        "mysql+pymysql",
+        username=os.getenv("DB_USER", "root"),
+        password=os.getenv("DB_PASSWORD", ""),
+        host=os.getenv("DB_HOST", "localhost"),
+        port=int(os.getenv("DB_PORT", "3306")),
+        database=os.getenv("DB_NAME", "stopwatch_scheduler"),
+    )
+    ssl_ca = os.getenv("DB_SSL_CA")
+    connect_args = {"ssl": {"ca": ssl_ca}} if ssl_ca else {}
+    return url, connect_args
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
+
+_url, _connect_args = db_connection_settings()
+engine = create_engine(_url, connect_args=_connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
