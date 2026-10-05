@@ -149,7 +149,7 @@ still HOLD, carried at the end of this file.
   - [ ] `curl -s -H "Authorization: Bearer $(grep ^API_TOKEN .env | cut -d= -f2-)" http://localhost:8000/api/auth/status` shows `"authenticated": true`
 
 ### C3.tests — Database connection from separate settings, with optional TLS
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D54. `database.py` and `alembic/env.py` each build the URL with an f-string,
   which breaks on a password containing `@`, `/` or `:`, and neither can require TLS, which Azure
   MySQL enforces. Add `backend/tests/test_database_url.py`.
@@ -159,9 +159,9 @@ still HOLD, carried at the end of this file.
   otherwise none. Both the app engine and `alembic/env.py` use it (env.py's `-x db_url=`
   override stays). Local behaviour without `DB_SSL_CA` is unchanged.
 - **Acceptance Criteria:**
-  - [ ] Test: a password with `@:/` round-trips through the URL intact
-  - [ ] Test: `DB_SSL_CA` set → connect args carry the CA path; unset → no ssl args
-  - [ ] Test: `alembic/env.py`'s URL comes from the same helper (`db_url` override still wins)
+  - [x] Test: a password with `@:/` round-trips through the URL intact
+  - [x] Test: `DB_SSL_CA` set → connect args carry the CA path; unset → no ssl args
+  - [x] Test: `alembic/env.py`'s URL comes from the same helper (`db_url` override still wins)
 
 ### C3.impl — Database connection from separate settings, with optional TLS
 - **Status:** PENDING

@@ -1321,3 +1321,14 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Gotchas:**
   - Generate revisions without MySQL by running `alembic -x db_url=sqlite:////tmp/x.db upgrade head` and then `revision --autogenerate` against the same URL.
   - The local dev backend is unauthenticated with Google until U2 (add `CREDENTIAL_KEY`, `alembic upgrade head`, reauthorize).
+
+## C3.tests. Database connection from separate settings, with optional TLS
+- **Date:** 2026-10-04
+- **Status:** DONE
+- **Summary:** Added `backend/tests/test_database_url.py` (7 tests, contract in the header). The helper is `app.database.db_connection_settings()`, which reads the env at call time and returns `(url, connect_args)`. The tests cover a `p@ss:w/rd@:/` password surviving both `URL` attributes and a render/`make_url` round trip, unchanged defaults with no env, `DB_SSL_CA` → `{"ssl": {"ca": ...}}` and unset → no `ssl` key, and `database.engine.url` matching the helper. Two alembic tests monkeypatch the helper to a SQLite URL. Without `-x db_url`, `upgrade head` must call it and migrate that file. With `-x db_url`, the override file is migrated and the helper's file is never created.
+- **Files changed:** backend/tests/test_database_url.py, prd.md, progress.md
+- **Verification:** (via python3 subprocess) backend `pytest tests/` gave 7 failed, 224 passed. All 7 failures are in `test_database_url.py` (AttributeError: no `db_connection_settings`), as expected before impl. The override test only fails because `monkeypatch.setattr` needs the attribute to exist. Against a throwaway reference, 231/231 passed. `database.py` and `alembic/env.py` were then restored from `/tmp/c3t_orig/` (md5s match).
+- **Gotchas:**
+  - Reference impl that passed. In `database.py`, `db_connection_settings()` builds `URL.create("mysql+pymysql", username=..., password=..., host=..., port=int(os.getenv("DB_PORT", "3306")), database=...)` and `connect_args = {"ssl": {"ca": ssl_ca}} if ssl_ca else {}`. The engine is `create_engine(url, connect_args=connect_args)`, and the old `DB_*` module constants and `SQLALCHEMY_DATABASE_URL` are removed (nothing else used them).
+  - In `env.py`, `_get_settings()` returns `(x_args['db_url'], {})` on override, else `import app.database; return app.database.db_connection_settings()`. Alembic re-executes env.py on every command, so a `from app.database import db_connection_settings` inside env.py also picks up the monkeypatch. Online mode becomes `create_engine(url, connect_args=connect_args, poolclass=pool.NullPool)` in place of `engine_from_config`; offline uses just the url.
+  - `port` must be an int for `URL.create`, and the test asserts `url.port == 3307`.
