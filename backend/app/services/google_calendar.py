@@ -1,5 +1,7 @@
 import os
+import json
 from datetime import datetime, timedelta, timezone
+from cryptography.fernet import Fernet, InvalidToken
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
@@ -7,12 +9,12 @@ from googleapiclient.http import HttpRequest
 from google.auth.transport.requests import Request
 from google_auth_httplib2 import AuthorizedHttp
 import httplib2
-import pickle
 import secrets
+from app.database import SessionLocal
+from app.models.google_credential import GoogleCredential
 
 class GoogleCalendarService:
     SCOPES = ['https://www.googleapis.com/auth/calendar']
-    TOKEN_FILE = 'token.pickle'
 
     def __init__(self):
         self.creds = None
@@ -25,15 +27,14 @@ class GoogleCalendarService:
         self._refresh_if_needed()
 
     def _refresh_if_needed(self):
-        """Load credentials from disk if absent and refresh an expired access token.
+        """Load credentials from the database if absent and refresh an expired access token.
 
         Access tokens last about an hour, so this runs before every use rather
         than only at construction. A refresh failure degrades to unauthenticated
         instead of raising, so a dead refresh token cannot stop the app booting.
         """
-        if self.creds is None and os.path.exists(self.TOKEN_FILE):
-            with open(self.TOKEN_FILE, 'rb') as token:
-                self.creds = pickle.load(token)
+        if self.creds is None:
+            self.creds = self._read_credentials()
             self.service = None
 
         if self.creds and self.creds.expired and self.creds.refresh_token:
@@ -57,10 +58,40 @@ class GoogleCalendarService:
 
         return build('calendar', 'v3', credentials=self.creds, requestBuilder=build_request)
 
+    def _read_credentials(self):
+        """Decrypt the stored credential row; None if there is no key, no row, or a wrong key"""
+        key = os.getenv("CREDENTIAL_KEY")
+        if not key:
+            return None
+        db = SessionLocal()
+        try:
+            row = db.query(GoogleCredential).first()
+        finally:
+            db.close()
+        if row is None:
+            return None
+        try:
+            info = json.loads(Fernet(key.encode()).decrypt(row.data.encode()))
+        except InvalidToken:
+            return None
+        return Credentials.from_authorized_user_info(info)
+
     def _save_credentials(self):
-        """Save credentials to file"""
-        with open(self.TOKEN_FILE, 'wb') as token:
-            pickle.dump(self.creds, token)
+        """Encrypt credentials into the single credential row"""
+        key = os.getenv("CREDENTIAL_KEY")
+        if not key:
+            raise RuntimeError("CREDENTIAL_KEY is not set")
+        data = Fernet(key.encode()).encrypt(self.creds.to_json().encode()).decode()
+        db = SessionLocal()
+        try:
+            row = db.query(GoogleCredential).first()
+            if row is None:
+                db.add(GoogleCredential(data=data))
+            else:
+                row.data = data
+            db.commit()
+        finally:
+            db.close()
 
     def get_auth_url(self):
         """Get Google OAuth authorization URL"""

@@ -105,6 +105,7 @@ restart**, never just a save.
 | `models/time_log.py` | One recorded duration against an Activity |
 | `models/stopwatch_session.py` | A named Recording, plus calendar and scheduling times |
 | `models/schedule.py` | Schedule and ScheduleItem, including the frog flag |
+| `models/google_credential.py` | The Google credential row, Fernet-encrypted under `CREDENTIAL_KEY` |
 | `models/schemas.py` | All Pydantic schemas; `UTCDateTime` enforces the UTC contract |
 | `routers/tasks.py` | Activity CRUD and `/stats` |
 | `routers/time_logs.py` | Time log CRUD, updates the parent average on write |
@@ -112,7 +113,7 @@ restart**, never just a save.
 | `routers/schedules.py` | Schedule CRUD, items, rating, regimen apply, generation |
 | `routers/insights.py` | Peak-hours aggregation |
 | `routers/calendar_auth.py` | Google OAuth login, callback with state validation, status |
-| `services/google_calendar.py` | Google Calendar API wrapper and credential cache |
+| `services/google_calendar.py` | Google Calendar API wrapper; loads and saves the encrypted credential row |
 | `services/strategies.py` | Strategy registry and the shared timeline builder |
 
 ### Frontend (`frontend/src/`)
@@ -204,12 +205,13 @@ Ties must be stable. Python's `sorted` already guarantees this, so no secondary 
 | `DB_HOST` `DB_PORT` `DB_USER` `DB_PASSWORD` `DB_NAME` | yes |
 | `GOOGLE_CLIENT_ID` `GOOGLE_CLIENT_SECRET` `GOOGLE_REDIRECT_URI` | yes |
 | `CORS_ORIGINS` | yes |
+| `CREDENTIAL_KEY` | yes — Fernet key for the `google_credentials` row. Unset or wrong: Google reports not authenticated, the rest of the app works |
 | `API_PORT` | **no** — present in `.env.example`, read by nothing. Port comes from the uvicorn flag. |
 
 `GOOGLE_REDIRECT_URI` must be `http://localhost:8000/api/auth/callback` and must be registered
 verbatim under **Authorized redirect URIs** on the OAuth client.
 
-Never committed: `backend/.env`, `token.pickle`, `*.db`, `credentials.json`,
+Never committed: `backend/.env`, `token.pickle` (the pre-C2 credential file, no longer read), `*.db`, `credentials.json`,
 `client_secret*.json`. Covered by gitignores at both root and `backend/`.
 
 ---

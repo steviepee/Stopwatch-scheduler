@@ -70,23 +70,27 @@ passing, and the failure detail was lost with the discarded output.
 
 **Symptom:** the Calendar tab shows an error/Retry state identically on both `frontend/` and
 `mobile/` — same backend, same failure. `GET /api/auth/calendar/events` returns 401
-`"Not authenticated with Google Calendar"`. `backend/token.pickle` exists, but this is **not**
+`"Not authenticated with Google Calendar"`. The `google_credentials` row exists, but this is **not**
 the in-memory-staleness bug below (that one self-heals on its own via `_refresh_if_needed`);
 this one does not.
 
-**Confirm it is this** — attempt an actual refresh against Google, not just the local pickle's flags:
+**Confirm it is this** — attempt an actual refresh against Google, not just the stored row's flags:
 
 ```bash
-cd backend && venv/bin/python -c "
-import pickle
+cd backend && ./venv/bin/python -c "
+from dotenv import load_dotenv; load_dotenv()
 from google.auth.transport.requests import Request
-c = pickle.load(open('token.pickle','rb'))
+from app.services.google_calendar import GoogleCalendarService
+c = GoogleCalendarService._read_credentials(None)
 c.refresh(Request())
 "
 ```
 
+`'NoneType' object has no attribute 'refresh'` means there is no row, or `CREDENTIAL_KEY` is
+unset or not the key the row was written with.
+
 `invalid_grant: Token has been expired or revoked.` means a genuinely dead refresh token — the
-"Google Auth Refresh" fix (`rm token.pickle`, reauthorize) is required; there is nothing to fix
+"Google Auth Refresh" fix (reauthorize) is required; there is nothing to fix
 in the code.
 
 **Cause (confirmed 2026-09-16):** the OAuth consent screen was in **Testing** publishing
@@ -103,9 +107,8 @@ review) buys only the removal of the warning screen and is not worth it for a si
 Durability check: re-run the `/api/auth/status` curl on or after **2026-09-24**; if it is still
 `true` past day 7, this is settled for good.
 
-**Fix for one instance** — `rm backend/token.pickle` (optional: `get_auth_url` passes
-`prompt='consent'`, so the callback issues a new refresh token and overwrites the file
-anyway), then start the backend and reauthorize from a **laptop browser** — never the phone,
+**Fix for one instance** — reauthorize: `get_auth_url` passes `prompt='consent'`, so the
+callback issues a new refresh token and replaces the `google_credentials` row. Start the backend and reauthorize from a **laptop browser** — never the phone,
 roadmap D14:
 
 ```bash
@@ -343,7 +346,7 @@ then check `claude` is logged in.
 
 ---
 
-## `test_startup_survives_dead_refresh_token` fails only when a real token.pickle exists
+## `test_startup_survives_dead_refresh_token` fails only when a real token.pickle exists (obsolete since C2)
 
 **Symptom:** `tests/test_credential_refresh.py::test_startup_survives_dead_refresh_token`
 fails with `assert True is False` on a machine that has authorized Google Calendar. It passes
@@ -361,6 +364,11 @@ active. Kept here because the shape — assert after the mocks exit, on a method
 disk — is easy to reintroduce.
 
 **Occurred:** 2026-09-05, noticed after the Phase 4 loop reported it as pre-existing.
+
+**Since C2 (2026-10-04)** credentials live in the encrypted `google_credentials` row and no file
+is read. The test now stores fake credentials in the SQLite test database, but the shape still
+applies: a test must point `app.services.google_calendar.SessionLocal` at the test database, or
+it reads the real row.
 
 ---
 
@@ -391,7 +399,7 @@ real entry the day it actually breaks.
 ## Google auth silently drops after about an hour of uptime
 
 **Symptom:** `/api/auth/status` returns `false` on a backend that has been running a while,
-even though `backend/token.pickle` is present and the refresh token is good. Restarting the
+even though the stored credentials are present and the refresh token is good. Restarting the
 server fixes it. It comes back.
 
 **Cause:** `GoogleCalendarService` refreshes credentials only in `__init__`, via
@@ -402,8 +410,10 @@ The stored refresh token is fine the whole time.
 **Confirm it is this** and not lost credentials:
 
 ```bash
-cd backend && venv/bin/python -c "
-import pickle; c = pickle.load(open('token.pickle','rb'))
+cd backend && ./venv/bin/python -c "
+from dotenv import load_dotenv; load_dotenv()
+from app.services.google_calendar import GoogleCalendarService
+c = GoogleCalendarService._read_credentials(None)
 print('refresh_token:', bool(c.refresh_token), '| expired:', c.expired, '| valid:', c.valid)"
 ```
 
@@ -411,7 +421,7 @@ print('refresh_token:', bool(c.refresh_token), '| expired:', c.expired, '| valid
 returns authenticated immediately, which proves the credentials are sound.
 
 **FIXED 2026-09-03.** `_refresh_if_needed` now runs before every use via `is_authenticated`,
-rather than only at construction. It also reloads credentials from disk when the instance has
+rather than only at construction. It also reloads credentials from storage when the instance has
 none, which matters because `sessions.py` and `calendar_auth.py` each hold their own service
 instance. A refresh failure now degrades to unauthenticated instead of raising, so a dead
 refresh token no longer stops the backend booting.
@@ -483,7 +493,7 @@ nine hours after the credentials were rotated.
 
 ---
 
-## token.pickle is a credential, not a cache
+## token.pickle is a credential, not a cache (no longer written since C2)
 
 **Symptom:** it looks like a disposable binary artifact, so it gets committed.
 
@@ -497,6 +507,10 @@ now gitignored.
 
 **Occurred:** it was committed to the public repo and stayed in history. Resolved 2026-09-02
 by deleting the leaked OAuth client outright, which revokes every token it issued.
+
+**Since C2 (2026-10-04)** the backend neither reads nor writes `token.pickle`. Credentials are a
+Fernet-encrypted row in `google_credentials`, keyed by `CREDENTIAL_KEY` in `backend/.env`. An
+old `token.pickle` left on disk is ignored and can be deleted; treat it as a secret until it is.
 
 ---
 

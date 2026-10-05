@@ -18,6 +18,7 @@ import app.models.task  # noqa: F401 — registers ORM models with Base.metadata
 import app.models.time_log  # noqa: F401
 import app.models.stopwatch_session  # noqa: F401
 import app.models.schedule  # noqa: F401
+import app.models.google_credential  # noqa: F401
 
 config = context.config
 

@@ -126,13 +126,13 @@ still HOLD, carried at the end of this file.
   - [x] Test: Alembic revision present; `test_migrations.py` passes
 
 ### C2.impl — Google credentials as an encrypted database row
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract. Keep DB access in the `db.query(Model)` idiom
   (forward-compat). Remove the pickle code paths. Update `DIAGNOSTIC.md` and `GOTCHAS.md`
   entries that describe `token.pickle` as the credential store.
 - **Acceptance Criteria:**
-  - [ ] All C2.tests pass; full suite passes; `alembic check` clean
-  - [ ] `git grep -n "pickle" backend/app` is empty
+  - [x] All C2.tests pass; full suite passes; `alembic check` clean
+  - [x] `git grep -n "pickle" backend/app` is empty
 
 ### U2. USER — Local `.env` after C2
 - **Status:** USER
