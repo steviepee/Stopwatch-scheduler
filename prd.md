@@ -212,10 +212,10 @@ still HOLD, carried at the end of this file.
   - [x] Test: no `STATIC_DIR` → `/` is a 404 as today
 
 ### C5.impl — Backend serves the built web app
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract in `main.py`.
 - **Acceptance Criteria:**
-  - [ ] All C5.tests pass; full suite passes
+  - [x] All C5.tests pass; full suite passes
 
 ### C6.tests — Web sign-in page
 - **Status:** PENDING

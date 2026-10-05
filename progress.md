@@ -1371,3 +1371,11 @@ Each iteration appends its results here so the next session knows what worked, w
   - The tests read `STATIC_DIR` at import: each test `importlib.reload(app.main)` with the env set, and the fixture reloads it again with `STATIC_DIR` unset afterwards. So the impl should decide the mount at module level in `main.py` from `os.getenv('STATIC_DIR')` plus `Path(...).is_dir()`.
   - The PRD says "no `STATIC_DIR` -> `/` is a 404 as today", but today `/` is `read_root`'s 200 `{"message": ...}` with a token (401 without). The test accepts 200 or 404 as long as it is JSON and not index.html, so the impl may keep or drop `read_root` in the no-static case.
   - With `STATIC_DIR` set, `read_root` must not shadow `/` (it is registered first). Reference impl that passed: define `read_root` only when there is no static dir; otherwise register a last `@app.get('/{path:path}')` that returns a JSON 404 for `api`/`api/...`, a `FileResponse` for a real file inside the dir (resolve and `is_relative_to` the dir, to block `..`), and else `index.html`. The gate lets through non-`/api` GETs only when the static dir is mounted.
+
+## C5.impl. Backend serves the built web app
+- **Date:** 2026-10-04
+- **Status:** DONE
+- **Summary:** `main.py` reads `STATIC_DIR` at import and keeps it only if it resolves to a directory. When set, the gate lets non-`/api` GETs through, `read_root` is not registered, and a last catch-all `GET /{path:path}` returns a JSON 404 for `/api` and `/api/...`, a `FileResponse` for a real file inside the dir (resolved and checked with `is_relative_to`, so `..` cannot escape), and `index.html` otherwise. With no static dir, behaviour is unchanged (`read_root` still answers `/`).
+- **Files changed:** backend/app/main.py, prd.md, progress.md
+- **Verification:** (via python3 subprocess) backend `pytest tests/` 256 passed.
+- **Gotchas:** The catch-all must stay registered after every router, or it would shadow them. C7's Dockerfile should set `STATIC_DIR` to the built `frontend/dist` path inside the image.

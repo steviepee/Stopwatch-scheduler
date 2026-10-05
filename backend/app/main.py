@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from pathlib import Path
 import os
 import hmac
 from dotenv import load_dotenv
@@ -18,6 +19,14 @@ if not _api_token:
 app = FastAPI(title='Stopwatch Scheduler API')
 
 _EXEMPT_PATHS = {'/api/health', '/api/auth/callback'}
+
+_static_dir = Path(os.getenv('STATIC_DIR')).resolve() if os.getenv('STATIC_DIR') else None
+if _static_dir and not _static_dir.is_dir():
+    _static_dir = None
+
+
+def _is_api_path(path: str) -> bool:
+    return path == '/api' or path.startswith('/api/')
 
 origins = os.getenv('CORS_ORIGINS', 'http://localhost:3000').split(',')
 
@@ -37,6 +46,8 @@ async def bearer_gate(request: Request, call_next):
         return await call_next(request)
     if request.method == 'POST' and request.url.path == '/api/auth/web-session':
         return await call_next(request)
+    if _static_dir and request.method == 'GET' and not _is_api_path(request.url.path):
+        return await call_next(request)
     token = os.getenv('API_TOKEN')
     auth = request.headers.get('Authorization', '')
     if not hmac.compare_digest(auth, f'Bearer {token}') and not session_cookie_valid(
@@ -53,10 +64,21 @@ app.include_router(schedules.router, prefix='/api/schedules', tags=['schedules']
 app.include_router(insights.router, prefix='/api/insights', tags=['insights'])
 app.include_router(exports.router, prefix='/api/exports', tags=['exports'])
 
-@app.get('/')
-def read_root():
-    return {'message': 'Stopwatch Scheduler API'}
+if not _static_dir:
+    @app.get('/')
+    def read_root():
+        return {'message': 'Stopwatch Scheduler API'}
 
 @app.get('/api/health')
 def health_check():
     return {'status': 'healthy'}
+
+if _static_dir:
+    @app.get('/{path:path}', include_in_schema=False)
+    def serve_web_app(path: str):
+        if _is_api_path(f'/{path}'):
+            return JSONResponse(status_code=404, content={'detail': 'Not Found'})
+        file = (_static_dir / path).resolve()
+        if path and file.is_file() and file.is_relative_to(_static_dir):
+            return FileResponse(file)
+        return FileResponse(_static_dir / 'index.html')
