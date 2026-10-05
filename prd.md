@@ -268,7 +268,7 @@ still HOLD, carried at the end of this file.
   - [x] `bash -n deploy.sh docker-entrypoint.sh` passes; both are executable
 
 ### C8.tests — Mobile app variants
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D64. Add `mobile/src/__tests__/appConfig.test.ts`.
 - **Contract:** `mobile/app.config.js` takes the static `app.json` config and, when
   `APP_VARIANT=development`, sets `name` to "Stopwatch Scheduler (Dev)" and `android.package` to
@@ -277,9 +277,9 @@ still HOLD, carried at the end of this file.
   `"env": {"EXPO_PUBLIC_API_URL": "https://api.stopwatchscheduler.app/api"}` and
   `"android": {"buildType": "apk"}`.
 - **Acceptance Criteria:**
-  - [ ] Test: with `APP_VARIANT=development`, name and package are the dev ones
-  - [ ] Test: without it, name and package equal `app.json`'s
-  - [ ] Test: `eas.json` profiles carry the env and build type above
+  - [x] Test: with `APP_VARIANT=development`, name and package are the dev ones
+  - [x] Test: without it, name and package equal `app.json`'s
+  - [x] Test: `eas.json` profiles carry the env and build type above
 
 ### C8.impl — Mobile app variants
 - **Status:** PENDING
