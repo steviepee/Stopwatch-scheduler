@@ -282,11 +282,11 @@ still HOLD, carried at the end of this file.
   - [x] Test: `eas.json` profiles carry the env and build type above
 
 ### C8.impl — Mobile app variants
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract. Keep `app.json` as the base config.
 - **Acceptance Criteria:**
-  - [ ] All C8.tests pass; tsc clean; export succeeds
-  - [ ] `APP_VARIANT=development npx expo config --type public` shows the dev package; without it, the normal one
+  - [x] All C8.tests pass; tsc clean; export succeeds
+  - [x] `APP_VARIANT=development npx expo config --type public` shows the dev package; without it, the normal one
 
 ### U3. USER — Create the Azure database and copy the data
 - **Status:** USER
