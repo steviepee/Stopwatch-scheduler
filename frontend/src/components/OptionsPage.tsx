@@ -4,6 +4,7 @@ import { UserOptions } from '../types';
 interface OptionsPageProps {
   options: UserOptions;
   onChange: (opts: UserOptions) => void;
+  onSignOut?: () => void;
 }
 
 const BACKGROUND_PRESETS = [
@@ -11,7 +12,7 @@ const BACKGROUND_PRESETS = [
   { label: 'None (solid dark)', value: null },
 ];
 
-export default function OptionsPage({ options, onChange }: OptionsPageProps) {
+export default function OptionsPage({ options, onChange, onSignOut }: OptionsPageProps) {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const toggle = (key: keyof Pick<UserOptions, 'showAverage' | 'showMedian' | 'showPrevious'>) => {
@@ -121,6 +122,19 @@ export default function OptionsPage({ options, onChange }: OptionsPageProps) {
             )}
         </div>
       </section>
+
+      {onSignOut && (
+        <section className="space-y-3">
+          <h3 className="text-white/60 text-xs uppercase tracking-wider">Account</h3>
+          <button
+            type="button"
+            onClick={onSignOut}
+            className="glass-button px-4 py-3 rounded-xl text-sm"
+          >
+            Sign out
+          </button>
+        </section>
+      )}
     </div>
   );
 }

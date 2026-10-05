@@ -26,7 +26,11 @@ function saveOptions(opts: UserOptions) {
   localStorage.setItem('userOptions', JSON.stringify(opts));
 }
 
-export default function HomePage() {
+interface HomePageProps {
+  onSignOut?: () => void;
+}
+
+export default function HomePage({ onSignOut }: HomePageProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [sessions, setSessions] = useState<StopwatchSession[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
@@ -311,7 +315,7 @@ export default function HomePage() {
             )}
 
             {activeTab === 'options' && (
-              <OptionsPage options={options} onChange={handleOptionsChange} />
+              <OptionsPage options={options} onChange={handleOptionsChange} onSignOut={onSignOut} />
             )}
           </>
         )}

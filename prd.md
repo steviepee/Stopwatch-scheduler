@@ -236,11 +236,11 @@ still HOLD, carried at the end of this file.
   - [x] Test: nothing is written to `localStorage`/`sessionStorage`
 
 ### C6.impl — Web sign-in page
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract in `frontend/src/services/api.ts` (a 401 hook),
   `pages/HomePage.tsx` or `App`, and `components/OptionsPage.tsx`.
 - **Acceptance Criteria:**
-  - [ ] All C6.tests pass; web tsc clean; `npm run build` succeeds
+  - [x] All C6.tests pass; web tsc clean; `npm run build` succeeds
 
 ### C7. Container image, entrypoint, and deploy script
 - **Status:** PENDING

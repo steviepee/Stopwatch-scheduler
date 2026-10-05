@@ -10,6 +10,31 @@ const api = axios.create({
   },
 });
 
+let unauthorizedHandler: (() => void) | null = null;
+
+export function onUnauthorized(handler: (() => void) | null) {
+  unauthorizedHandler = handler;
+}
+
+api.interceptors.response.use(undefined, error => {
+  const url: string = error.config?.url ?? '';
+  if (error.response?.status === 401 && !url.startsWith('/auth/')) {
+    unauthorizedHandler?.();
+  }
+  return Promise.reject(error);
+});
+
+// Web session APIs
+export const authAPI = {
+  signIn: async (token: string): Promise<void> => {
+    await api.post('/auth/web-session', { token });
+  },
+
+  signOut: async (): Promise<void> => {
+    await api.delete('/auth/web-session');
+  },
+};
+
 // Task APIs
 export const taskAPI = {
   getAll: async (): Promise<Task[]> => {
