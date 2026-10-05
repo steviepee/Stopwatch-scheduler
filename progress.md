@@ -1360,3 +1360,14 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Files changed:** backend/app/main.py, backend/app/routers/calendar_auth.py, backend/app/models/schemas.py, prd.md, progress.md
 - **Verification:** (via python3 subprocess) backend `pytest tests/` 247 passed.
 - **Gotchas:** `main.py` imports `SESSION_COOKIE` and `session_cookie_valid` from `app.routers.calendar_auth`; C6 (web sign-in page) should POST `{token}` to `/api/auth/web-session` and rely on the cookie (same origin in prod, Vite proxy in dev). The cookie is `Secure`, so plain-http dev on a LAN IP won't store it; `localhost` is treated as secure by browsers.
+
+## C5.tests. Backend serves the built web app
+- **Date:** 2026-10-04
+- **Status:** DONE
+- **Summary:** Added `backend/tests/test_static_web.py` (9 tests, contract in the header). With `STATIC_DIR` set to a tmp dir holding a fake `index.html` and `assets/app.js`, `/` and client routes return `index.html` without a token, the asset is served by path, `/api/tasks/` is 401 without and 200 with the token, `/api/nope` is a JSON 404 (`{"detail": "Not Found"}`) with a token and 401 without, and `/api/health` is unchanged. With `STATIC_DIR` unset or pointing at a missing directory, `/` with a token is JSON (never index.html), `/some/client/route` is 404 with a token and 401 without.
+- **Files changed:** backend/tests/test_static_web.py, prd.md, progress.md
+- **Verification:** (via python3 subprocess) backend `pytest tests/` gave 3 failed, 253 passed; the failures are the three static-serving tests, as expected before impl. Against a throwaway reference, 256/256 passed. `main.py` was then restored from `/tmp/c5t_main.py` (md5 match).
+- **Gotchas:**
+  - The tests read `STATIC_DIR` at import: each test `importlib.reload(app.main)` with the env set, and the fixture reloads it again with `STATIC_DIR` unset afterwards. So the impl should decide the mount at module level in `main.py` from `os.getenv('STATIC_DIR')` plus `Path(...).is_dir()`.
+  - The PRD says "no `STATIC_DIR` -> `/` is a 404 as today", but today `/` is `read_root`'s 200 `{"message": ...}` with a token (401 without). The test accepts 200 or 404 as long as it is JSON and not index.html, so the impl may keep or drop `read_root` in the no-static case.
+  - With `STATIC_DIR` set, `read_root` must not shadow `/` (it is registered first). Reference impl that passed: define `read_root` only when there is no static dir; otherwise register a last `@app.get('/{path:path}')` that returns a JSON 404 for `api`/`api/...`, a `FileResponse` for a real file inside the dir (resolve and `is_relative_to` the dir, to block `..`), and else `index.html`. The gate lets through non-`/api` GETs only when the static dir is mounted.

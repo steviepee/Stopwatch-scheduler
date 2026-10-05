@@ -196,7 +196,7 @@ still HOLD, carried at the end of this file.
   - [x] All C4.tests pass; full suite passes
 
 ### C5.tests — Backend serves the built web app
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D56. Add `backend/tests/test_static_web.py` using a temporary directory with a
   fake `index.html` and an asset.
 - **Contract:** If env `STATIC_DIR` points at an existing directory, the backend serves it at
@@ -206,10 +206,10 @@ still HOLD, carried at the end of this file.
   is still a JSON 404, never `index.html`. If `STATIC_DIR` is unset or missing, nothing is
   mounted (local dev unchanged).
 - **Acceptance Criteria:**
-  - [ ] Test: `/` and `/some/client/route` return `index.html` without a token
-  - [ ] Test: `/assets/app.js` returns the file
-  - [ ] Test: `/api/tasks/` still needs the token; `/api/nope` is a JSON 404
-  - [ ] Test: no `STATIC_DIR` → `/` is a 404 as today
+  - [x] Test: `/` and `/some/client/route` return `index.html` without a token
+  - [x] Test: `/assets/app.js` returns the file
+  - [x] Test: `/api/tasks/` still needs the token; `/api/nope` is a JSON 404
+  - [x] Test: no `STATIC_DIR` → `/` is a 404 as today
 
 ### C5.impl — Backend serves the built web app
 - **Status:** PENDING
