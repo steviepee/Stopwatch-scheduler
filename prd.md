@@ -96,11 +96,11 @@ still HOLD, carried at the end of this file.
   - [x] Test: `/api/health` and `/api/auth/callback` are still reachable without a token
 
 ### C1.impl — Gate the Google login route
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract. Both clients already call login with the token (the
   web through the Vite proxy in dev), so no client change.
 - **Acceptance Criteria:**
-  - [ ] All C1.tests pass; full suite passes
+  - [x] All C1.tests pass; full suite passes
 
 ### C2.tests — Google credentials as an encrypted database row
 - **Status:** PENDING

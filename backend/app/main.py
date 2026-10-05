@@ -16,7 +16,7 @@ if not _api_token:
 
 app = FastAPI(title='Stopwatch Scheduler API')
 
-_EXEMPT_PATHS = {'/api/health', '/api/auth/google/login', '/api/auth/callback'}
+_EXEMPT_PATHS = {'/api/health', '/api/auth/callback'}
 
 origins = os.getenv('CORS_ORIGINS', 'http://localhost:3000').split(',')
 
