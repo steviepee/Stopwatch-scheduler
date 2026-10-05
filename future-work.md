@@ -221,3 +221,29 @@ just rebuilt for the phone, and Recordings without a start time have nowhere to 
 
 - Side by side, overlaid, or a toggle?
 - Is a Recording matched to the Schedule Item it fulfilled, or only shown by time?
+
+## Deploy automatically from GitHub
+
+**Raised:** 2026-10-04, in the Phase 6 design (D63). Deferred: deploys are by hand with `deploy.sh`.
+
+A GitHub Actions workflow that builds the image on push to `main`, pushes it to GitHub's
+registry, and updates the Azure Container App.
+
+**Why it is not in Phase 6.** It puts Azure credentials in GitHub and adds a pipeline to debug
+before anything has ever been deployed by hand once.
+
+**Questions to settle**
+
+- Every push to `main`, or only tagged releases?
+- Azure login from Actions via OpenID Connect (no stored secret), or a service principal secret?
+- Run the test suites in the workflow before building?
+
+## Azure Key Vault for secrets
+
+**Raised:** 2026-10-04, in the Phase 6 design (D57). Deferred to the multi-user phase.
+
+Phase 6 keeps its four secrets in Container Apps secrets. Key Vault adds auditing and rotation,
+and needs a managed identity for the app.
+
+**Why it is not in Phase 6.** One user, four secrets; the setup outweighs the benefit until
+per-user credentials and their encryption keys exist.

@@ -18,10 +18,20 @@ Step 5 passed for busy-time avoidance but exposed B33: a no-history Activity was
 0 seconds on mobile (web fell back to 30 min instead of D40's 10).
 
 **Next actions, in order:**
-1-3. Done 2026-10-04: B33 landed (backend 211, mobile 212, web 78), B12 passed in full.
-   **Build 2a is complete.**
-4. Phase 6 (deploy) design with the user. Order confirmed 2026-10-04: deploy single-user first (roadmap D51), then multi-user, with Build 2b around them as the user chooses.
-   Phase 6 must decide where the Google credential row lives and the web app's interim lock. Check the Azure subscription is still active first: the free trial started ~2026-09-03.
+1. **Phase 6 is designed and its PRD is `prd.md`** (2026-10-04; D52–D65). Build 2a's PRD is
+   archived at `docs/prd-build2a-completed.md`; Build 2b's HOLD stubs moved to the end of the
+   new PRD.
+2. **U1:** install Docker Engine in WSL (before C7). The loop's allow-list already has
+   `docker build/run/image`.
+3. Run the loop for C1–C8 (15 tasks): `PATH="/root/.local/bin:$PATH" ./ralph.sh --max 20 --model claude-opus-5-5`.
+   Do **U2** (local `CREDENTIAL_KEY`, Google re-auth) once C2 lands.
+4. Then U3–U8: Azure database and data copy, image push and app, domain and Google redirect,
+   web sign-in and Google connect, phone builds, and the gate on mobile data.
+5. After the gate: Build 2b design, or the multi-user phase (D51), as the user chooses.
+
+The Azure subscription is pay-as-you-go since 2026-10-04, with a $10 budget alert. Expected cost:
+~$5–15/month in the first year (MySQL B1ms may be free for 12 months; check Free services),
+then ~$20–30/month.
 
 Loose end: Recording 11's Google event ("To poydras: teleport", 2026-09-26 02:45 CDT) is still
 on the user's Google Calendar. Build 2a removed Recording push, so the app cannot remove it; the
