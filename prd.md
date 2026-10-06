@@ -289,7 +289,7 @@ still HOLD, carried at the end of this file.
   - [x] `APP_VARIANT=development npx expo config --type public` shows the dev package; without it, the normal one
 
 ### U3. USER — Create the Azure database and copy the data
-- **Status:** USER
+- **Status:** USER — DONE 2026-10-05. Azure counts matched local (head `22e35c64707d`, 9 Recordings, 6 Activities); `cutover` firewall rule deleted. Free services check still to note.
 - **Description:** After the loop finishes. Pick a database admin password made of letters and
   digits only, and keep it in a password manager. In an Ubuntu tab:
   ```bash
@@ -322,8 +322,8 @@ still HOLD, carried at the end of this file.
   firewall opening:
   `az mysql flexible-server firewall-rule delete -g rg-stopwatch -n stopwatch-db-steviepee --rule-name cutover --yes`
 - **Acceptance Criteria:**
-  - [ ] Azure `alembic_version` equals local head; row counts match
-  - [ ] The `cutover` firewall rule is deleted
+  - [x] Azure `alembic_version` equals local head; row counts match
+  - [x] The `cutover` firewall rule is deleted
   - [ ] Cost Management → Free services checked for MySQL B1ms; noted here: ____
 
 ### U4. USER — Push the image and create the app
@@ -370,7 +370,7 @@ still HOLD, carried at the end of this file.
   - [x] `curl -s -o /dev/null -w "%{http_code}" https://$FQDN/api/auth/google/login` → 401 (C1)
 
 ### U5. USER — Domain, certificate, and Google redirect
-- **Status:** USER
+- **Status:** USER — DONE 2026-10-05. DNS live, `api.stopwatchscheduler.app` bound with a managed certificate, production redirect URI registered.
 - **Description:**
   ```bash
   FQDN=$(az containerapp show -n stopwatch-api -g rg-stopwatch --query properties.configuration.ingress.fqdn -o tsv)
@@ -390,19 +390,19 @@ still HOLD, carried at the end of this file.
   Credentials → the OAuth client → Authorized redirect URIs, **add**
   `https://api.stopwatchscheduler.app/api/auth/callback` (keep the localhost one) and Save.
 - **Acceptance Criteria:**
-  - [ ] `curl https://api.stopwatchscheduler.app/api/health` → healthy, with a valid certificate
-  - [ ] `https://stopwatchscheduler.app` still shows the privacy policy
-  - [ ] The production redirect URI is registered
+  - [x] `curl https://api.stopwatchscheduler.app/api/health` → healthy, with a valid certificate
+  - [x] `https://stopwatchscheduler.app` still shows the privacy policy
+  - [x] The production redirect URI is registered
 
 ### U6. USER — Sign in on the web and connect Google
-- **Status:** USER
+- **Status:** USER — DONE 2026-10-06. Signed in on the deployed web app; Google connected (`authenticated: true`). Found and fixed on the way: invisible sign-in text, stale DB connections after idle, and the service worker swallowing the OAuth callback (see GOTCHAS); deployed `08204d7`.
 - **Description:** On the laptop, open `https://api.stopwatchscheduler.app`. The sign-in page
   appears; paste the **production** API token. Click **Connect Calendar** in the top-right of the Recordings card (it shows only while Google is not connected),
   authorize (the "Google hasn't verified this app" screen is expected: Advanced → Go to…), and
   return. The Calendar shows today's Google events.
 - **Acceptance Criteria:**
-  - [ ] Signed in; data matches the phone's before cutover
-  - [ ] `/api/auth/status` (from the web app) is authenticated; Google events show
+  - [x] Signed in; data matches the phone's before cutover
+  - [x] `/api/auth/status` (from the web app) is authenticated; Google events show
 
 ### U7. USER — Phone builds
 - **Status:** USER

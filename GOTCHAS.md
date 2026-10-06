@@ -562,3 +562,54 @@ returns `{"token":...}`, not `UNAUTHORIZED`. Then retry without recreating:
 The failed app keeps its secrets and env vars.
 
 **Occurred:** 2026-10-05, Phase 6 U4.
+
+---
+
+## Deployed API 500s with "MySQL server has gone away (Connection timed out)"
+
+**Symptom:** after the Azure app sits idle for a while, the first data request returns 500; the
+logs show `OperationalError (2006, "MySQL server has gone away (TimeoutError(110, 'Connection
+timed out'))")`. The next requests succeed.
+
+**Cause:** Azure drops idle TCP connections silently, and SQLAlchemy reused a dead pooled one.
+
+**Fix (9e12131):** `create_engine(..., pool_pre_ping=True, pool_recycle=240)` in
+`backend/app/database.py`. Do not remove either setting.
+
+**Occurred:** 2026-10-06, Phase 6 U6.
+
+---
+
+## Web "Connect Calendar" ends on a white page; the callback never reaches the server
+
+**Symptom:** on the deployed web app, Google sign-in completes, then the tab goes white. DevTools
+shows `callback?state=...` failed (`net::ERR_CA...`) with initiator `workbox-*.js`. The server logs
+show no `/api/auth/callback` request.
+
+**Cause:** the web app and API share one origin in production (D56), so the PWA service worker's
+navigation fallback answered the callback from cache instead of letting it through. Locally the
+callback goes to `localhost:8000`, outside the worker's scope, so it never showed up in dev.
+
+**Fix (08204d7):** `navigateFallbackDenylist: [/^\/api\//]` in `frontend/vite.config.ts`. An
+already-installed old worker can still intercept until it updates: DevTools → Application →
+Service workers → tick "Bypass for network" (or Unregister), then retry.
+
+**Occurred:** 2026-10-06, Phase 6 U6.
+
+---
+
+## `docker build` fails at `RUN npm ci` with `ECONNRESET`
+
+**Symptom:** `deploy.sh` stops with `process "/bin/sh -c npm ci" did not complete successfully:
+exit code: 152`, after `npm error code ECONNRESET` about 80–90 s in.
+
+**Cause:** a flaky connection to the npm registry while the build re-downloads every package
+(it does whenever the `node:22-slim` base image or `package-lock.json` changes, which invalidates
+the cache). Not the change being deployed.
+
+**Fix:** rerun `./deploy.sh`. It succeeded on the fourth try on 2026-10-06. If it keeps failing,
+check `curl -s -o /dev/null -w "%{time_total}\n" https://registry.npmjs.org/react` from WSL; a slow
+answer means the network, not Docker.
+
+**Occurred:** 2026-10-06, deploying `08204d7`.
+
