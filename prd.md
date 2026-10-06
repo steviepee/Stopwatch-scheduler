@@ -405,7 +405,7 @@ still HOLD, carried at the end of this file.
   - [x] `/api/auth/status` (from the web app) is authenticated; Google events show
 
 ### U7. USER — Phone builds
-- **Status:** USER
+- **Status:** USER — DONE 2026-10-06. Both EAS builds installed side by side (dev `bbf3f56d`, preview `d0537793`). The standalone app kept the old saved LAN URL and token from the dev build it replaced; fixed by entering the cloud URL and production token in Settings and pressing **Save** (Test connection alone does not save). See GOTCHAS.
 - **Description:** From `mobile/`:
   ```bash
   eas build --profile development --platform android   # once: the dev app becomes "(Dev)"
@@ -416,10 +416,10 @@ still HOLD, carried at the end of this file.
   **Stopwatch Scheduler** (not "(Dev)") → Settings: paste the **production** API token; the
   server URL already reads `https://api.stopwatchscheduler.app/api`.
 - **Acceptance Criteria:**
-  - [ ] Both apps installed side by side; the standalone app lists your Activities and Recordings
+  - [x] Both apps installed side by side; the standalone app lists your Activities and Recordings
 
 ### U8. USER — Phase 6 gate
-- **Status:** USER
+- **Status:** USER — DONE 2026-10-06. On mobile data: Recording "Network test" saved to Azure; a Block pushed to Google from the cloud; CSV export readable; web sign-in from the phone's browser showed the same data. `/api/auth/google/login` without a token → 401. `rg-stopwatch` holds only the expected resources (DB, Log Analytics workspace, environment, app, managed certificate). **Phase 6 complete.**
 - **Description:** On the phone with **Wi-Fi off** (mobile data only), in the standalone app:
   1. Record and stop a short Recording; it appears in the list.
   2. Place a Block on tomorrow and Push day; it appears in Google Calendar.
@@ -431,8 +431,8 @@ still HOLD, carried at the end of this file.
   `curl -s -o /dev/null -w "%{http_code}" https://api.stopwatchscheduler.app/api/auth/google/login` → 401.
   Record results in `progress.md`.
 - **Acceptance Criteria:**
-  - [ ] All checks pass; any failure recorded with the task it reopens
-  - [ ] Cost Management shows no unexpected resources in `rg-stopwatch`
+  - [x] All checks pass; any failure recorded with the task it reopens
+  - [x] Cost Management shows no unexpected resources in `rg-stopwatch`
 
 ---
 

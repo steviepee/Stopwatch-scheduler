@@ -613,3 +613,24 @@ answer means the network, not Docker.
 
 **Occurred:** 2026-10-06, deploying `08204d7`.
 
+---
+
+## Standalone phone app shows "Offline — showing nothing" right after install
+
+**Symptom:** the EAS preview (standalone) app installs fine, but Activities shows "Offline —
+showing nothing". Server logs show no `/api/tasks/` requests from the app, or only ones from
+Settings' Test connection.
+
+**Cause:** the preview APK installs **over** the old dev build (same package,
+`app.workflow.stopwatch`) and keeps its stored settings. A saved server URL in secure store
+overrides the baked-in `EXPO_PUBLIC_API_URL`, so the app kept calling the old LAN/localhost
+address with the dev token. Cached lists can also make old data appear while nothing reaches
+the server.
+
+**Fix:** Settings → URL `https://api.stopwatchscheduler.app/api`, the **production** token →
+Test connection (only tests) → **Save** (this is what the app uses). Then pull to refresh. The
+saved values persist across restarts and over-the-top updates; an uninstall falls back to the
+baked-in URL.
+
+**Occurred:** 2026-10-06, Phase 6 U7.
+
