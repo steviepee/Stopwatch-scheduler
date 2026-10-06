@@ -26,7 +26,7 @@ export default function SignIn({ onSignedIn }: SignInProps) {
   };
 
   return (
-    <div data-testid="signin-screen" className="min-h-screen flex items-center justify-center p-4">
+    <div data-testid="signin-screen" className="glass-background flex items-center justify-center p-4">
       <form onSubmit={handleSubmit} className="glass-card rounded-2xl p-6 space-y-4 w-full max-w-sm">
         <h2 className="text-xl font-bold text-white">Stopwatch Scheduler</h2>
         <label htmlFor="api-token" className="block text-white/60 text-xs uppercase tracking-wider">

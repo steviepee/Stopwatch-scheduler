@@ -122,6 +122,8 @@ describe('Web sign-in page', () => {
     render(<App />);
 
     expect(await screen.findByTestId('signin-screen')).toBeInTheDocument();
+    // White text needs the app's dark background layer behind it.
+    expect(screen.getByTestId('signin-screen')).toHaveClass('glass-background');
     const input = tokenInput();
     expect(input.type).toBe('password');
     expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument();

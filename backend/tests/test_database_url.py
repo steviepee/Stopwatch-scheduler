@@ -141,3 +141,8 @@ def test_alembic_db_url_override_wins(tmp_path, monkeypatch):
 
     assert "tasks" in _tables(override_db)
     assert not helper_db.exists()
+
+
+def test_engine_survives_idle_connections_dropped_by_the_server():
+    assert database.engine.pool._pre_ping is True
+    assert 0 < database.engine.pool._recycle <= 240

@@ -23,7 +23,8 @@ def db_connection_settings():
 
 
 _url, _connect_args = db_connection_settings()
-engine = create_engine(_url, connect_args=_connect_args)
+# Azure drops idle connections; check before use and recycle before its idle cutoff.
+engine = create_engine(_url, connect_args=_connect_args, pool_pre_ping=True, pool_recycle=240)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
