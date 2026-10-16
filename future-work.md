@@ -247,3 +247,29 @@ and needs a managed identity for the app.
 
 **Why it is not in Phase 6.** One user, four secrets; the setup outweighs the benefit until
 per-user credentials and their encryption keys exist.
+
+## AI planning coach
+
+**Raised:** 2026-10-12, at the start of the Build 2b design. Wanted after Build 2b's features
+land, and before multi-user so the user is its only user while it is tuned.
+
+A conversation that helps plan a day or week: it asks what needs doing, what energy and
+commitments look like, and what is realistic given how long things actually take, then
+proposes a plan the user adjusts and accepts. Modeled on the coaching session in the
+`1111philo/ai-leaders` course (lesson 0.4), which ends by setting up the schedule itself.
+
+**Why it is not small.** The roadmap's "AI later" premise imagined an AI planner as one more
+Strategy, but a Strategy takes a list and returns an order. A coach is a conversation: a chat
+screen in both clients, a server route that calls a model (key as a Container Apps secret like
+the others), and a path from its answer to real Schedule Items for a date through the same save
+path Generate uses. Build 2b's pieces are its inputs: Activities with real average durations,
+quadrants, the Frog, peak hours, existing Blocks and Google events.
+
+**Questions to settle**
+
+- Day planning, week planning, or both?
+- Cost per conversation: small but metered, and it matters more once multi-user exists.
+- Privacy: calendar and Activity data go to the model provider.
+- Does it learn over time ("you planned 6 hours of focus and did 3")? That leans on plan vs
+  actual, above.
+- Does its output land as a draft the user edits, or straight onto the calendar?

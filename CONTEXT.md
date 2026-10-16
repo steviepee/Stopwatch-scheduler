@@ -50,7 +50,7 @@ A deterministic rule for ordering the Activities in a Schedule. Named entries in
 _Avoid_: Algorithm, generator, mode
 
 **Frog**:
-The one Activity marked as the day's hardest, which the eat-the-frog Strategy places first.
+The one Schedule Item marked as its day's hardest, which the eat-the-frog Strategy places first. The same Activity can be the Frog one day and not the next.
 _Avoid_: Priority task, top task
 
 **Quadrant**:
