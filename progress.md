@@ -1438,3 +1438,14 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Gotchas:**
   - `cd mobile && cmd > file` is refused (cd + redirection needs approval), and `$?` in a command is refused too. Running the steps from a `/tmp` python script with `subprocess.run(cwd=...)` works.
   - Make sure `APP_VARIANT` is popped from the env for the default-config check, or a leftover value would mask the result.
+
+## B34.tests. Mobile: over-the-air updates configured
+- **Date:** 2026-10-15
+- **Status:** DONE
+- **Summary:** Extended `mobile/src/__tests__/appConfig.test.ts` with an "over-the-air updates" block (4 tests): the config returned by `app.config.js` has `runtimeVersion: {policy: "fingerprint"}` and `updates.url` `https://u.expo.dev/d31ca765-...` with and without `APP_VARIANT=development`; `eas.json` `preview.channel` / `development.channel` are set while `preview` keeps exactly its env, `android.buildType: "apk"` and `distribution: "internal"`; `deploy.sh` (read as text) keeps `set -euo pipefail` and has an `eas update --channel preview` line after `az containerapp update`, with `--message` and `--non-interactive` on that line, and `EXPO_PUBLIC_API_URL=https://api.stopwatchscheduler.app/api` and `mobile` between the two.
+- **Files changed:** mobile/src/__tests__/appConfig.test.ts, prd.md, progress.md
+- **Verification:** from `mobile/` (python3 subprocess): `npx jest --ci src/__tests__/appConfig.test.ts` 4 new tests fail, 5 old pass, as expected before impl; `npx tsc --noEmit` clean. Against a throwaway reference (fields added to `app.json`/`eas.json`, a deploy.sh line) all 9 passed; originals restored, `git status` showed only the test file.
+- **Gotchas:**
+  - Reference that passed: add `runtimeVersion` and `updates` to `app.json`'s `expo` (no `app.config.js` change needed; it spreads the config), and in `deploy.sh` right after the `az containerapp update` line: `(cd mobile && EXPO_PUBLIC_API_URL=https://api.stopwatchscheduler.app/api eas update --channel preview --message "<sha>: <subject>" --non-interactive)`. Keep the whole `eas update ...` command on one line; the test reads `--message` and `--non-interactive` from the line that starts at `eas update`.
+  - The test asserts `preview.env` and `preview.android` with `toEqual` (exact), so don't add other keys to them.
+  - Appending to a file with a bash heredoc containing `{`/quotes is refused ("expansion obfuscation"); use Edit instead.

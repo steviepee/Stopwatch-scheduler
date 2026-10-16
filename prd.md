@@ -67,7 +67,7 @@ designed in its own session after Build 2b ships (D79).
 ## Tasks
 
 ### B34.tests — Mobile: over-the-air updates configured
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D67, D68, D69. Extend `mobile/src/__tests__/appConfig.test.ts`.
 - **Contract:**
   - `app.json` gains `"runtimeVersion": {"policy": "fingerprint"}` and
@@ -81,9 +81,9 @@ designed in its own session after Build 2b ships (D79).
     with `EXPO_PUBLIC_API_URL=https://api.stopwatchscheduler.app/api` set, so the update bakes
     the same URL the preview APK does. A failed backend update stops the script before it.
 - **Acceptance Criteria:**
-  - [ ] Test: config has the fingerprint policy and the updates URL, with and without `APP_VARIANT=development`
-  - [ ] Test: `eas.json` channels are as above and `preview` keeps its env and APK build type
-  - [ ] Test: `deploy.sh` contains the `eas update --channel preview` line after `az containerapp update` (read the file as text)
+  - [x] Test: config has the fingerprint policy and the updates URL, with and without `APP_VARIANT=development`
+  - [x] Test: `eas.json` channels are as above and `preview` keeps its env and APK build type
+  - [x] Test: `deploy.sh` contains the `eas update --channel preview` line after `az containerapp update` (read the file as text)
 
 ### B34.impl — Mobile: over-the-air updates configured
 - **Status:** PENDING
