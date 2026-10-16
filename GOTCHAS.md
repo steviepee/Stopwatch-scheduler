@@ -634,3 +634,19 @@ baked-in URL.
 
 **Occurred:** 2026-10-06, Phase 6 U7.
 
+---
+
+## RISK (not yet occurred): a phone update never arrives after a native change
+
+**Symptom:** `deploy.sh` publishes the update (`eas update:list --branch preview` shows it), but
+the phone keeps running the old code however many times the app is reopened.
+
+**Cause:** `runtimeVersion` uses the `fingerprint` policy (D68). An update only reaches APKs whose
+native fingerprint matches the one computed when the update was published. Any native change —
+a new native package, a config plugin, `app.json` native fields, `modules/timer-native/` (all of
+Build 2c) — gives a new fingerprint, so the installed APK silently ignores the update.
+
+**Fix:** rebuild and reinstall the APK as in U9 (`eas build --profile preview --platform android`,
+and `development` too), then deploy again. If unsure whether a change is native, compare
+`npx expo-updates fingerprint:generate` from `mobile/` before and after it.
+

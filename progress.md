@@ -1449,3 +1449,13 @@ Each iteration appends its results here so the next session knows what worked, w
   - Reference that passed: add `runtimeVersion` and `updates` to `app.json`'s `expo` (no `app.config.js` change needed; it spreads the config), and in `deploy.sh` right after the `az containerapp update` line: `(cd mobile && EXPO_PUBLIC_API_URL=https://api.stopwatchscheduler.app/api eas update --channel preview --message "<sha>: <subject>" --non-interactive)`. Keep the whole `eas update ...` command on one line; the test reads `--message` and `--non-interactive` from the line that starts at `eas update`.
   - The test asserts `preview.env` and `preview.android` with `toEqual` (exact), so don't add other keys to them.
   - Appending to a file with a bash heredoc containing `{`/quotes is refused ("expansion obfuscation"); use Edit instead.
+
+## B34.impl. Mobile: over-the-air updates configured
+- **Date:** 2026-10-16
+- **Status:** DONE
+- **Summary:** Installed `expo-updates` (~57.0.26) with `npx expo install`, the one dependency change this PRD allows. `app.json` gains `runtimeVersion: {policy: "fingerprint"}` and `updates.url` (the EAS project id); `eas.json` gives `development` and `preview` their channels. `deploy.sh` runs `eas update --channel preview` from `mobile/` with the production `EXPO_PUBLIC_API_URL` right after `az containerapp update`, and the message is `<short sha>: <subject>`. Added a GOTCHAS entry on fingerprint mismatches after native changes.
+- **Files changed:** mobile/package.json, mobile/package-lock.json, mobile/app.json, mobile/eas.json, deploy.sh, GOTCHAS.md, prd.md, progress.md
+- **Verification:** from `mobile/` (python3 subprocess): `npx jest --ci` gave 17 suites / 221 tests passed (appConfig 9/9). `npx tsc --noEmit` was clean. `npx expo export --platform android` succeeded. `bash -n deploy.sh` passed.
+- **Gotchas:**
+  - `npx expo install expo-updates` did not add a `plugins` entry to `app.json`, and none is needed for the tests or the export.
+  - Running jest, tsc and export in one python script with `capture_output` hit the 10-minute background limit with no output, so it looked like a hang. Run jest by itself with stdout written straight to a log file, which finished normally. Then run tsc and export separately.

@@ -86,15 +86,15 @@ designed in its own session after Build 2b ships (D79).
   - [x] Test: `deploy.sh` contains the `eas update --channel preview` line after `az containerapp update` (read the file as text)
 
 ### B34.impl — Mobile: over-the-air updates configured
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** `npx expo install expo-updates` from `mobile/` (the one dependency change),
   then implement to the contract. Do not run `eas update:configure` or anything that logs in to
   EAS. Add a GOTCHAS entry: a phone update only reaches APKs with the same native fingerprint,
   so a native change (Build 2c) needs U9's rebuild again; check with
   `npx expo-updates fingerprint:generate` if unsure.
 - **Acceptance Criteria:**
-  - [ ] All B34.tests pass; mobile suite, tsc, and export pass
-  - [ ] `bash -n deploy.sh` passes
+  - [x] All B34.tests pass; mobile suite, tsc, and export pass
+  - [x] `bash -n deploy.sh` passes
 
 ### U9. USER — Rebuild the phone app once for updates
 - **Status:** USER
