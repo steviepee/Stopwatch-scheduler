@@ -1,6 +1,6 @@
-# Standing Orders — Phase 5 → 6
+# Standing Orders — Build 2b
 
-Current as of 2026-10-04. Read this, then `prd.md`.
+Current as of 2026-10-15. Read this, then `prd.md`.
 
 ## 0. Pick up here
 
@@ -24,12 +24,15 @@ holds the only real data**; local MySQL is a dev sandbox. Updates ship with `./d
 (commit first). Fixes found during the U-steps are in GOTCHAS (idle DB connections, the service
 worker and the OAuth callback, npm `ECONNRESET` in builds, saved URL after install-over).
 
-**Next, the user's choice:**
-- **Build 2b** design (HOLD stubs B20–B25 at the end of `prd.md`), or the **multi-user phase**
-  (roadmap D51; `docs/multi-user-transition.md`).
-- Small follow-ups: move the backend venv and image to **Python 3.12** together (Google's client
-  warns that 3.10 is end of life); note the Azure **Free services** result in U3; update the
-  EAS CLI (`npm install -g eas-cli`, 23.2 → 24.x).
+**Build 2b is designed (2026-10-15)** and written as `prd.md` (D66–D79, tasks B34–B46, USER
+U9 and U10). Phase 6's PRD is archived at `docs/prd-phase6-completed.md`. Next: run the loop;
+U9 (one APK rebuild for over-the-air updates) as soon as B34 lands. Build 2c (Pomodoro,
+notification Stop) is HOLD and gets its own design session after 2b ships. The AI planning
+coach is in `future-work.md`, to follow once these features are in; multi-user (D51) after.
+
+Small follow-ups: move the backend venv and image to **Python 3.12** together (Google's client
+warns that 3.10 is end of life); note the Azure **Free services** result in U3. The EAS CLI
+update is now part of U9.
 
 Loose end: Recording 11's Google event ("To poydras: teleport", 2026-09-26 02:45 CDT) is still
 on the user's Google Calendar. Build 2a removed Recording push, so the app cannot remove it; the

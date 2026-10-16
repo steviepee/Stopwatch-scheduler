@@ -1,454 +1,400 @@
-# Stopwatch Scheduler — PRD: Phase 6, single-user deploy to Azure
+# Stopwatch Scheduler — PRD: Build 2b (Remake Phase 5, continued)
 
 ## Overview
 Discrete tasks for the Ralph loop. Run with `./ralph.sh`. One task per session, in order. Mark
-tasks DONE when complete; add failure notes if a task fails. Build 2a is archived at
-`docs/prd-build2a-completed.md` (D39–D50). Vocabulary is in `CONTEXT.md`.
+tasks DONE when complete; add failure notes if a task fails. Phase 6 is archived at
+`docs/prd-phase6-completed.md` (D52–D65); Build 2a at `docs/prd-build2a-completed.md`
+(D39–D50). Vocabulary is in `CONTEXT.md`.
 
-**What Phase 6 is:** the backend, the web app and the database run on Azure at
-`https://api.stopwatchscheduler.app`, and the phone runs a standalone build that talks to it from
-anywhere — no Metro, no QR, no home network. Single-user (roadmap D51): one bearer token, one
-Google account. Designed with the user on 2026-10-04.
+**What Build 2b is:** the server's planning features reach both clients, and Recordings become
+Activities in one step. The quadrant picker, the day's Frog, all seven Strategies behind one
+dropdown, and a peak-hours hint; a Recording can create or join an Activity when saved or
+afterwards; and the phone takes over-the-air updates so app-code changes stop needing a new
+APK. Designed with the user on 2026-10-15. Both clients. Single-user (D51).
 
-**Order:** the loop tasks (C1–C7) change code only and never touch Azure or live MySQL. The USER
-tasks (U1–U8) create the Azure resources, move the data, build the phone app and run the gate.
-U1 (install Docker) must be done before C7; U2 (local `.env`) right after C2 lands. The rest come
-after the loop finishes.
+**Order:** B34 (over-the-air updates) is first so U9 — the one APK rebuild — can happen as
+soon as it lands; everything after it reaches the phone by `deploy.sh`. B35 (server) comes
+before the client tasks that use it. U10 is the gate.
 
-**Build 2b** (quadrant, Frog pick UI, Strategies, Pomodoro, notification Stop, Peak hours) is
-still HOLD, carried at the end of this file.
+**Build 2c** (Pomodoro, the Stop button on the notification) is HOLD at the end: native code,
+designed in its own session after Build 2b ships (D79).
 
 **Statuses:** `PENDING` is the loop's. `USER` is the user's, by hand; the loop never picks it.
 `HOLD` is not yet runnable.
 
-## Decisions (2026-10-04)
+## Decisions (2026-10-15)
 
 | # | Decision | Answer |
 |---|---|---|
-| D52 | Backend host | **Azure Container Apps**, region **South Central US**, resource group `rg-stopwatch`. One replica always running (min 1, max 1), 0.25 vCPU / 0.5 GiB. No scale-to-zero cold starts |
-| D53 | Public address | **`api.stopwatchscheduler.app`** (DNS at Namecheap: a CNAME plus an `asuid` TXT record), with an Azure-managed certificate. The apex stays on GitHub Pages (privacy policy). Phone builds and Google's redirect bake this name in, so it survives rebuilding the Azure app |
-| D54 | Database | **Azure Database for MySQL Flexible Server**, Burstable **B1ms**, 20 GB, MySQL 8.0, 7-day automatic backups. Public endpoint with TLS required; firewall allows Azure services, plus the user's IP only during the data copy. No VNet |
-| D55 | Image | One Dockerfile builds the web app and the backend into one image, pushed to **GitHub Container Registry** (`ghcr.io/steviepee/stopwatch-scheduler`, public). Built locally with **Docker Engine in WSL** (free; not Docker Desktop). No Azure Container Registry |
-| D56 | Web app | Served by the backend at `/` from the same image, same origin as `/api`. No separate static host, no production CORS |
-| D57 | Secrets | **Container Apps secrets**: `API_TOKEN` (a **new** random token, not the dev one), `DB_PASSWORD`, `GOOGLE_CLIENT_SECRET`, `CREDENTIAL_KEY`. Key Vault waits for multi-user |
-| D58 | Google credentials | An **encrypted database row** (`google_credentials`, Fernet, key in `CREDENTIAL_KEY`) replaces `token.pickle`. Multi-user later adds an owner column. The user authorizes Google once against the deployed app from a laptop (D14 holds); the local dev backend is re-authorized once too |
-| D59 | Google login route | **Gated.** `/api/auth/google/login` leaves the bearer gate's exempt list; on a public host anyone could otherwise sign their own Google account in over the user's. The callback stays exempt and only accepts the one-time `state` from an authenticated login |
-| D60 | Web interim lock | A **sign-in page**: paste the API token once; `POST /api/auth/web-session` answers with a signed cookie (HttpOnly, Secure, SameSite=Strict, 30 days). The gate accepts the bearer header **or** that cookie. Multi-user replaces the paste page with Google Sign-In |
-| D61 | Migrations | **On container start**: `alembic upgrade head`, then uvicorn. One replica, so no race. A failed migration means the new revision never listens and the previous one keeps serving |
-| D62 | Data cutover | Azure becomes the **only real data**. One `mysqldump` from the PC, restored to Azure before the app is created. Local MySQL becomes a development sandbox |
-| D63 | Deploys | **By hand**: copy-paste `az` commands for the first deploy, then `deploy.sh` (build → push → update). Deploying automatically from GitHub is future work |
-| D64 | Phone builds | Dev builds become **`app.workflow.stopwatch.dev`, "Stopwatch Scheduler (Dev)"** via `app.config.js` and `APP_VARIANT`, so the standalone app installs beside them. The standalone app is an **EAS `preview` APK** with `EXPO_PUBLIC_API_URL=https://api.stopwatchscheduler.app/api` baked in. One dev-client rebuild |
-| D65 | Not changed | Health check, logs and CORS: Container Apps' default TCP probe waits for uvicorn to listen, which only happens after migrations (D61); logs go to Log Analytics on its free allowance; `CORS_ORIGINS` stays for local dev only. Parked items (URL scheme `mobile`, "Offline" on a 401, dev gear nudge) stay parked |
+| D66 | Split | **Build 2b** is app code on server features that already exist (quadrant, Frog, Strategies, peak hours) plus Recordings-to-Activities. **Build 2c** is the native pair (Pomodoro, notification Stop) and one rebuild |
+| D67 | Phone updates | **EAS Update** (`expo-updates`). One native rebuild (U9); after that, app-code changes reach the phone when the app is reopened. Native changes still need an EAS build |
+| D68 | Update targeting | **`runtimeVersion` policy `fingerprint`**: an update only reaches APKs whose native code matches, computed automatically. Build 2c's updates wait for its APK |
+| D69 | Shipping | **`deploy.sh` ships the phone update after the backend is live** (`eas update --channel preview`), one command in that order, so the phone never runs ahead of its server |
+| D70 | Quadrant picker | **A 2×2 grid on the Activity's detail screen**, both clients: Urgent and Important / Important / Urgent / Neither; one tap sets both flags. A quadrant badge in the Activities list. New Activities are Q4 |
+| D71 | Generator | Generate still computes **all 7 Strategies** in one call. **One dropdown** replaces the per-Strategy cards and **always starts on Your Order**; under it, only the selected plan's description, notes, and timeline. Switching is instant, with no new request |
+| D72 | Eisenhower empty | When Eisenhower drops every selected Activity because none has a quadrant, show **"None of these Activities have a quadrant yet. Set them on the Activities tab."** in place of the timeline. "Consider delegating" keeps its wording |
+| D73 | Frog pick | **A frog toggle on each selected Activity when generating**, at most one on. Sent to Generate and saved onto that day's Item **whichever Strategy is saved**; the Block shows a frog marker. No Frog toggle on placed Blocks |
+| D74 | Second Frog on a day | **The new one replaces the old**, and the save confirmation says so: "Frog is now Taxes (was Laundry)." |
+| D75 | Peak hours | **A tappable hint under Start time**: "Your peak hour: 9 AM. Use it." Tapping sets the start time; never applied on its own; hidden with no history |
+| D76 | Recording → Activity at save | When the Recording's name matches no Activity, the picker shows **"+ New Activity: '<name>'"**. **"None" stays the default.** When it matches one, the row is **"Attach to <name>"**. Activity and Recording are created in **one request**, so the phone's offline queue replays a single call |
+| D77 | Name match | **Case-insensitive, trimmed.** Matches MySQL's collation on the unique `tasks.name` |
+| D78 | Saved Recordings | **An action list on every Recording**, both clients: *Attach to Activity* and *Make it an Activity* when it has none; *Change Activity* and *Detach* when it has one. Averages follow every move. A new Activity's average starts from that one Recording and it starts in Q4 |
+| D79 | Build 2c timing | **Its own design session after Build 2b ships** |
 
 ## Rules for this PRD
 
-- **The loop never touches Azure, GitHub's registry, DNS, EAS, or live MySQL.** Those are USER
-  tasks. Loop tasks change code and config files only.
-- **Tests first** (D20). Every code task is a `N.tests` / `N.impl` pair, under the same rules as
-  Build 2a: the `.impl` session must not edit the `.tests` file except to add fixtures or mocks;
-  if an assertion is wrong, mark BLOCKED and say why. C7 (Docker) is a single task: it is
-  verified by building the image, not by unit tests.
-- **Schema changes go through Alembic**; `backend/tests/test_migrations.py` must pass.
-- **No dependency changes** except where a task names one. `cryptography` (Fernet) is already in
-  `backend/requirements.txt`.
-- **Forward-compat** (`PROMPT.md`): the credential row and the web session are single-user now
-  and must not block an owner column later. No credentials written to files.
-- **Secrets never land in the repo.** No real token, password or key in any committed file,
-  test, or `progress.md`. Tests use obvious fakes.
+- **Tests first** (D20). Every code task is a `N.tests` / `N.impl` pair. The `.impl` session
+  must not edit the `.tests` file except to add fixtures or mocks; if an assertion is wrong,
+  mark BLOCKED and say why.
+- **The loop never touches Azure, GitHub's registry, DNS, EAS, or live MySQL.** It never runs
+  `deploy.sh`, `eas build` or `eas update`.
+- **Schema changes go through Alembic**; `backend/tests/test_migrations.py` must pass. Build 2b
+  needs none: every column exists.
+- **No dependency changes** except `expo-updates` in B34.
+- **The D13 parity fixture is frozen.** No Strategy changes in this build.
+- **Forward-compat** (`PROMPT.md`): keep DB access in the `db.query(Model)` idiom; nothing that
+  blocks an owner column later.
+- **Product names** in UI and new code: Activity, Recording, Schedule, Schedule Item, Block,
+  Frog, Quadrant, Strategy.
 - **Acceptance**
   - Backend: `cd backend && ./venv/bin/python -m pytest tests/`
   - Mobile, from `mobile/`: `npx jest --ci`, `npx tsc --noEmit`, `npx expo export --platform android`
   - Web, from `frontend/`: `npx vitest run`, `npx tsc --noEmit`, `npm run build`
-  - Docker (C7 only): `docker build` from the repo root
   - Redirect test output to a file rather than piping it (GOTCHAS).
 
 ---
 
 ## Tasks
 
-### U1. USER — Install Docker Engine in WSL
-- **Status:** USER — DONE 2026-10-04. Docker 29.8.2 with buildx; service enabled.
-- **Description:** Needed before C7 (the loop builds the image to check the Dockerfile) and for
-  every deploy. Free; this is Docker Engine, not Docker Desktop. In an Ubuntu tab:
-  ```bash
-  sudo apt-get update && sudo apt-get install -y ca-certificates curl
-  sudo install -m 0755 -d /etc/apt/keyrings
-  sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable" | sudo tee /etc/apt/sources.list.d/docker.list
-  sudo apt-get update && sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin
-  docker run --rm hello-world
-  ```
-  The last line prints "Hello from Docker!". Don't build images while a Ralph loop is running
-  (memory). The loop's allow-list already permits `docker build`, `docker run` and `docker image`.
-- **Acceptance Criteria:**
-  - [x] `docker run --rm hello-world` prints its greeting
-
-### C1.tests — Gate the Google login route
-- **Status:** DONE
-- **Description:** D59. `/api/auth/google/login` is in `_EXEMPT_PATHS`
-  ([main.py](backend/app/main.py)). Extend `backend/tests/test_auth_gate.py`.
-- **Contract:** `GET /api/auth/google/login` requires the bearer token (401 without it, as any
-  gated route). `/api/health` and `/api/auth/callback` stay exempt. A callback whose `state` was
-  not issued by an authenticated login call is 400 and stores no credentials.
-- **Acceptance Criteria:**
-  - [x] Test: login without a token → 401; with it → 200 and an `auth_url` (Google flow mocked)
-  - [x] Test: callback with an unknown `state` → 400; no credentials saved
-  - [x] Test: `/api/health` and `/api/auth/callback` are still reachable without a token
-
-### C1.impl — Gate the Google login route
-- **Status:** DONE
-- **Description:** Implement to the contract. Both clients already call login with the token (the
-  web through the Vite proxy in dev), so no client change.
-- **Acceptance Criteria:**
-  - [x] All C1.tests pass; full suite passes
-
-### C2.tests — Google credentials as an encrypted database row
-- **Status:** DONE
-- **Description:** D58. Today `GoogleCalendarService` pickles credentials to `token.pickle`
-  ([google_calendar.py](backend/app/services/google_calendar.py)). Add
-  `backend/tests/test_credential_store.py`; update any test that relies on the pickle file.
+### B34.tests — Mobile: over-the-air updates configured
+- **Status:** PENDING
+- **Description:** D67, D68, D69. Extend `mobile/src/__tests__/appConfig.test.ts`.
 - **Contract:**
-  - New table `google_credentials`: `id`, `data` (Text, the encrypted credential JSON),
-    `updated_at`. One row in single-user use. Alembic revision.
-  - Credentials are serialized with `Credentials.to_json()` and read back with
-    `Credentials.from_authorized_user_info(...)`, encrypted with Fernet using the
-    `CREDENTIAL_KEY` env var. No file is read or written; `token.pickle` is never touched.
-  - `_save_credentials` writes (or replaces) the row; loading reads it. Refresh-on-use still saves
-    the refreshed token.
-  - If `CREDENTIAL_KEY` is unset, Google features report not authenticated
-    (`/api/auth/status` → `authenticated: false`) and saving raises a clear error; the rest of the
-    app works. If the stored row cannot be decrypted with the key, the same: not authenticated.
+  - `app.json` gains `"runtimeVersion": {"policy": "fingerprint"}` and
+    `"updates": {"url": "https://u.expo.dev/d31ca765-c177-496f-a42e-a0578d2fc5d4"}` (the
+    existing `extra.eas.projectId`). `app.config.js` passes both through unchanged for both
+    variants.
+  - `eas.json`: `preview` gets `"channel": "preview"`; `development` gets
+    `"channel": "development"`. Other `preview` fields unchanged.
+  - `deploy.sh`, after the `az containerapp update` line, runs from `mobile/`:
+    `eas update --channel preview --message "<short sha>: <commit subject>" --non-interactive`
+    with `EXPO_PUBLIC_API_URL=https://api.stopwatchscheduler.app/api` set, so the update bakes
+    the same URL the preview APK does. A failed backend update stops the script before it.
 - **Acceptance Criteria:**
-  - [x] Test: save then load round-trips a credential (fake values), and the stored `data` does not contain the refresh token in plain text
-  - [x] Test: no file named `token.pickle` is created or read (patch `open`/check the working dir)
-  - [x] Test: unset key → not authenticated, and other routes still work
-  - [x] Test: a row encrypted with a different key → not authenticated, no crash
-  - [x] Test: Alembic revision present; `test_migrations.py` passes
+  - [ ] Test: config has the fingerprint policy and the updates URL, with and without `APP_VARIANT=development`
+  - [ ] Test: `eas.json` channels are as above and `preview` keeps its env and APK build type
+  - [ ] Test: `deploy.sh` contains the `eas update --channel preview` line after `az containerapp update` (read the file as text)
 
-### C2.impl — Google credentials as an encrypted database row
-- **Status:** DONE
-- **Description:** Implement to the contract. Keep DB access in the `db.query(Model)` idiom
-  (forward-compat). Remove the pickle code paths. Update `DIAGNOSTIC.md` and `GOTCHAS.md`
-  entries that describe `token.pickle` as the credential store.
+### B34.impl — Mobile: over-the-air updates configured
+- **Status:** PENDING
+- **Description:** `npx expo install expo-updates` from `mobile/` (the one dependency change),
+  then implement to the contract. Do not run `eas update:configure` or anything that logs in to
+  EAS. Add a GOTCHAS entry: a phone update only reaches APKs with the same native fingerprint,
+  so a native change (Build 2c) needs U9's rebuild again; check with
+  `npx expo-updates fingerprint:generate` if unsure.
 - **Acceptance Criteria:**
-  - [x] All C2.tests pass; full suite passes; `alembic check` clean
-  - [x] `git grep -n "pickle" backend/app` is empty
+  - [ ] All B34.tests pass; mobile suite, tsc, and export pass
+  - [ ] `bash -n deploy.sh` passes
 
-### U2. USER — Local `.env` after C2
-- **Status:** USER — DONE 2026-10-04. Local DB at head with `google_credentials`; one encrypted row; Google connected via Connect Calendar; `token.pickle` deleted.
-- **Description:** After C2 lands, the local backend needs an encryption key and one Google
-  re-authorization, because credentials now live in the database instead of `token.pickle`.
+### U9. USER — Rebuild the phone app once for updates
+- **Status:** USER
+- **Description:** After B34 lands and is committed. From `mobile/`, in an Ubuntu tab:
   ```bash
-  cd /root/Stopwatch-scheduler/backend
-  echo "CREDENTIAL_KEY=$(./venv/bin/python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')" >> .env
-  ./venv/bin/alembic upgrade head
+  npm install -g eas-cli          # 23.2 → 24.x, also an open follow-up
+  eas build --profile preview --platform android
+  eas build --profile development --platform android
   ```
-  Restart uvicorn, then from the laptop browser click **Connect Calendar** (top-right of the Recordings card) at
-  `localhost:3000` once. `token.pickle` can then be deleted: `rm token.pickle`.
+  Install both from the links EAS prints (open on the phone). Then prove an update arrives
+  without an APK: from the repo root run `./deploy.sh` (it now ships the backend, then the
+  phone update), force-close the standalone app, open it, close it, and open it again — the
+  update downloads on the first open and applies on the second.
 - **Acceptance Criteria:**
-  - [x] `curl -s -H "Authorization: Bearer $(grep ^API_TOKEN .env | cut -d= -f2-)" http://localhost:8000/api/auth/status` shows `"authenticated": true`
+  - [ ] Both apps installed; the standalone app still lists Activities and Recordings
+  - [ ] `eas update:list --branch preview` shows the update `deploy.sh` published
+  - [ ] The phone runs it (any B35+ change that has landed is visible, or `eas update:list` shows it downloaded under the build's runtime version)
 
-### C3.tests — Database connection from separate settings, with optional TLS
-- **Status:** DONE
-- **Description:** D54. `database.py` and `alembic/env.py` each build the URL with an f-string,
-  which breaks on a password containing `@`, `/` or `:`, and neither can require TLS, which Azure
-  MySQL enforces. Add `backend/tests/test_database_url.py`.
-- **Contract:** One helper in `app/database.py` builds the SQLAlchemy URL with
-  `sqlalchemy.engine.URL.create(...)` from `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`,
-  `DB_NAME`, and the connect args: when `DB_SSL_CA` is set, `{"ssl": {"ca": DB_SSL_CA}}`;
-  otherwise none. Both the app engine and `alembic/env.py` use it (env.py's `-x db_url=`
-  override stays). Local behaviour without `DB_SSL_CA` is unchanged.
+### B35.tests — Backend: Recordings create, join, and leave Activities
+- **Status:** PENDING
+- **Description:** D76, D77, D78. Add `backend/tests/test_session_activity.py`. Two existing
+  bugs this fixes, both in `routers/sessions.py` `update_session`: detaching sets the Time
+  Log's `task_id` to `None`, which `time_logs.task_id` (NOT NULL) rejects with a 500; and
+  attaching a Recording saved with no Activity does nothing, because it has no Time Log to move.
+- **Contract:**
+  - `StopwatchSessionCreate` and `StopwatchSessionUpdate` gain optional `new_activity_name`.
+    Sending it with a non-null `task_id` → 422. Blank after trimming → 422.
+  - **Resolving a name:** trim it; find an Activity whose name equals it ignoring case
+    (`func.lower(Task.name) == name.lower()`). Found → use it. Not found → create the Activity
+    with the trimmed name (Q4). This makes an offline save that replays after the same name
+    was created elsewhere attach rather than fail.
+  - **Create** with `new_activity_name`: the Activity, the Recording (with that `task_id`), and
+    its Time Log are created in one transaction; the Activity's average and count include it.
+  - **Update** to an Activity (`task_id` or `new_activity_name`) on a Recording that has none:
+    creates the Time Log (`session_id` set, the Recording's duration) and adds the duration to
+    the Activity's average and count.
+  - **Update** from one Activity to another: as today, the Time Log moves and both averages
+    follow.
+  - **Update** with `task_id: null` on an attached Recording: deletes its Time Log and removes
+    the duration from the old Activity's average and count. No 500.
+  - Responses are the Recording as today, with the resolved `task_id`.
 - **Acceptance Criteria:**
-  - [x] Test: a password with `@:/` round-trips through the URL intact
-  - [x] Test: `DB_SSL_CA` set → connect args carry the CA path; unset → no ssl args
-  - [x] Test: `alembic/env.py`'s URL comes from the same helper (`db_url` override still wins)
+  - [ ] Test: create with `new_activity_name: " Run "` and no Activity → Activity "Run" exists with count 1 and average equal to the duration; the Recording's `task_id` is its id
+  - [ ] Test: create with `new_activity_name: "run"` when "Run" exists → attaches to "Run"; no second Activity
+  - [ ] Test: both `task_id` and `new_activity_name` → 422; blank name → 422
+  - [ ] Test: attach a no-Activity Recording via `task_id` → a Time Log appears and the average includes it
+  - [ ] Test: attach via `new_activity_name` → new Activity created with that Recording
+  - [ ] Test: detach → 200, Time Log gone, old Activity's count and average no longer include it
+  - [ ] Test: move between Activities still updates both (existing behaviour, kept)
 
-### C3.impl — Database connection from separate settings, with optional TLS
-- **Status:** DONE
+### B35.impl — Backend: Recordings create, join, and leave Activities
+- **Status:** PENDING
+- **Description:** Implement to the contract in `routers/sessions.py` and `models/schemas.py`.
+  One helper resolves a name to an Activity for both routes.
+- **Acceptance Criteria:**
+  - [ ] All B35.tests pass; full suite passes
+
+### B36.tests — Mobile: a Recording makes or joins an Activity when saved
+- **Status:** PENDING
+- **Description:** D76, D77. Extend `StopwatchScreen.test.tsx` (the stop-and-save picker in
+  `(tabs)/index.tsx`) and `RecordingsScreen.test.tsx` (the hand-entry `ManualForm`).
+- **Contract:** In both pickers, below "None" and the matching Activities:
+  - When the typed Recording name (trimmed) equals no Activity's name ignoring case, a row
+    `+ New Activity: '<name>'` (testID `activity-new`, `manual-activity-new`). Selecting it
+    sends `new_activity_name` and no `task_id`.
+  - When it equals one, no new row; that Activity's row reads `Attach to <name>` and selecting
+    it sends its `task_id` as today.
+  - No row with an empty name. "None" stays selected by default.
+  - The save goes through the same `useCreateSession` mutation, so an offline save queues the
+    one payload with `new_activity_name` and replays it unchanged. On success, `['tasks']` is
+    invalidated (already the case).
+- **Acceptance Criteria:**
+  - [ ] Test: name "Laundry", no such Activity → the new row shows; saving sends `new_activity_name: "Laundry"` and no `task_id`
+  - [ ] Test: name "laundry " with Activity "Laundry" → no new row; "Attach to Laundry" is offered
+  - [ ] Test: default selection is None; saving without touching the picker sends neither field
+  - [ ] Test: the hand-entry form behaves the same
+  - [ ] Test: an offline save persists a payload carrying `new_activity_name` (extend `offlineQueue.test.tsx` if that is where the queue is exercised)
+
+### B36.impl — Mobile: a Recording makes or joins an Activity when saved
+- **Status:** PENDING
+- **Description:** Implement to the contract. Add `new_activity_name` to
+  `StopwatchSessionCreate` in `mobile/src/types`.
+- **Acceptance Criteria:**
+  - [ ] All B36.tests pass; mobile suite, tsc, and export pass
+
+### B37.tests — Mobile: actions on a saved Recording
+- **Status:** PENDING
+- **Description:** D78. Extend `RecordingsScreen.test.tsx`.
+- **Contract:** Tapping a Recording row opens its actions. With no Activity: **Attach to
+  Activity** (opens an Activity picker with search; choosing sends `PUT` with `task_id`) and
+  **Make it an Activity** (sends `PUT` with `new_activity_name` = the Recording's name; when
+  that name already matches an Activity ignoring case, the action reads **Attach to <name>**
+  and sends that `task_id` instead). With an Activity: **Change Activity** (same picker, current
+  one marked) and **Detach** (sends `task_id: null`). Existing delete stays. After any change
+  the list shows the new Activity, and `['sessions']` and `['tasks']` are invalidated.
+- **Acceptance Criteria:**
+  - [ ] Test: a no-Activity Recording offers Attach and Make it an Activity; an attached one offers Change and Detach
+  - [ ] Test: each action sends the body above
+  - [ ] Test: Make it an Activity becomes "Attach to <name>" when the name matches
+  - [ ] Test: after success the row's Activity label updates
+
+### B37.impl — Mobile: actions on a saved Recording
+- **Status:** PENDING
+- **Description:** Implement to the contract in `(tabs)/recordings.tsx`; add `update` to
+  `sessionAPI` in `services/api.ts` if absent. Online only: show an error on failure, no queue.
+- **Acceptance Criteria:**
+  - [ ] All B37.tests pass; mobile suite, tsc, and export pass
+
+### B38.tests — Web: Recordings make, join, and leave Activities
+- **Status:** PENDING
+- **Description:** D76, D77, D78, web. Extend `Stopwatch.test.tsx`, `ManualRecording.test.tsx`
+  and `SessionList.test.tsx`.
+- **Contract:** The Stopwatch save modal and hand entry get B36's rows and payloads (the web
+  has no offline queue). Each Recording in `SessionList` gets B37's actions and bodies.
+- **Acceptance Criteria:**
+  - [ ] Test: new-Activity row and "Attach to <name>" behave as in B36, in the save modal and hand entry
+  - [ ] Test: each Recording action sends B37's body and the list updates
+
+### B38.impl — Web: Recordings make, join, and leave Activities
+- **Status:** PENDING
+- **Description:** Implement to the contract in `Stopwatch.tsx`, the hand-entry form,
+  `SessionList.tsx`, and `services/api.ts`; add `new_activity_name` to the web types.
+- **Acceptance Criteria:**
+  - [ ] All B38.tests pass; web tsc clean; `npm run build` succeeds
+
+### B39.tests — Mobile: quadrant picker and badge
+- **Status:** PENDING
+- **Description:** D70. Extend `ActivitiesScreen.test.tsx`; add an activity-detail test if none
+  covers `activity/[id].tsx`.
+- **Contract:** The Activity detail screen shows a 2×2 grid: top row **Urgent & Important**
+  (Q1), **Important** (Q2); bottom row **Urgent** (Q3), **Neither** (Q4). The current quadrant
+  is highlighted. Tapping a cell sends `PUT /api/tasks/{id}` with both `is_urgent` and
+  `is_important` and highlights it on success. The Activities list shows a small badge (Q1–Q4)
+  on each row; Q4 shows no badge, so an unset list stays quiet.
+- **Acceptance Criteria:**
+  - [ ] Test: each cell sends the right pair of flags
+  - [ ] Test: the current quadrant is highlighted from the Activity's flags
+  - [ ] Test: list badges show Q1–Q3 and nothing for Q4
+
+### B39.impl — Mobile: quadrant picker and badge
+- **Status:** PENDING
+- **Description:** Implement to the contract; `update` in `taskAPI` if absent.
+- **Acceptance Criteria:**
+  - [ ] All B39.tests pass; mobile suite, tsc, and export pass
+
+### B40.tests — Web: quadrant picker and badge
+- **Status:** PENDING
+- **Description:** D70, web. Add `frontend/src/__tests__/TaskDetailModal.test.tsx`; badges in
+  `TaskList.tsx`.
+- **Contract:** As B39, in `TaskDetailModal.tsx` and the Activities list.
+- **Acceptance Criteria:**
+  - [ ] Test: each cell sends the right pair of flags; current quadrant highlighted
+  - [ ] Test: list badges show Q1–Q3 and nothing for Q4
+
+### B40.impl — Web: quadrant picker and badge
+- **Status:** PENDING
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
-  - [x] All C3.tests pass; full suite passes
+  - [ ] All B40.tests pass; web tsc clean; `npm run build` succeeds
 
-### C4.tests — Web session cookie
-- **Status:** DONE
-- **Description:** D60, backend half. Extend `backend/tests/test_auth_gate.py`.
+### B41.tests — Mobile: one Strategy dropdown over all seven plans
+- **Status:** PENDING
+- **Description:** D71, D72. Extend `ScheduleScreen.test.tsx`. Today `(tabs)/schedule.tsx`
+  sends four Strategies and renders a card per plan.
 - **Contract:**
-  - `POST /api/auth/web-session` (exempt from the gate) with body `{"token": "..."}`: if it
-    equals `API_TOKEN` (constant-time compare), responds 204 and sets cookie `sw_session`:
-    `HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=2592000`. The value is an expiry
-    timestamp plus an HMAC-SHA256 of it keyed from `API_TOKEN`, so rotating the token signs
-    every browser out. A wrong token → 401, no cookie.
-  - `DELETE /api/auth/web-session` clears the cookie (gated like any route).
-  - The gate accepts a valid, unexpired `sw_session` cookie as an alternative to the bearer
-    header. Expired, tampered, or signed-with-another-token cookies → 401.
-  - Nothing about the bearer header changes; the phone keeps using it.
+  - Generate sends no `strategies` field (the server then computes all seven:
+    your-order, shortest-first, longest-first, best-fit, best-fit-slots, eat-the-frog,
+    eisenhower), keeping `avoid_existing: true`.
+  - The per-plan cards are replaced by **one dropdown** (testID `strategy-picker`) listing each
+    plan's `label`, selected on **Your Order** after every Generate. Under it, the selected
+    plan's `description`, its `excluded` notes ("didn't fit"), its `flagged` notes ("consider
+    delegating"), and its timeline. Changing the dropdown swaps these with no new request.
+    Save saves the selected plan, as today.
+  - **Eisenhower empty:** when the selected plan is Eisenhower, its timeline is empty, and every
+    excluded reason is `not-urgent-not-important`, show
+    "None of these Activities have a quadrant yet. Set them on the Activities tab." in place of
+    the timeline and notes.
 - **Acceptance Criteria:**
-  - [x] Test: correct token → 204 with the cookie and every attribute above; wrong token → 401, no cookie
-  - [x] Test: a gated route succeeds with only the cookie
-  - [x] Test: tampered, expired, and other-token cookies → 401
-  - [x] Test: DELETE clears the cookie; the bearer header alone still works everywhere
+  - [ ] Test: the Generate request has no `strategies` field
+  - [ ] Test: after Generate the dropdown shows "Your Order" and only that plan's timeline is rendered
+  - [ ] Test: choosing another Strategy shows its description and timeline without a second Generate call
+  - [ ] Test: Eisenhower with all-Q4 Activities shows the quadrant message
+  - [ ] Test: Save sends the selected plan's timeline
 
-### C4.impl — Web session cookie
-- **Status:** DONE
-- **Description:** Implement to the contract in `main.py` (gate) and `routers/calendar_auth.py`
-  or a small new router. Standard library only (`hmac`, `hashlib`, `time`).
+### B41.impl — Mobile: one Strategy dropdown over all seven plans
+- **Status:** PENDING
+- **Description:** Implement to the contract. Reuse `PickerField` if it fits.
 - **Acceptance Criteria:**
-  - [x] All C4.tests pass; full suite passes
+  - [ ] All B41.tests pass; mobile suite, tsc, and export pass
 
-### C5.tests — Backend serves the built web app
-- **Status:** DONE
-- **Description:** D56. Add `backend/tests/test_static_web.py` using a temporary directory with a
-  fake `index.html` and an asset.
-- **Contract:** If env `STATIC_DIR` points at an existing directory, the backend serves it at
-  `/`: real files by path (`/assets/x.js`), and any other non-`/api` GET path falls back to
-  `index.html` (client-side routes). Static paths are exempt from the bearer gate — the sign-in
-  page must load before there is a cookie. `/api/*` is unchanged, and an unknown `/api/...` path
-  is still a JSON 404, never `index.html`. If `STATIC_DIR` is unset or missing, nothing is
-  mounted (local dev unchanged).
+### B42.tests — Web: one Strategy dropdown over all seven plans
+- **Status:** PENDING
+- **Description:** D71, D72, web. Extend `ScheduleBuilder.test.tsx`; today
+  `ScheduleBuilder.tsx` sends four Strategies.
+- **Contract:** As B41, with a `<select>`.
 - **Acceptance Criteria:**
-  - [x] Test: `/` and `/some/client/route` return `index.html` without a token
-  - [x] Test: `/assets/app.js` returns the file
-  - [x] Test: `/api/tasks/` still needs the token; `/api/nope` is a JSON 404
-  - [x] Test: no `STATIC_DIR` → `/` is a 404 as today
+  - [ ] Test: as B41's five, in the web builder
 
-### C5.impl — Backend serves the built web app
-- **Status:** DONE
-- **Description:** Implement to the contract in `main.py`.
+### B42.impl — Web: one Strategy dropdown over all seven plans
+- **Status:** PENDING
+- **Description:** Implement to the contract.
 - **Acceptance Criteria:**
-  - [x] All C5.tests pass; full suite passes
+  - [ ] All B42.tests pass; web tsc clean; `npm run build` succeeds
 
-### C6.tests — Web sign-in page
-- **Status:** DONE
-- **Description:** D60, web half. Add `frontend/src/__tests__/SignIn.test.tsx`.
-- **Contract:** Any API response of 401 (outside Google-specific calls, which keep their own
-  "authorize from a laptop" handling) switches the app to a **sign-in screen**: one password
-  field ("API token") and a Sign in button that POSTs `{token}` to `/api/auth/web-session`. On
-  204 the app reloads its data and shows the normal screens; on 401 it shows "That token didn't
-  work" and stays. Options gains **Sign out**, calling `DELETE /api/auth/web-session` and
-  returning to the sign-in screen. The token is never written to `localStorage`,
-  `sessionStorage` or a JS-readable cookie. In dev the Vite proxy still injects the header, so
-  the screen never appears there.
+### B43.tests — Mobile: the day's Frog
+- **Status:** PENDING
+- **Description:** D73, D74. Extend `ScheduleScreen.test.tsx` and `CalendarDayScreen.test.tsx`.
+  The server already stores `is_frog` on Schedule Items and keeps one per Schedule.
+- **Contract:**
+  - Each selected Activity on the Schedule tab has a frog toggle (testID
+    `frog-toggle-<task_id>`); turning one on turns any other off. Generate sends `is_frog: true`
+    on that Activity only.
+  - Save sends `is_frog: true` on the Frog's Item whichever Strategy is selected.
+  - **Replace message:** before saving to a date, the tab reads that date's Schedule
+    (`GET /api/schedules/?start_date=D&end_date=D`). If it has a Frog Item and the save carries
+    a different Frog, the save confirmation reads "Frog is now <new> (was <old>)."
+  - Calendar Blocks whose Item has `is_frog` show a frog marker (testID `frog-marker-<item id>`).
 - **Acceptance Criteria:**
-  - [x] Test: a 401 from a data call shows the sign-in screen
-  - [x] Test: Sign in POSTs the token, and on 204 the normal view returns
-  - [x] Test: a rejected token shows the error and stays
-  - [x] Test: Sign out calls DELETE and shows the sign-in screen
-  - [x] Test: nothing is written to `localStorage`/`sessionStorage`
+  - [ ] Test: only one toggle can be on; Generate sends `is_frog` on that Activity only
+  - [ ] Test: saving the Shortest First plan still sends `is_frog` on the Frog's Item
+  - [ ] Test: with an existing Frog on the date, the confirmation names new and old
+  - [ ] Test: a frog Item's Block shows the marker; others do not
 
-### C6.impl — Web sign-in page
-- **Status:** DONE
-- **Description:** Implement to the contract in `frontend/src/services/api.ts` (a 401 hook),
-  `pages/HomePage.tsx` or `App`, and `components/OptionsPage.tsx`.
+### B43.impl — Mobile: the day's Frog
+- **Status:** PENDING
+- **Description:** Implement to the contract in `(tabs)/schedule.tsx` and the calendar Block.
 - **Acceptance Criteria:**
-  - [x] All C6.tests pass; web tsc clean; `npm run build` succeeds
+  - [ ] All B43.tests pass; mobile suite, tsc, and export pass
 
-### C7. Container image, entrypoint, and deploy script
-- **Status:** DONE
-- **Description:** D55, D61, D63. Depends on U1: if `docker --version` fails, change nothing,
-  mark BLOCKED ("U1 not done") and exit. Create at the repo root:
-  - `Dockerfile`, multi-stage: stage 1 `node:22-slim` (matches local Node 22) runs `npm ci && npm run build` in
-    `frontend/`; stage 2 `python:3.10-slim` (matches the backend venv, Python 3.10) installs `backend/requirements.txt`, copies
-    `backend/app`, `backend/alembic`, `backend/alembic.ini`, and the web build to `/app/static`,
-    sets `STATIC_DIR=/app/static` and `DB_SSL_CA=/etc/ssl/certs/ca-certificates.crt`, exposes
-    8000, and runs `docker-entrypoint.sh`.
-  - `docker-entrypoint.sh`: `alembic upgrade head`, then
-    `exec uvicorn app.main:app --host 0.0.0.0 --port 8000` (fail fast: `set -e`).
-  - `.dockerignore`: `node_modules`, `venv`, `.env`, `*.pickle`, `test.db`, `mobile/`, `.git`,
-    build output, `__pycache__`.
-  - `deploy.sh`: tags the image with the short git SHA, builds, pushes to
-    `ghcr.io/steviepee/stopwatch-scheduler:<sha>`, and runs
-    `az containerapp update -n stopwatch-api -g rg-stopwatch --image <that tag>`. Refuses to run
-    with uncommitted changes. Prints the app's URL at the end.
-  No `.tests` pair: verified by building.
+### B44.tests — Web: the day's Frog
+- **Status:** PENDING
+- **Description:** D73, D74, web. Extend `ScheduleBuilder.test.tsx` and `CalendarView.test.tsx`.
+- **Contract:** As B43, in `ScheduleBuilder.tsx` and `calendar/ItemBlock.tsx`.
 - **Acceptance Criteria:**
-  - [x] `docker build -t stopwatch-scheduler:local .` succeeds from the repo root
-  - [x] `docker run --rm --entrypoint ls stopwatch-scheduler:local /app/static` lists `index.html`
-  - [x] `docker run --rm --entrypoint python -e API_TOKEN=x stopwatch-scheduler:local -c "import app.main"` exits 0
-  - [x] The image contains no `.env`, `token.pickle` or `venv` (`docker run --rm --entrypoint sh stopwatch-scheduler:local -c "find / -name .env -o -name token.pickle 2>/dev/null"` prints nothing)
-  - [x] `bash -n deploy.sh docker-entrypoint.sh` passes; both are executable
+  - [ ] Test: as B43's four, in the web builder and calendar
 
-### C8.tests — Mobile app variants
-- **Status:** DONE
-- **Description:** D64. Add `mobile/src/__tests__/appConfig.test.ts`.
-- **Contract:** `mobile/app.config.js` takes the static `app.json` config and, when
-  `APP_VARIANT=development`, sets `name` to "Stopwatch Scheduler (Dev)" and `android.package` to
-  `app.workflow.stopwatch.dev`; otherwise it returns the config unchanged. `eas.json`:
-  `development` gets `"env": {"APP_VARIANT": "development"}`; `preview` gets
-  `"env": {"EXPO_PUBLIC_API_URL": "https://api.stopwatchscheduler.app/api"}` and
-  `"android": {"buildType": "apk"}`.
+### B44.impl — Web: the day's Frog
+- **Status:** PENDING
+- **Description:** Implement to the contract.
 - **Acceptance Criteria:**
-  - [x] Test: with `APP_VARIANT=development`, name and package are the dev ones
-  - [x] Test: without it, name and package equal `app.json`'s
-  - [x] Test: `eas.json` profiles carry the env and build type above
+  - [ ] All B44.tests pass; web tsc clean; `npm run build` succeeds
 
-### C8.impl — Mobile app variants
-- **Status:** DONE
-- **Description:** Implement to the contract. Keep `app.json` as the base config.
+### B45.tests — Mobile: peak-hours hint
+- **Status:** PENDING
+- **Description:** D75. Extend `ScheduleScreen.test.tsx`.
+- **Contract:** The Schedule tab calls
+  `GET /api/insights/peak-hours?tz_offset=<new Date().getTimezoneOffset()>`. When `peak_hour`
+  is not null, a hint under Start time reads "Your peak hour: 9 AM. Use it." (12-hour clock).
+  Tapping it sets Start time to that hour on the selected date (minutes zero). The start time is
+  never changed without the tap. `peak_hour: null` or a failed call → no hint, nothing else
+  affected.
 - **Acceptance Criteria:**
-  - [x] All C8.tests pass; tsc clean; export succeeds
-  - [x] `APP_VARIANT=development npx expo config --type public` shows the dev package; without it, the normal one
+  - [ ] Test: `peak_hour: 9` shows "Your peak hour: 9 AM. Use it."; `peak_hour: 14` shows "2 PM"
+  - [ ] Test: tapping sets the start time to that hour on the selected date
+  - [ ] Test: null or an error → no hint; Start time unchanged on load
 
-### U3. USER — Create the Azure database and copy the data
-- **Status:** USER — DONE 2026-10-05. Azure counts matched local (head `22e35c64707d`, 9 Recordings, 6 Activities); `cutover` firewall rule deleted. Free services check still to note.
-- **Description:** After the loop finishes. Pick a database admin password made of letters and
-  digits only, and keep it in a password manager. In an Ubuntu tab:
-  ```bash
-  az login --tenant 1678bfa2-dd98-416b-aa4c-ceb51469ee49
-  az account set --subscription 98627fd3-6a53-420b-9f01-796fdbef2b60
-  az provider register -n Microsoft.DBforMySQL --wait
-  az provider register -n Microsoft.App --wait
-  az provider register -n Microsoft.OperationalInsights --wait
-  az group create -n rg-stopwatch -l southcentralus
-
-  read -s -p "New DB admin password: " DB_PASSWORD; echo
-  az mysql flexible-server create -g rg-stopwatch -n stopwatch-db-steviepee -l southcentralus \
-    --tier Burstable --sku-name Standard_B1ms --storage-size 20 --version 8.0.21 \
-    --admin-user swadmin --admin-password "$DB_PASSWORD" --public-access 0.0.0.0 \
-    --backup-retention 7 --high-availability Disabled --yes
-  az mysql flexible-server db create -g rg-stopwatch -s stopwatch-db-steviepee -d stopwatch_scheduler
-  MYIP=$(curl -s https://api.ipify.org)
-  az mysql flexible-server firewall-rule create -g rg-stopwatch -n stopwatch-db-steviepee \
-    --rule-name cutover --start-ip-address $MYIP --end-ip-address $MYIP
-  ```
-  If the server name is taken, add a digit and use that name everywhere below. Then **stop
-  recording on the phone**, bring the local schema to head, dump, and restore:
-  ```bash
-  cd /root/Stopwatch-scheduler/backend && ./venv/bin/alembic upgrade head
-  mysqldump -u root -p --single-transaction --set-gtid-purged=OFF --no-tablespaces stopwatch_scheduler > ~/stopwatch-cutover.sql
-  mysql -h stopwatch-db-steviepee.mysql.database.azure.com -u swadmin -p --ssl-mode=REQUIRED stopwatch_scheduler < ~/stopwatch-cutover.sql
-  mysql -h stopwatch-db-steviepee.mysql.database.azure.com -u swadmin -p --ssl-mode=REQUIRED stopwatch_scheduler -e "SELECT version_num FROM alembic_version; SELECT COUNT(*) FROM stopwatch_sessions; SELECT COUNT(*) FROM tasks;"
-  ```
-  The counts match your local database. Keep `~/stopwatch-cutover.sql`. Then remove the
-  firewall opening:
-  `az mysql flexible-server firewall-rule delete -g rg-stopwatch -n stopwatch-db-steviepee --rule-name cutover --yes`
+### B45.impl — Mobile: peak-hours hint
+- **Status:** PENDING
+- **Description:** Implement to the contract; add the call to `services/api.ts`.
 - **Acceptance Criteria:**
-  - [x] Azure `alembic_version` equals local head; row counts match
-  - [x] The `cutover` firewall rule is deleted
-  - [ ] Cost Management → Free services checked for MySQL B1ms; noted here: ____
+  - [ ] All B45.tests pass; mobile suite, tsc, and export pass
 
-### U4. USER — Push the image and create the app
-- **Status:** USER — DONE 2026-10-05. Image `b2e8c59` public on GHCR; app `stopwatch-api` running at `stopwatch-api.jollycliff-79fefd85.southcentralus.azurecontainerapps.io`; all migrations ran on first start.
-- **Description:** Needs a GitHub personal access token (classic) with `write:packages`
-  (github.com → Settings → Developer settings → Tokens). Generate the production secrets and keep
-  all four in your password manager:
-  ```bash
-  cd /root/Stopwatch-scheduler
-  echo "API token: $(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')"
-  echo "Credential key: $(backend/venv/bin/python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')"
-  read -s -p "GitHub PAT: " GHPAT; echo
-  echo "$GHPAT" | docker login ghcr.io -u steviepee --password-stdin
-  TAG=$(git rev-parse --short HEAD)
-  docker build -t ghcr.io/steviepee/stopwatch-scheduler:$TAG .
-  docker push ghcr.io/steviepee/stopwatch-scheduler:$TAG
-  ```
-  On github.com → your profile → Packages → `stopwatch-scheduler` → Package settings → change
-  visibility to **Public**. Then create the environment and the app (paste the values when asked;
-  `GOOGLE_CLIENT_ID` and the client secret are the ones in `backend/.env`):
-  ```bash
-  az extension add --name containerapp --upgrade
-  az containerapp env create -n stopwatch-env -g rg-stopwatch -l southcentralus
-  read -s -p "Prod API token: " P_API; echo
-  read -s -p "DB admin password: " P_DB; echo
-  read -s -p "Google client secret: " P_GCS; echo
-  read -s -p "Credential key: " P_KEY; echo
-  read -p "Google client id: " P_GCI
-  az containerapp create -n stopwatch-api -g rg-stopwatch --environment stopwatch-env \
-    --image ghcr.io/steviepee/stopwatch-scheduler:$TAG --target-port 8000 --ingress external \
-    --min-replicas 1 --max-replicas 1 --cpu 0.25 --memory 0.5Gi \
-    --secrets api-token="$P_API" db-password="$P_DB" google-client-secret="$P_GCS" credential-key="$P_KEY" \
-    --env-vars API_TOKEN=secretref:api-token DB_PASSWORD=secretref:db-password \
-      GOOGLE_CLIENT_SECRET=secretref:google-client-secret CREDENTIAL_KEY=secretref:credential-key \
-      DB_HOST=stopwatch-db-steviepee.mysql.database.azure.com DB_PORT=3306 DB_USER=swadmin \
-      DB_NAME=stopwatch_scheduler GOOGLE_CLIENT_ID="$P_GCI" \
-      GOOGLE_REDIRECT_URI=https://api.stopwatchscheduler.app/api/auth/callback
-  FQDN=$(az containerapp show -n stopwatch-api -g rg-stopwatch --query properties.configuration.ingress.fqdn -o tsv)
-  curl -s https://$FQDN/api/health
-  ```
+### B46.tests — Web: peak-hours hint
+- **Status:** PENDING
+- **Description:** D75, web. Extend `ScheduleBuilder.test.tsx`.
+- **Contract:** As B45, under the builder's start time.
 - **Acceptance Criteria:**
-  - [x] `curl https://$FQDN/api/health` → `{"status":"healthy"}`
-  - [x] `curl -s -o /dev/null -w "%{http_code}" https://$FQDN/api/tasks/` → 401
-  - [x] `curl -s -o /dev/null -w "%{http_code}" https://$FQDN/api/auth/google/login` → 401 (C1)
+  - [ ] Test: as B45's three, in the web builder
 
-### U5. USER — Domain, certificate, and Google redirect
-- **Status:** USER — DONE 2026-10-05. DNS live, `api.stopwatchscheduler.app` bound with a managed certificate, production redirect URI registered.
-- **Description:**
-  ```bash
-  FQDN=$(az containerapp show -n stopwatch-api -g rg-stopwatch --query properties.configuration.ingress.fqdn -o tsv)
-  ASUID=$(az containerapp show -n stopwatch-api -g rg-stopwatch --query properties.customDomainVerificationId -o tsv)
-  echo "CNAME  api        -> $FQDN"
-  echo "TXT    asuid.api  -> $ASUID"
-  ```
-  In Namecheap → Domain List → stopwatchscheduler.app → Advanced DNS, add those two records
-  (Host `api` and `asuid.api`). Leave the existing GitHub Pages records alone. When
-  `dig +short api.stopwatchscheduler.app` returns the FQDN (minutes, sometimes longer):
-  ```bash
-  az containerapp hostname add -n stopwatch-api -g rg-stopwatch --hostname api.stopwatchscheduler.app
-  az containerapp hostname bind -n stopwatch-api -g rg-stopwatch --hostname api.stopwatchscheduler.app \
-    --environment stopwatch-env --validation-method CNAME
-  ```
-  The certificate takes a few minutes. Then in Google Cloud Console → APIs & Services →
-  Credentials → the OAuth client → Authorized redirect URIs, **add**
-  `https://api.stopwatchscheduler.app/api/auth/callback` (keep the localhost one) and Save.
+### B46.impl — Web: peak-hours hint
+- **Status:** PENDING
+- **Description:** Implement to the contract.
 - **Acceptance Criteria:**
-  - [x] `curl https://api.stopwatchscheduler.app/api/health` → healthy, with a valid certificate
-  - [x] `https://stopwatchscheduler.app` still shows the privacy policy
-  - [x] The production redirect URI is registered
+  - [ ] All B46.tests pass; web tsc clean; `npm run build` succeeds
 
-### U6. USER — Sign in on the web and connect Google
-- **Status:** USER — DONE 2026-10-06. Signed in on the deployed web app; Google connected (`authenticated: true`). Found and fixed on the way: invisible sign-in text, stale DB connections after idle, and the service worker swallowing the OAuth callback (see GOTCHAS); deployed `08204d7`.
-- **Description:** On the laptop, open `https://api.stopwatchscheduler.app`. The sign-in page
-  appears; paste the **production** API token. Click **Connect Calendar** in the top-right of the Recordings card (it shows only while Google is not connected),
-  authorize (the "Google hasn't verified this app" screen is expected: Advanced → Go to…), and
-  return. The Calendar shows today's Google events.
-- **Acceptance Criteria:**
-  - [x] Signed in; data matches the phone's before cutover
-  - [x] `/api/auth/status` (from the web app) is authenticated; Google events show
-
-### U7. USER — Phone builds
-- **Status:** USER — DONE 2026-10-06. Both EAS builds installed side by side (dev `bbf3f56d`, preview `d0537793`). The standalone app kept the old saved LAN URL and token from the dev build it replaced; fixed by entering the cloud URL and production token in Settings and pressing **Save** (Test connection alone does not save). See GOTCHAS.
-- **Description:** From `mobile/`:
-  ```bash
-  eas build --profile development --platform android   # once: the dev app becomes "(Dev)"
-  eas build --profile preview --platform android       # the standalone app
-  ```
-  Install both from the links EAS prints (open on the phone). The old dev build
-  (`app.workflow.stopwatch`) is replaced by the standalone app on install. Open
-  **Stopwatch Scheduler** (not "(Dev)") → Settings: paste the **production** API token; the
-  server URL already reads `https://api.stopwatchscheduler.app/api`.
-- **Acceptance Criteria:**
-  - [x] Both apps installed side by side; the standalone app lists your Activities and Recordings
-
-### U8. USER — Phase 6 gate
-- **Status:** USER — DONE 2026-10-06. On mobile data: Recording "Network test" saved to Azure; a Block pushed to Google from the cloud; CSV export readable; web sign-in from the phone's browser showed the same data. `/api/auth/google/login` without a token → 401. `rg-stopwatch` holds only the expected resources (DB, Log Analytics workspace, environment, app, managed certificate). **Phase 6 complete.**
-- **Description:** On the phone with **Wi-Fi off** (mobile data only), in the standalone app:
-  1. Record and stop a short Recording; it appears in the list.
-  2. Place a Block on tomorrow and Push day; it appears in Google Calendar.
-  3. Settings → Export → Recordings CSV opens readable.
-  4. Lock the screen for a few minutes mid-recording, as P10 did; the notification stays and the
-     time is right.
-  From a network other than your home Wi-Fi (the phone's browser on mobile data counts), open
-  `https://api.stopwatchscheduler.app`, sign in, and see the same data. Finally:
-  `curl -s -o /dev/null -w "%{http_code}" https://api.stopwatchscheduler.app/api/auth/google/login` → 401.
+### U10. USER — Build 2b gate
+- **Status:** USER
+- **Description:** After the loop finishes: commit, then `./deploy.sh` from the repo root. On
+  the phone, reopen the standalone app twice so the update applies (no APK). Then, on the phone
+  and on the web app:
+  1. Set quadrants on three Activities; the list shows their badges.
+  2. Generate with those three: the dropdown starts on Your Order; switch through all seven.
+     Eisenhower orders by quadrant. With only Q4 Activities selected, it shows the quadrant
+     message.
+  3. Mark one as the Frog and save Shortest First; its Block shows the frog. Save another plan
+     to the same day with a different Frog; the confirmation names both.
+  4. The peak-hour hint appears; tapping it sets the start time.
+  5. Record something with a new name, pick "+ New Activity" and save; it appears in Activities
+     with one recording. Repeat with Wi-Fi and mobile data off; it saves when back online.
+  6. On a Recording saved with "None": Make it an Activity, then Change Activity, then Detach;
+     the averages follow each step.
   Record results in `progress.md`.
 - **Acceptance Criteria:**
-  - [x] All checks pass; any failure recorded with the task it reopens
-  - [x] Cost Management shows no unexpected resources in `rg-stopwatch`
+  - [ ] All six pass on both clients; any failure recorded with the task it reopens
 
 ---
 
-## Tasks — Build 2b (HOLD: each needs a design pass with the user before it is written)
+## Tasks — Build 2c (HOLD: designed in its own session after Build 2b ships, D79)
 
-Outline items carried from `AsIWasSaying.md` §5. The loop never picks `HOLD`. Each becomes a
-`.tests`/`.impl` pair for both clients once designed.
-
-### B20. Quadrant picker on the Activity screen
-- **Status:** HOLD — needs design. `PUT /api/tasks/{id}` with `is_urgent` / `is_important`.
-
-### B21. Daily Frog pick
-- **Status:** HOLD — needs design. Server side is done in B2 (one per Schedule); this is the UI.
-
-### B22. Selectable Strategies
-- **Status:** HOLD — needs design. Expose `eat-the-frog`, `eisenhower`, `best-fit-slots`.
+Native code; needs an EAS build, and a new fingerprint means U9's rebuild again.
 
 ### B23. Pomodoro mode
 - **Status:** HOLD — needs design. A mode of `timer/core.ts`: work/break intervals, a
@@ -456,7 +402,5 @@ Outline items carried from `AsIWasSaying.md` §5. The loop never picks `HOLD`. E
   Recording.
 
 ### B24. Stop button on the foreground notification
-- **Status:** HOLD — needs design. Native change; needs an EAS rebuild.
-
-### B25. Peak hours as the suggested start time
-- **Status:** HOLD — needs design. `GET /api/insights/peak-hours` seeds the Schedule tab's start.
+- **Status:** HOLD — needs design. The timer's Kotlin module can only start and stop its
+  notification; app code does not run while the phone is locked.
