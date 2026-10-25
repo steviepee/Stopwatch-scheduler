@@ -34,6 +34,7 @@ export default function ScheduleBuilder({ tasks, options, onScheduleCreated }: S
   const [targetDate, setTargetDate] = useState(() => dateKey(new Date()));
   const [startHour, setStartHour] = useState('08:00');
   const [activities, setActivities] = useState<ActivityEntry[]>([]);
+  const [frogId, setFrogId] = useState<number | null>(null);
   const [chosenItems, setChosenItems] = useState<ScheduleItemCreate[]>([]);
   const [existingEvents, setExistingEvents] = useState<GenerateEvent[]>([]);
   const [dayEvents, setDayEvents] = useState<GenerateEvent[]>([]);
@@ -49,6 +50,7 @@ export default function ScheduleBuilder({ tasks, options, onScheduleCreated }: S
   const [saveAsRegimen, setSaveAsRegimen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveResult, setSaveResult] = useState<'success' | 'error' | null>(null);
+  const [frogReplaceNotice, setFrogReplaceNotice] = useState<string | null>(null);
 
   const startTime = (() => {
     const d = new Date(targetDate + 'T' + startHour + ':00');
@@ -73,7 +75,12 @@ export default function ScheduleBuilder({ tasks, options, onScheduleCreated }: S
       start_time: startTime.toISOString(),
       day_start: dayStart.toISOString(),
       day_end: dayEnd.toISOString(),
-      activities: list.map(a => ({ task_id: a.taskId, name: a.name, estimated_duration: a.estimatedDuration })),
+      activities: list.map(a => ({
+        task_id: a.taskId,
+        name: a.name,
+        estimated_duration: a.estimatedDuration,
+        is_frog: a.taskId !== undefined && a.taskId === frogId ? true : undefined,
+      })),
       existing_events: events,
       avoid_existing: true,
     });
@@ -148,25 +155,44 @@ export default function ScheduleBuilder({ tasks, options, onScheduleCreated }: S
   };
 
   const handleSelectSchedule = useCallback((items: ScheduleItemCreate[]) => {
-    setChosenItems(items);
+    const stamped = frogId == null
+      ? items
+      : items.map(item => item.task_id === frogId ? { ...item, is_frog: true } : item);
+    setChosenItems(stamped);
     setScheduleName('');
     setStep('save');
-  }, []);
+  }, [frogId]);
 
   const handleSave = async () => {
     if (saving || (saveAsRegimen && !scheduleName.trim())) return;
     setSaving(true);
     setSaveResult(null);
+    setFrogReplaceNotice(null);
     try {
+      let notice: string | null = null;
+      if (!saveAsRegimen) {
+        const daySchedules = await scheduleAPI.getRange(targetDate, targetDate);
+        const existingFrogItem = daySchedules.flatMap(s => s.items).find(item => item.is_frog);
+        const newFrogItem = frogId == null ? undefined : chosenItems.find(item => item.task_id === frogId);
+        if (existingFrogItem && newFrogItem) {
+          const newName = tasks.find(t => t.id === newFrogItem.task_id)?.name ?? newFrogItem.custom_name ?? '';
+          const oldName = existingFrogItem.task?.name ?? existingFrogItem.custom_name ?? '';
+          if (newName && newName !== oldName) {
+            notice = `Frog is now ${newName} (was ${oldName}).`;
+          }
+        }
+      }
       const payload: ScheduleCreate = saveAsRegimen
         ? { name: scheduleName.trim(), schedule_type: 'day', is_regimen: true, items: chosenItems }
         : { schedule_type: 'day', target_date: targetDate, is_regimen: false, items: chosenItems };
       const created = await scheduleAPI.create(payload);
       onScheduleCreated(created);
       setSaveResult('success');
+      setFrogReplaceNotice(notice);
       // Reset builder
       setStep('setup');
       setActivities([]);
+      setFrogId(null);
       setChosenItems([]);
       setExistingEvents([]);
       setDayEvents([]);
@@ -196,6 +222,9 @@ export default function ScheduleBuilder({ tasks, options, onScheduleCreated }: S
 
       {saveResult === 'success' && (
         <p data-testid="save-success" className="text-emerald-300 text-sm">Schedule saved.</p>
+      )}
+      {frogReplaceNotice && (
+        <p data-testid="frog-replace-notice" className="text-amber-300 text-sm">{frogReplaceNotice}</p>
       )}
 
       {/* Step: Setup */}
@@ -247,6 +276,17 @@ export default function ScheduleBuilder({ tasks, options, onScheduleCreated }: S
                 <div key={i} className="glass-inner rounded-xl px-4 py-2.5 flex items-center gap-3">
                   <span className="text-white/40 text-xs w-5 text-center">{i + 1}</span>
                   <span className="flex-1 text-white text-sm">{a.name}</span>
+                  {a.taskId !== undefined && (
+                    <label className="flex items-center cursor-pointer" title="Frog: today's hardest task">
+                      <input
+                        type="checkbox"
+                        data-testid={`frog-toggle-${a.taskId}`}
+                        checked={frogId === a.taskId}
+                        onChange={() => setFrogId(prev => prev === a.taskId ? null : a.taskId!)}
+                        className="w-4 h-4 rounded accent-amber-400"
+                      />
+                    </label>
+                  )}
                   <span className="text-white/50 text-xs">{formatDuration(a.estimatedDuration)}</span>
                   <button
                     onClick={() => handleRemoveActivity(i)}

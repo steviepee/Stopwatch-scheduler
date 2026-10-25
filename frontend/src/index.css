@@ -689,6 +689,16 @@ body {
   background: #fbbf24;
 }
 
+.frog-indicator {
+  position: absolute;
+  top: 0.25rem;
+  left: 0.25rem;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+}
+
 /* Current Time Indicator */
 .current-time-indicator {
   position: absolute;

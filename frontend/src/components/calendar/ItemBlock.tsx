@@ -104,6 +104,13 @@ export function ItemBlock({
           title="Changed since push"
         />
       )}
+      {item.is_frog && (
+        <div
+          className="frog-indicator"
+          data-testid={`frog-marker-${item.id}`}
+          title="Today's Frog"
+        />
+      )}
       {editing && (
         <div
           className="resize-handle"
