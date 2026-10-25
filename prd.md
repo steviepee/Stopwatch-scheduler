@@ -280,10 +280,10 @@ designed in its own session after Build 2b ships (D79).
   - [x] Test: Save sends the selected plan's timeline
 
 ### B41.impl — Mobile: one Strategy dropdown over all seven plans
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract. Reuse `PickerField` if it fits.
 - **Acceptance Criteria:**
-  - [ ] All B41.tests pass; mobile suite, tsc, and export pass
+  - [x] All B41.tests pass; mobile suite, tsc, and export pass
 
 ### B42.tests — Web: one Strategy dropdown over all seven plans
 - **Status:** PENDING

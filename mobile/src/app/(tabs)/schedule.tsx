@@ -11,8 +11,6 @@ import { useUserOptions, type UserOptions } from '@/services/options';
 import { formatElapsed } from '@/timer/format';
 import type { GenerateActivity, GenerateEvent, GenerateRequest, Schedule, ScheduleCreate, StrategyOption, Task } from '@/types';
 
-const STRATEGIES = ['your-order', 'shortest-first', 'longest-first', 'best-fit'];
-
 // Rounds up, matching what an untouched row schedules: a cushion, and it
 // keeps the block on a minute boundary.
 const toMinutes = (seconds: number) => String(Math.ceil(seconds / 60));
@@ -145,6 +143,13 @@ export default function ScheduleScreen() {
       );
       return scheduleAPI.generate({ ...request, existing_events: existingEvents });
     },
+    onSuccess: (data) => {
+      setSelectedStrategy(
+        data.options.find((option) => option.strategy === 'your-order')?.strategy ??
+          data.options[0]?.strategy ??
+          null,
+      );
+    },
   });
 
   const saveMutation = useMutation({
@@ -259,7 +264,6 @@ export default function ScheduleScreen() {
       day_start: startIso,
       day_end: dayEnd.toISOString(),
       activities,
-      strategies: STRATEGIES,
       avoid_existing: true,
     };
   }
@@ -282,6 +286,12 @@ export default function ScheduleScreen() {
 
   const options = generateMutation.data?.options ?? [];
   const selectedOption = options.find((option) => option.strategy === selectedStrategy) ?? null;
+  const isEisenhowerEmpty =
+    !!selectedOption &&
+    selectedOption.strategy === 'eisenhower' &&
+    selectedOption.timeline.length === 0 &&
+    selectedOption.excluded.length > 0 &&
+    selectedOption.excluded.every((entry) => entry.reason === 'not-urgent-not-important');
   const savedSchedule = saveMutation.data;
   const isSaved = !!selectedOption && savedKey === saveKey(selectedOption.strategy);
   const nameMissing = isRegimen && !scheduleName.trim();
@@ -391,29 +401,55 @@ export default function ScheduleScreen() {
         </Text>
       )}
 
-      {options.map((option) => (
-        <GlassView
-          key={option.strategy}
-          glassEffectStyle="regular"
-          testID={`option-card-${option.strategy}`}
-          style={[styles.card, option.strategy === selectedStrategy && styles.rowSelected]}>
-          <Text style={styles.rowLabel}>{option.label}</Text>
-          <Text style={styles.caption}>{option.description}</Text>
-          {option.strategy === selectedStrategy && option.excluded.length > 0 && (
-            <Text style={styles.caption}>
-              Didn't fit: {option.excluded.map((entry) => entry.name).join(', ')}
-            </Text>
-          )}
-          <Pressable
-            testID={`btn-select-${option.strategy}`}
-            accessibilityRole="button"
-            style={styles.button}
-            onPress={() => setSelectedStrategy(option.strategy)}
-          >
-            <Text style={styles.buttonLabel}>{option.strategy === selectedStrategy ? 'Selected' : 'Select'}</Text>
-          </Pressable>
+      {options.length > 0 && (
+        <GlassView glassEffectStyle="regular" testID="strategy-picker" style={styles.card}>
+          {options.map((option) => (
+            <Pressable
+              key={option.strategy}
+              testID={`strategy-picker-option-${option.strategy}`}
+              accessibilityRole="button"
+              style={[styles.row, option.strategy === selectedStrategy && styles.rowSelected]}
+              onPress={() => setSelectedStrategy(option.strategy)}
+            >
+              <Text style={styles.rowLabel}>
+                {option.label}
+                {option.strategy === selectedStrategy ? ' (selected)' : ''}
+              </Text>
+            </Pressable>
+          ))}
         </GlassView>
-      ))}
+      )}
+
+      {selectedOption && (
+        <GlassView glassEffectStyle="regular" style={styles.card}>
+          <Text testID="strategy-description" style={styles.caption}>{selectedOption.description}</Text>
+          {isEisenhowerEmpty ? (
+            <Text testID="eisenhower-empty-notice" style={styles.caption}>
+              None of these Activities have a quadrant yet. Set them on the Activities tab.
+            </Text>
+          ) : (
+            <>
+              <View testID="strategy-timeline">
+                {selectedOption.timeline.map((entry, i) => (
+                  <Text key={i} testID={`timeline-entry-${i}`} style={styles.caption}>
+                    {entry.name}
+                  </Text>
+                ))}
+              </View>
+              {selectedOption.excluded.length > 0 && (
+                <Text style={styles.caption}>
+                  Didn't fit: {selectedOption.excluded.map((entry) => entry.name).join(', ')}
+                </Text>
+              )}
+              {selectedOption.flagged.length > 0 && (
+                <Text style={styles.caption}>
+                  Consider delegating: {selectedOption.flagged.map((entry) => entry.name).join(', ')}
+                </Text>
+              )}
+            </>
+          )}
+        </GlassView>
+      )}
 
       {selectedOption && (
         <GlassView glassEffectStyle="regular" style={styles.card}>

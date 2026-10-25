@@ -774,8 +774,7 @@ async function saveAScheduleAndReachSavedCard() {
   await screen.findByTestId('activity-row-7');
   await fireEvent.press(screen.getByTestId('activity-row-7'));
   await fireEvent.press(screen.getByTestId('btn-generate'));
-  await screen.findByTestId('option-card-your-order');
-  await fireEvent.press(screen.getByTestId('btn-select-your-order'));
+  await screen.findByTestId('strategy-picker');
   await fireEvent.press(screen.getByTestId('btn-save'));
   await waitFor(() => expect(mockedCreate).toHaveBeenCalledTimes(1));
   await screen.findByTestId('btn-push-schedule');
