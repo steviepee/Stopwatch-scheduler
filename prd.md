@@ -256,7 +256,7 @@ designed in its own session after Build 2b ships (D79).
   - [x] All B40.tests pass; web tsc clean; `npm run build` succeeds
 
 ### B41.tests — Mobile: one Strategy dropdown over all seven plans
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D71, D72. Extend `ScheduleScreen.test.tsx`. Today `(tabs)/schedule.tsx`
   sends four Strategies and renders a card per plan.
 - **Contract:**
@@ -273,11 +273,11 @@ designed in its own session after Build 2b ships (D79).
     "None of these Activities have a quadrant yet. Set them on the Activities tab." in place of
     the timeline and notes.
 - **Acceptance Criteria:**
-  - [ ] Test: the Generate request has no `strategies` field
-  - [ ] Test: after Generate the dropdown shows "Your Order" and only that plan's timeline is rendered
-  - [ ] Test: choosing another Strategy shows its description and timeline without a second Generate call
-  - [ ] Test: Eisenhower with all-Q4 Activities shows the quadrant message
-  - [ ] Test: Save sends the selected plan's timeline
+  - [x] Test: the Generate request has no `strategies` field
+  - [x] Test: after Generate the dropdown shows "Your Order" and only that plan's timeline is rendered
+  - [x] Test: choosing another Strategy shows its description and timeline without a second Generate call
+  - [x] Test: Eisenhower with all-Q4 Activities shows the quadrant message
+  - [x] Test: Save sends the selected plan's timeline
 
 ### B41.impl — Mobile: one Strategy dropdown over all seven plans
 - **Status:** PENDING

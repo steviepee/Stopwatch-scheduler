@@ -17,14 +17,12 @@ import type { GenerateResponse, Schedule, ScheduleItem, StrategyOption, Task } f
 // RecordingsScreen's date-range pickers) supply the request's `start_time`
 // and `day_end`; this screen sends `day_start` equal to `start_time` since
 // the contract exposes no separate day-start control. `btn-generate` posts
-// `scheduleAPI.generate` with the four known strategies. A rejected generate
+// `scheduleAPI.generate`. A rejected generate
 // renders `btn-retry-generate` instead of crashing, and retry re-calls
 // generate with the same request.
 //
-// Step 2 (options): one `option-card-{strategy}` per response option;
-// `btn-select-{strategy}` chooses it, which is what mounts `btn-save`
-// (Step 3) — mirroring the "elements exist only when reachable" convention
-// used by the other P8 screens instead of a disabled prop.
+// Step 2 (options): superseded by B41 below — there is no longer a card per
+// Strategy. See the B41 paragraph for the current contract.
 //
 // B8 contract (Build 2a, D44/D47 context, ADR 0003):
 //
@@ -83,6 +81,30 @@ import type { GenerateResponse, Schedule, ScheduleItem, StrategyOption, Task } f
 // B33 contract (D40): an Activity with no history (`average_duration` 0 or
 // `total_recordings` 0) shows 10 in `input-duration-{id}` and is sent as 600 s unless the
 // user types another value. Activities with history are unchanged.
+//
+// B41 contract (D71, D72): one Strategy dropdown replaces the per-Strategy cards, and
+// Generate no longer sends a `strategies` key at all (the server then computes all seven).
+// The PRD names only one testID (`strategy-picker`); the rest below are this session's
+// choice, documented here for B41.impl to follow:
+//   - `strategy-picker` wraps one row per response option, testID
+//     `strategy-picker-option-{strategy}`, labelled with `option.label`. Tapping a row sets
+//     the selection — no new request. The selected row's label gets a " (selected)" suffix
+//     (the " (current)" convention used elsewhere in this app, e.g. the quadrant picker).
+//   - Right after Generate succeeds, the selection is `your-order` (never null) — Save no
+//     longer needs an explicit pick to appear.
+//   - `strategy-description` is the selected option's `description`.
+//   - `strategy-timeline` wraps one row per selected-option timeline entry, testID
+//     `timeline-entry-{i}`, whose text includes the entry's `name`. Switching the dropdown
+//     re-renders this list from the already-fetched response — `generate` is not called again.
+//   - The existing "Didn't fit: <names>" line (from `excluded`) and a new "Consider
+//     delegating: <names>" line (from `flagged`, D72's Eisenhower Q3 reason
+//     `consider-delegating`) still render under the selected option, unless the Eisenhower
+//     empty case below applies.
+//   - Eisenhower empty (D72): when the selected option's `strategy` is `eisenhower`, its
+//     `timeline` is empty, and `excluded` is non-empty with every entry's `reason` equal to
+//     `not-urgent-not-important`, a `eisenhower-empty-notice` renders
+//     "None of these Activities have a quadrant yet. Set them on the Activities tab." in
+//     place of `strategy-timeline` and the excluded/flagged lines.
 jest.mock('../services/api', () => ({
   taskAPI: { getAll: jest.fn() },
   scheduleAPI: {
@@ -235,8 +257,7 @@ async function reachSaveStep() {
   await selectActivity(7);
   await pickStart(new Date('2026-02-03T08:00:00.000Z'));
   await fireEvent.press(screen.getByTestId('btn-generate'));
-  await screen.findByTestId('option-card-your-order');
-  await fireEvent.press(screen.getByTestId('btn-select-your-order'));
+  await screen.findByTestId('strategy-picker');
 }
 
 beforeEach(() => {
@@ -310,7 +331,7 @@ describe('setup step', () => {
     ]);
   });
 
-  it('calls generate with the four known strategies and UTC Z datetimes', async () => {
+  it('calls generate with no strategies field, and UTC Z datetimes', async () => {
     mockedGenerate.mockResolvedValue({ options: [] } as GenerateResponse);
     await renderScreen();
 
@@ -326,7 +347,7 @@ describe('setup step', () => {
 
     await waitFor(() => expect(mockedGenerate).toHaveBeenCalledTimes(1));
     const request = mockedGenerate.mock.calls[0][0];
-    expect(request.strategies).toEqual(['your-order', 'shortest-first', 'longest-first', 'best-fit']);
+    expect('strategies' in request).toBe(false);
     expect(request.start_time).toBe('2026-02-03T08:00:00.000Z');
     expect(request.day_start).toBe('2026-02-03T08:00:00.000Z');
     expect(request.day_end).toBe('2026-02-03T23:00:00.000Z');
@@ -341,12 +362,12 @@ describe('setup step', () => {
     await fireEvent.press(screen.getByTestId('btn-generate'));
 
     await screen.findByTestId('btn-retry-generate');
-    expect(screen.queryByTestId('option-card-your-order')).toBeNull();
+    expect(screen.queryByTestId('strategy-picker')).toBeNull();
 
     mockedGenerate.mockResolvedValueOnce({ options: [option({})] });
     await fireEvent.press(screen.getByTestId('btn-retry-generate'));
 
-    await screen.findByTestId('option-card-your-order');
+    await screen.findByTestId('strategy-picker');
     expect(mockedGenerate).toHaveBeenCalledTimes(2);
   });
 
@@ -445,7 +466,7 @@ describe('Generate when Google is unavailable', () => {
     expect(new Date(events[0].end).getTime()).toBe(Date.parse('2026-02-03T10:30:00Z'));
 
     expect(await screen.findByTestId('google-events-skipped')).toHaveTextContent(/Planned without Google events/i);
-    await screen.findByTestId('option-card-your-order');
+    await screen.findByTestId('strategy-picker');
     expect(screen.queryByTestId('btn-retry-generate')).toBeNull();
   });
 
@@ -480,7 +501,7 @@ describe('Generate when Google is unavailable', () => {
 
     await screen.findByTestId('btn-retry-generate');
     expect(mockedGenerate).not.toHaveBeenCalled();
-    expect(screen.queryByTestId('option-card-your-order')).toBeNull();
+    expect(screen.queryByTestId('strategy-picker')).toBeNull();
   });
 
   it('shows no notice when both fetches succeed', async () => {
@@ -489,7 +510,7 @@ describe('Generate when Google is unavailable', () => {
 
     await generate();
 
-    await screen.findByTestId('option-card-your-order');
+    await screen.findByTestId('strategy-picker');
     expect(mockedGenerate).toHaveBeenCalledTimes(1);
     expect(screen.queryByTestId('google-events-skipped')).toBeNull();
   });
@@ -596,8 +617,7 @@ describe('plan date picker and busy time', () => {
 
     await pickTomorrow();
     await fireEvent.press(screen.getByTestId('btn-generate'));
-    await screen.findByTestId('option-card-your-order');
-    await fireEvent.press(screen.getByTestId('btn-select-your-order'));
+    await screen.findByTestId('strategy-picker');
     await fireEvent.press(screen.getByTestId('btn-save'));
 
     await waitFor(() => expect(mockedCreate).toHaveBeenCalledTimes(1));
@@ -619,39 +639,111 @@ describe('plan date picker and busy time', () => {
     });
     await setupWithActivity();
     await fireEvent.press(screen.getByTestId('btn-generate'));
-    await screen.findByTestId('option-card-your-order');
+    await screen.findByTestId('strategy-picker');
 
-    await fireEvent.press(screen.getByTestId('btn-select-shortest-first'));
+    await fireEvent.press(screen.getByTestId('strategy-picker-option-shortest-first'));
     expect(screen.queryAllByText(/Didn't fit/)).toHaveLength(0);
 
-    await fireEvent.press(screen.getByTestId('btn-select-your-order'));
+    await fireEvent.press(screen.getByTestId('strategy-picker-option-your-order'));
     const line = screen.getByText(/Didn't fit:/);
     expect(line).toHaveTextContent(/Reading/);
     expect(line).toHaveTextContent(/Gym/);
   });
 });
 
-describe('options step', () => {
-  it('renders one card per option and enables Save once one is selected', async () => {
+describe('strategy dropdown (B41, D71/D72)', () => {
+  const SHORTEST_TIMELINE = [
+    { task_id: 8, name: 'Reading', start: '2026-02-03T08:00:00.000Z', end: '2026-02-03T08:15:00.000Z' },
+  ];
+
+  async function generateTwoOptions() {
     mockedGenerate.mockResolvedValue({
       options: [
-        option({ strategy: 'your-order', label: 'Your Order' }),
-        option({ strategy: 'shortest-first', label: 'Shortest First' }),
+        option({ strategy: 'your-order', label: 'Your Order', description: 'Keeps the order you picked', timeline: TIMELINE }),
+        option({
+          strategy: 'shortest-first',
+          label: 'Shortest First',
+          description: 'Shortest activities first to build momentum.',
+          timeline: SHORTEST_TIMELINE,
+        }),
       ],
     });
     await renderScreen();
-
     await screen.findByTestId('activity-row-7');
     await selectActivity(7);
     await fireEvent.press(screen.getByTestId('btn-generate'));
+    await screen.findByTestId('strategy-picker');
+  }
 
-    await screen.findByTestId('option-card-your-order');
-    expect(screen.getByTestId('option-card-shortest-first')).toBeTruthy();
-    expect(screen.queryByTestId('btn-save')).toBeNull();
+  it('defaults to Your Order and renders only its timeline, with Save already enabled', async () => {
+    await generateTwoOptions();
 
-    await fireEvent.press(screen.getByTestId('btn-select-shortest-first'));
-
+    expect(screen.getByTestId('strategy-picker-option-your-order')).toHaveTextContent(/Your Order.*\(selected\)/);
+    expect(screen.getByTestId('strategy-picker-option-shortest-first')).not.toHaveTextContent(/\(selected\)/);
+    expect(screen.getByTestId('strategy-description')).toHaveTextContent('Keeps the order you picked');
+    expect(screen.getAllByTestId(/^timeline-entry-/)).toHaveLength(TIMELINE.length);
     expect(screen.getByTestId('btn-save')).toBeTruthy();
+  });
+
+  it('choosing another Strategy swaps the description and timeline with no second Generate call', async () => {
+    await generateTwoOptions();
+
+    await fireEvent.press(screen.getByTestId('strategy-picker-option-shortest-first'));
+
+    expect(screen.getByTestId('strategy-picker-option-shortest-first')).toHaveTextContent(/Shortest First.*\(selected\)/);
+    expect(screen.getByTestId('strategy-picker-option-your-order')).not.toHaveTextContent(/\(selected\)/);
+    expect(screen.getByTestId('strategy-description')).toHaveTextContent('Shortest activities first to build momentum.');
+    expect(screen.getAllByTestId(/^timeline-entry-/)).toHaveLength(SHORTEST_TIMELINE.length);
+    expect(mockedGenerate).toHaveBeenCalledTimes(1);
+  });
+
+  it('Save sends the selected plan\'s timeline after switching Strategy', async () => {
+    mockedCreate.mockResolvedValue({ ...REGIMEN, id: 60, name: null, is_regimen: false, items: [] });
+    await generateTwoOptions();
+
+    await fireEvent.press(screen.getByTestId('strategy-picker-option-shortest-first'));
+    await fireEvent.press(screen.getByTestId('btn-save'));
+
+    await waitFor(() => expect(mockedCreate).toHaveBeenCalledTimes(1));
+    const body = mockedCreate.mock.calls[0][0];
+    expect(body.items).toEqual([
+      expect.objectContaining({
+        task_id: 8,
+        scheduled_time: SHORTEST_TIMELINE[0].start,
+        estimated_duration: 900,
+      }),
+    ]);
+  });
+
+  it('Eisenhower with every selected Activity in Q4 shows the quadrant message in place of the timeline', async () => {
+    mockedGenerate.mockResolvedValue({
+      options: [
+        option({ strategy: 'your-order', timeline: TIMELINE }),
+        option({
+          strategy: 'eisenhower',
+          label: 'Eisenhower',
+          description: 'Q1 (urgent+important) first, Q2 (important) next, Q3 (urgent) last; Q4 dropped.',
+          timeline: [],
+          excluded: [
+            { name: 'Gym', reason: 'not-urgent-not-important' },
+            { name: 'Reading', reason: 'not-urgent-not-important' },
+          ],
+        }),
+      ],
+    });
+    await renderScreen();
+    await screen.findByTestId('activity-row-7');
+    await selectActivity(7);
+    await fireEvent.press(screen.getByTestId('btn-generate'));
+    await screen.findByTestId('strategy-picker');
+
+    await fireEvent.press(screen.getByTestId('strategy-picker-option-eisenhower'));
+
+    expect(await screen.findByTestId('eisenhower-empty-notice')).toHaveTextContent(
+      "None of these Activities have a quadrant yet. Set them on the Activities tab."
+    );
+    expect(screen.queryAllByTestId(/^timeline-entry-/)).toHaveLength(0);
+    expect(screen.queryAllByText(/Didn't fit/)).toHaveLength(0);
   });
 });
 
