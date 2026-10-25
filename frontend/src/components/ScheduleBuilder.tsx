@@ -75,7 +75,6 @@ export default function ScheduleBuilder({ tasks, options, onScheduleCreated }: S
       day_end: dayEnd.toISOString(),
       activities: list.map(a => ({ task_id: a.taskId, name: a.name, estimated_duration: a.estimatedDuration })),
       existing_events: events,
-      strategies: ['your-order', 'shortest-first', 'longest-first', 'best-fit'],
       avoid_existing: true,
     });
     if (seq !== generateSeq.current) return;

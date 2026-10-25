@@ -294,10 +294,10 @@ designed in its own session after Build 2b ships (D79).
   - [x] Test: as B41's five, in the web builder
 
 ### B42.impl — Web: one Strategy dropdown over all seven plans
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
-  - [ ] All B42.tests pass; web tsc clean; `npm run build` succeeds
+  - [x] All B42.tests pass; web tsc clean; `npm run build` succeeds
 
 ### B43.tests — Mobile: the day's Frog
 - **Status:** PENDING

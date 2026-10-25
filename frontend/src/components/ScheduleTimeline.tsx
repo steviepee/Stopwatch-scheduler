@@ -24,12 +24,18 @@ function entrySeconds(entry: TimelineEntry): number {
 }
 
 export default function ScheduleTimeline({ options, onSelect, onReorder }: ScheduleTimelineProps) {
-  const [selected, setSelected] = useState(options[0]?.strategy ?? 'your-order');
+  const [selected, setSelected] = useState('your-order');
   const [dragIdx, setDragIdx] = useState<number | null>(null);
 
   const option = options.find(o => o.strategy === selected) ?? options[0];
   const timeline = option?.timeline ?? [];
   const totalSeconds = timeline.reduce((s, e) => s + entrySeconds(e), 0);
+  const isEisenhowerEmpty =
+    !!option &&
+    option.strategy === 'eisenhower' &&
+    option.timeline.length === 0 &&
+    option.excluded.length > 0 &&
+    option.excluded.every(e => e.reason === 'not-urgent-not-important');
 
   const handleConfirm = useCallback(() => {
     const items: ScheduleItemCreate[] = timeline.map((entry, i) => ({
@@ -61,70 +67,84 @@ export default function ScheduleTimeline({ options, onSelect, onReorder }: Sched
 
   return (
     <div className="space-y-4">
-      {/* Option tabs */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      {/* Strategy dropdown */}
+      <select
+        data-testid="strategy-picker"
+        value={selected}
+        onChange={e => setSelected(e.target.value)}
+        className="glass-input w-full px-3 py-2 rounded-xl text-white text-sm"
+      >
         {options.map(o => (
-          <button
-            key={o.strategy}
-            onClick={() => setSelected(o.strategy)}
-            className={`px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 text-left ${
-              option?.strategy === o.strategy ? 'glass-button-primary' : 'glass-button hover:bg-white/10'
-            }`}
-          >
-            <div className="font-semibold">{o.label}</div>
-            <div className="text-xs opacity-70 mt-0.5 leading-tight">{o.description}</div>
-          </button>
+          <option key={o.strategy} value={o.strategy}>{o.label}</option>
         ))}
-      </div>
+      </select>
 
-      {/* Summary bar */}
-      {timeline.length > 0 && (
-        <div className="glass-inner rounded-xl px-4 py-2 flex gap-4 text-sm text-white/70">
-          <span>Total: <span className="text-white font-medium">{formatDuration(totalSeconds)}</span></span>
-          <span>Start: <span className="text-white font-medium">{formatTime(new Date(timeline[0].start))}</span></span>
-          <span>End: <span className="text-white font-medium">{formatTime(new Date(timeline[timeline.length - 1].end))}</span></span>
-          <span className="ml-auto text-white/40">{timeline.length} activities</span>
-        </div>
+      {option && (
+        <p data-testid="strategy-description" className="text-white/60 text-xs">{option.description}</p>
       )}
 
-      {/* Timeline blocks */}
-      <div className="space-y-1.5">
-        {timeline.map((entry, i) => {
-          const isDraggable = option?.strategy === 'your-order';
-          return (
-            <div
-              key={`${entry.name}-${i}`}
-              draggable={isDraggable}
-              onDragStart={isDraggable ? () => handleDragStart(i) : undefined}
-              onDragOver={isDraggable ? (e) => handleDragOver(e, i) : undefined}
-              onDragEnd={isDraggable ? handleDragEnd : undefined}
-              className={`glass-inner rounded-xl px-4 py-2.5 flex items-center gap-3 ${
-                isDraggable ? 'cursor-grab active:cursor-grabbing' : ''
-              } ${dragIdx === i ? 'opacity-50' : ''}`}
-            >
-              {isDraggable && (
-                <span className="text-white/30 text-lg select-none">⠿</span>
-              )}
-              <span className="text-white/40 text-xs w-5 text-center">{i + 1}</span>
-              <div className="flex-1">
-                <span className="text-white text-sm font-medium">{entry.name}</span>
-                {!entry.task_id && (
-                  <span className="ml-2 text-white/40 text-xs">(custom)</span>
-                )}
-              </div>
-              <div className="text-right">
-                <div className="text-white/60 text-xs">{formatTime(new Date(entry.start))} – {formatTime(new Date(entry.end))}</div>
-                <div className="text-white/40 text-xs">{formatDuration(entrySeconds(entry))}</div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {option && option.excluded.length > 0 && (
-        <div className="glass-inner rounded-xl px-4 py-2 text-xs text-white/50">
-          {`Didn't fit: ${option.excluded.map(e => e.name).join(', ')}`}
+      {isEisenhowerEmpty ? (
+        <div data-testid="eisenhower-empty-notice" className="glass-inner rounded-xl px-4 py-2 text-xs text-white/50">
+          None of these Activities have a quadrant yet. Set them on the Activities tab.
         </div>
+      ) : (
+        <>
+          {/* Summary bar */}
+          {timeline.length > 0 && (
+            <div className="glass-inner rounded-xl px-4 py-2 flex gap-4 text-sm text-white/70">
+              <span>Total: <span className="text-white font-medium">{formatDuration(totalSeconds)}</span></span>
+              <span>Start: <span className="text-white font-medium">{formatTime(new Date(timeline[0].start))}</span></span>
+              <span>End: <span className="text-white font-medium">{formatTime(new Date(timeline[timeline.length - 1].end))}</span></span>
+              <span className="ml-auto text-white/40">{timeline.length} activities</span>
+            </div>
+          )}
+
+          {/* Timeline blocks */}
+          <div className="space-y-1.5">
+            {timeline.map((entry, i) => {
+              const isDraggable = option?.strategy === 'your-order';
+              return (
+                <div
+                  key={`${entry.name}-${i}`}
+                  draggable={isDraggable}
+                  onDragStart={isDraggable ? () => handleDragStart(i) : undefined}
+                  onDragOver={isDraggable ? (e) => handleDragOver(e, i) : undefined}
+                  onDragEnd={isDraggable ? handleDragEnd : undefined}
+                  className={`glass-inner rounded-xl px-4 py-2.5 flex items-center gap-3 ${
+                    isDraggable ? 'cursor-grab active:cursor-grabbing' : ''
+                  } ${dragIdx === i ? 'opacity-50' : ''}`}
+                >
+                  {isDraggable && (
+                    <span className="text-white/30 text-lg select-none">⠿</span>
+                  )}
+                  <span className="text-white/40 text-xs w-5 text-center">{i + 1}</span>
+                  <div className="flex-1">
+                    <span className="text-white text-sm font-medium">{entry.name}</span>
+                    {!entry.task_id && (
+                      <span className="ml-2 text-white/40 text-xs">(custom)</span>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <div className="text-white/60 text-xs">{formatTime(new Date(entry.start))} – {formatTime(new Date(entry.end))}</div>
+                    <div className="text-white/40 text-xs">{formatDuration(entrySeconds(entry))}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {option && option.excluded.length > 0 && (
+            <div className="glass-inner rounded-xl px-4 py-2 text-xs text-white/50">
+              {`Didn't fit: ${option.excluded.map(e => e.name).join(', ')}`}
+            </div>
+          )}
+
+          {option && option.flagged.length > 0 && (
+            <div className="glass-inner rounded-xl px-4 py-2 text-xs text-white/50">
+              {`Consider delegating: ${option.flagged.map(e => e.name).join(', ')}`}
+            </div>
+          )}
+        </>
       )}
 
       <button
