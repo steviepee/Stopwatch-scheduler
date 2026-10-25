@@ -3,6 +3,8 @@ export interface Task {
   name: string;
   average_duration: number;
   total_recordings: number;
+  is_urgent?: boolean;
+  is_important?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -21,6 +23,11 @@ export interface TaskWithLogs extends Task {
 
 export interface TaskCreate {
   name: string;
+}
+
+export interface TaskUpdate {
+  is_urgent?: boolean;
+  is_important?: boolean;
 }
 
 export interface TimeLogCreate {

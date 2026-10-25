@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Task, TaskCreate, TaskStats, TimeLogCreate, TimeLog, StopwatchSession, StopwatchSessionCreate, StopwatchSessionUpdate, StopwatchSessionWithTask, Schedule, ScheduleCreate, ScheduleUpdate, ScheduleItem, ScheduleItemCreate, ScheduleItemUpdate, ScheduleItemPlace, ApplyRegimen, GenerateRequest, GenerateResponse } from '../types';
+import { Task, TaskCreate, TaskUpdate, TaskStats, TimeLogCreate, TimeLog, StopwatchSession, StopwatchSessionCreate, StopwatchSessionUpdate, StopwatchSessionWithTask, Schedule, ScheduleCreate, ScheduleUpdate, ScheduleItem, ScheduleItemCreate, ScheduleItemUpdate, ScheduleItemPlace, ApplyRegimen, GenerateRequest, GenerateResponse } from '../types';
 import { getApiUrl, getToken } from './auth';
 
 const api = axios.create({
@@ -31,6 +31,11 @@ export const taskAPI = {
 
   create: async (task: TaskCreate): Promise<Task> => {
     const response = await api.post('/tasks/', task);
+    return response.data;
+  },
+
+  update: async (id: number, task: TaskUpdate): Promise<Task> => {
+    const response = await api.put(`/tasks/${id}`, task);
     return response.data;
   },
 

@@ -1,10 +1,10 @@
 import { useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { GlassView } from 'expo-glass-effect';
 
-import { colors, radii, spacing, typography } from '@/theme/tokens';
+import { colors, radii, spacing, touchTarget, typography } from '@/theme/tokens';
 import { taskAPI, timeLogAPI } from '@/services/api';
 import { useUserOptions } from '@/services/options';
 import { formatElapsed } from '@/timer/format';
@@ -13,10 +13,25 @@ function statText(value: number | null): string {
   return value === null ? '—' : formatElapsed(value * 1000);
 }
 
+type Quadrant = 'q1' | 'q2' | 'q3' | 'q4';
+
+const QUADRANTS: { id: Quadrant; label: string; is_urgent: boolean; is_important: boolean }[] = [
+  { id: 'q1', label: 'Urgent & Important', is_urgent: true, is_important: true },
+  { id: 'q2', label: 'Important', is_urgent: false, is_important: true },
+  { id: 'q3', label: 'Urgent', is_urgent: true, is_important: false },
+  { id: 'q4', label: 'Neither', is_urgent: false, is_important: false },
+];
+
 export default function ActivityDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const taskId = Number(id);
   const options = useUserOptions();
+  const queryClient = useQueryClient();
+
+  const { data: task } = useQuery({
+    queryKey: ['task', taskId],
+    queryFn: () => taskAPI.getById(taskId),
+  });
 
   const { data: stats } = useQuery({
     queryKey: ['task-stats', taskId],
@@ -28,6 +43,18 @@ export default function ActivityDetailScreen() {
     queryFn: () => timeLogAPI.getAll(taskId),
   });
 
+  const currentQuadrant = task
+    ? QUADRANTS.find((q) => q.is_urgent === !!task.is_urgent && q.is_important === !!task.is_important)?.id
+    : undefined;
+
+  const updateQuadrant = useMutation({
+    mutationFn: (quadrant: { is_urgent: boolean; is_important: boolean }) =>
+      taskAPI.update(taskId, quadrant),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task', taskId] });
+    },
+  });
+
   const recentLogs = useMemo(() => {
     const list = logs ?? [];
     return [...list]
@@ -37,6 +64,23 @@ export default function ActivityDetailScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.quadrantGrid}>
+        {QUADRANTS.map((quadrant) => (
+          <Pressable
+            key={quadrant.id}
+            testID={`quadrant-${quadrant.id}`}
+            accessibilityRole="button"
+            style={[styles.quadrantCell, currentQuadrant === quadrant.id && styles.quadrantCellCurrent]}
+            onPress={() =>
+              updateQuadrant.mutate({ is_urgent: quadrant.is_urgent, is_important: quadrant.is_important })
+            }>
+            <Text style={styles.quadrantLabel}>
+              {currentQuadrant === quadrant.id ? `${quadrant.label} (current)` : quadrant.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
       {stats && (
         <View style={styles.statsRow}>
           {options.showAverage && (
@@ -85,6 +129,33 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.lg,
     gap: spacing.md,
+  },
+  quadrantGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  quadrantCell: {
+    flexBasis: '48%',
+    flexGrow: 1,
+    minHeight: touchTarget,
+    borderRadius: radii.md,
+    backgroundColor: colors.glass,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  quadrantCellCurrent: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primaryDeep,
+  },
+  quadrantLabel: {
+    ...typography.label,
+    color: colors.text,
+    textAlign: 'center',
   },
   statsRow: {
     flexDirection: 'row',

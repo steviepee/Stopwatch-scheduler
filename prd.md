@@ -235,10 +235,10 @@ designed in its own session after Build 2b ships (D79).
   - [x] Test: list badges show Q1–Q3 and nothing for Q4
 
 ### B39.impl — Mobile: quadrant picker and badge
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract; `update` in `taskAPI` if absent.
 - **Acceptance Criteria:**
-  - [ ] All B39.tests pass; mobile suite, tsc, and export pass
+  - [x] All B39.tests pass; mobile suite, tsc, and export pass
 
 ### B40.tests — Web: quadrant picker and badge
 - **Status:** PENDING

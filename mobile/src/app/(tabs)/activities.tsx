@@ -7,7 +7,14 @@ import { colors, radii, spacing, touchTarget, typography } from '@/theme/tokens'
 import { taskAPI } from '@/services/api';
 import { useUserOptions } from '@/services/options';
 import { formatElapsed } from '@/timer/format';
-import type { TaskCreate } from '@/types';
+import type { Task, TaskCreate } from '@/types';
+
+function quadrantBadge(task: Task): string | null {
+  if (task.is_urgent && task.is_important) return 'Q1';
+  if (!task.is_urgent && task.is_important) return 'Q2';
+  if (task.is_urgent && !task.is_important) return 'Q3';
+  return null;
+}
 
 export default function ActivitiesScreen() {
   const router = useRouter();
@@ -58,6 +65,11 @@ export default function ActivitiesScreen() {
             onPress={() => router.push(`/activity/${task.id}` as Href)}>
             <Text style={styles.rowName}>{task.name}</Text>
             <View style={styles.rowMeta}>
+              {quadrantBadge(task) && (
+                <Text testID={`activity-quadrant-${task.id}`} style={styles.quadrantBadge}>
+                  {quadrantBadge(task)}
+                </Text>
+              )}
               {options.showAverage && (
                 <Text testID={`activity-average-${task.id}`} style={styles.rowMetaText}>
                   {formatElapsed(task.average_duration * 1000)}
@@ -157,6 +169,14 @@ const styles = StyleSheet.create({
   rowMetaText: {
     ...typography.caption,
     color: colors.textMuted,
+  },
+  quadrantBadge: {
+    ...typography.caption,
+    color: colors.text,
+    backgroundColor: colors.primary,
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
   },
   addButton: {
     minHeight: touchTarget,
