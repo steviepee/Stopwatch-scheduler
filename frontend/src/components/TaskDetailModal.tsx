@@ -8,9 +8,26 @@ interface TaskDetailModalProps {
   onTaskUpdated: (task: Task) => void;
 }
 
+const QUADRANTS = [
+  { key: 'q1', label: 'Urgent & Important', is_urgent: true, is_important: true },
+  { key: 'q2', label: 'Important', is_urgent: false, is_important: true },
+  { key: 'q3', label: 'Urgent', is_urgent: true, is_important: false },
+  { key: 'q4', label: 'Neither', is_urgent: false, is_important: false },
+] as const;
+
 export default function TaskDetailModal({ task, onClose, onTaskUpdated }: TaskDetailModalProps) {
   const [detail, setDetail] = useState<TaskWithLogs | null>(null);
   const [loading, setLoading] = useState(true);
+  const [currentFlags, setCurrentFlags] = useState({
+    is_urgent: task.is_urgent ?? false,
+    is_important: task.is_important ?? false,
+  });
+
+  const handleQuadrantClick = async (is_urgent: boolean, is_important: boolean) => {
+    const updated = await taskAPI.update(task.id, { is_urgent, is_important });
+    setCurrentFlags({ is_urgent: updated.is_urgent ?? false, is_important: updated.is_important ?? false });
+    onTaskUpdated(updated);
+  };
 
   useEffect(() => {
     taskAPI.getById(task.id).then(d => {
@@ -59,6 +76,22 @@ export default function TaskDetailModal({ task, onClose, onTaskUpdated }: TaskDe
         <div className="flex justify-between items-start mb-4">
           <h2 className="text-xl font-bold text-white">{task.name}</h2>
           <button onClick={onClose} className="text-white/60 hover:text-white text-xl leading-none">✕</button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          {QUADRANTS.map(q => {
+            const isCurrent = currentFlags.is_urgent === q.is_urgent && currentFlags.is_important === q.is_important;
+            return (
+              <button
+                key={q.key}
+                data-testid={`quadrant-${q.key}`}
+                onClick={() => handleQuadrantClick(q.is_urgent, q.is_important)}
+                className={`glass-inner rounded-xl p-2 text-sm text-white text-center ${isCurrent ? 'ring-2 ring-white' : ''}`}
+              >
+                {isCurrent ? `${q.label} (current)` : q.label}
+              </button>
+            );
+          })}
         </div>
 
         {loading ? (

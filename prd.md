@@ -250,10 +250,10 @@ designed in its own session after Build 2b ships (D79).
   - [x] Test: list badges show Q1–Q3 and nothing for Q4
 
 ### B40.impl — Web: quadrant picker and badge
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
-  - [ ] All B40.tests pass; web tsc clean; `npm run build` succeeds
+  - [x] All B40.tests pass; web tsc clean; `npm run build` succeeds
 
 ### B41.tests — Mobile: one Strategy dropdown over all seven plans
 - **Status:** PENDING

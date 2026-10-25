@@ -1,5 +1,12 @@
 import { Task } from '../types';
 
+function quadrantBadge(task: Task): string | null {
+  if (task.is_urgent && task.is_important) return 'Q1';
+  if (!task.is_urgent && task.is_important) return 'Q2';
+  if (task.is_urgent && !task.is_important) return 'Q3';
+  return null;
+}
+
 interface TaskListProps {
   tasks: Task[];
   onDeleteTask: (taskId: number) => void;
@@ -75,7 +82,17 @@ export default function TaskList({ tasks, onDeleteTask, onSelectTask }: TaskList
             >
               <div className="flex justify-between items-start">
                 <div className="flex-1">
-                  <h3 className="font-semibold text-lg text-white">{task.name}</h3>
+                  <h3 className="font-semibold text-lg text-white flex items-center gap-2">
+                    {task.name}
+                    {quadrantBadge(task) && (
+                      <span
+                        data-testid={`activity-quadrant-${task.id}`}
+                        className="text-xs font-semibold bg-white/20 rounded-full px-2 py-0.5"
+                      >
+                        {quadrantBadge(task)}
+                      </span>
+                    )}
+                  </h3>
                   <div className="text-sm text-white/70 mt-1 space-y-1">
                     <p className="flex items-center gap-2">
                       <span className="text-white/50">Average:</span>

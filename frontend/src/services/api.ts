@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Task, TaskCreate, TaskStats, TimeLogCreate, TimeLog, StopwatchSession, StopwatchSessionCreate, StopwatchSessionUpdate, StopwatchSessionWithTask, Schedule, ScheduleCreate, ScheduleUpdate, ScheduleItem, ScheduleItemCreate, ScheduleItemPlace, ScheduleItemUpdate, ApplyRegimen, GenerateRequest, GenerateResponse } from '../types';
+import { Task, TaskCreate, TaskUpdate, TaskStats, TimeLogCreate, TimeLog, StopwatchSession, StopwatchSessionCreate, StopwatchSessionUpdate, StopwatchSessionWithTask, Schedule, ScheduleCreate, ScheduleUpdate, ScheduleItem, ScheduleItemCreate, ScheduleItemPlace, ScheduleItemUpdate, ApplyRegimen, GenerateRequest, GenerateResponse } from '../types';
 
 const API_BASE_URL = '/api';
 
@@ -58,6 +58,11 @@ export const taskAPI = {
 
   getStats: async (id: number): Promise<TaskStats> => {
     const response = await api.get(`/tasks/${id}/stats`);
+    return response.data;
+  },
+
+  update: async (id: number, task: TaskUpdate): Promise<Task> => {
+    const response = await api.put(`/tasks/${id}`, task);
     return response.data;
   },
 };
