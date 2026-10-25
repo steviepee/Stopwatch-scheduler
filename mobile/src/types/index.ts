@@ -54,7 +54,8 @@ export interface StopwatchSessionCreate {
 export interface StopwatchSessionUpdate {
   name?: string;
   duration?: number;
-  task_id?: number;
+  task_id?: number | null;
+  new_activity_name?: string;
   notes?: string;
   start_time?: string;
   end_time?: string;

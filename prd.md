@@ -197,11 +197,11 @@ designed in its own session after Build 2b ships (D79).
   - [x] Test: after success the row's Activity label updates
 
 ### B37.impl — Mobile: actions on a saved Recording
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract in `(tabs)/recordings.tsx`; add `update` to
   `sessionAPI` in `services/api.ts` if absent. Online only: show an error on failure, no queue.
 - **Acceptance Criteria:**
-  - [ ] All B37.tests pass; mobile suite, tsc, and export pass
+  - [x] All B37.tests pass; mobile suite, tsc, and export pass
 
 ### B38.tests — Web: Recordings make, join, and leave Activities
 - **Status:** PENDING

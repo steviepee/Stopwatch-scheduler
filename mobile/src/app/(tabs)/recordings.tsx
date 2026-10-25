@@ -8,10 +8,54 @@ import { sessionAPI, taskAPI } from '@/services/api';
 import { CREATE_SESSION_KEY } from '@/services/queryClient';
 import { PickerField } from '@/components/PickerField';
 import { formatElapsed } from '@/timer/format';
-import type { StopwatchSessionCreate, Task } from '@/types';
+import type { StopwatchSession, StopwatchSessionCreate, StopwatchSessionUpdate, Task } from '@/types';
 
 function dayOf(iso: string): string {
   return iso.slice(0, 10);
+}
+
+function ActivityPicker({
+  tasks,
+  currentTaskId,
+  onSelect,
+}: {
+  tasks: Task[];
+  currentTaskId?: number;
+  onSelect: (task: Task) => void;
+}) {
+  const [search, setSearch] = useState('');
+  const filtered = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return tasks;
+    return tasks.filter((task) => task.name.toLowerCase().includes(query));
+  }, [tasks, search]);
+
+  return (
+    <>
+      <TextInput
+        testID="action-picker-search"
+        style={styles.input}
+        placeholder="Search activities"
+        placeholderTextColor={colors.placeholder}
+        value={search}
+        onChangeText={setSearch}
+      />
+      <ScrollView style={styles.activityList}>
+        {filtered.map((task) => (
+          <Pressable
+            key={task.id}
+            testID={`action-picker-${task.id}`}
+            accessibilityRole="button"
+            style={styles.activityRow}
+            onPress={() => onSelect(task)}>
+            <Text style={styles.rowName}>
+              {task.id === currentTaskId ? `${task.name} (current)` : task.name}
+            </Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+    </>
+  );
 }
 
 function ManualForm({ tasks, onClose }: { tasks: Task[]; onClose: () => void }) {
@@ -217,11 +261,53 @@ export default function RecordingsScreen() {
   const [dateFrom, setDateFrom] = useState<Date | null>(null);
   const [dateTo, setDateTo] = useState<Date | null>(null);
   const [manualOpen, setManualOpen] = useState(false);
+  const [actionsFor, setActionsFor] = useState<StopwatchSession | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const deleteSession = useMutation({
     mutationFn: (id: number) => sessionAPI.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sessions'] }),
   });
+
+  const updateSession = useMutation({
+    mutationFn: ({ id, body }: { id: number; body: StopwatchSessionUpdate }) => sessionAPI.update(id, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      setActionsFor(null);
+      setPickerOpen(false);
+    },
+  });
+
+  const actionsMatchedTask = useMemo(() => {
+    if (!actionsFor) return undefined;
+    const trimmed = actionsFor.name.trim().toLowerCase();
+    return (tasks ?? []).find((task) => task.name.toLowerCase() === trimmed);
+  }, [tasks, actionsFor]);
+
+  const closeActions = () => {
+    setActionsFor(null);
+    setPickerOpen(false);
+  };
+
+  const handlePickTask = (task: Task) => {
+    if (!actionsFor) return;
+    updateSession.mutate({ id: actionsFor.id, body: { task_id: task.id } });
+  };
+
+  const handleMakeActivity = () => {
+    if (!actionsFor) return;
+    if (actionsMatchedTask) {
+      updateSession.mutate({ id: actionsFor.id, body: { task_id: actionsMatchedTask.id } });
+    } else {
+      updateSession.mutate({ id: actionsFor.id, body: { new_activity_name: actionsFor.name.trim() } });
+    }
+  };
+
+  const handleDetach = () => {
+    if (!actionsFor) return;
+    updateSession.mutate({ id: actionsFor.id, body: { task_id: null } });
+  };
 
   const pendingSessions = useMutationState({
     filters: { mutationKey: CREATE_SESSION_KEY },
@@ -318,6 +404,7 @@ export default function RecordingsScreen() {
             testID={`session-row-${session.id}`}
             accessibilityRole="button"
             style={styles.row}
+            onPress={() => setActionsFor(session)}
             onLongPress={() => deleteSession.mutate(session.id)}>
             <View>
               <Text testID={`session-name-${session.id}`} style={styles.rowName}>
@@ -338,6 +425,70 @@ export default function RecordingsScreen() {
           </Pressable>
         ))}
       </ScrollView>
+
+      {actionsFor && (
+        <View style={styles.overlay}>
+          <ScrollView testID="session-actions" style={styles.sheet} contentContainerStyle={styles.sheetContent}>
+            <Text style={styles.sheetTitle}>{actionsFor.name}</Text>
+
+            {pickerOpen ? (
+              <ActivityPicker tasks={tasks ?? []} currentTaskId={actionsFor.task_id} onSelect={handlePickTask} />
+            ) : actionsFor.task_id ? (
+              <>
+                <Pressable
+                  testID="action-change"
+                  accessibilityRole="button"
+                  style={styles.activityRow}
+                  onPress={() => setPickerOpen(true)}>
+                  <Text style={styles.rowName}>Change Activity</Text>
+                </Pressable>
+                <Pressable
+                  testID="action-detach"
+                  accessibilityRole="button"
+                  style={styles.activityRow}
+                  onPress={handleDetach}>
+                  <Text style={styles.rowName}>Detach</Text>
+                </Pressable>
+              </>
+            ) : (
+              <>
+                <Pressable
+                  testID="action-attach"
+                  accessibilityRole="button"
+                  style={styles.activityRow}
+                  onPress={() => setPickerOpen(true)}>
+                  <Text style={styles.rowName}>Attach to Activity</Text>
+                </Pressable>
+                <Pressable
+                  testID="action-make-activity"
+                  accessibilityRole="button"
+                  style={styles.activityRow}
+                  onPress={handleMakeActivity}>
+                  <Text style={styles.rowName}>
+                    {actionsMatchedTask ? `Attach to ${actionsMatchedTask.name}` : 'Make it an Activity'}
+                  </Text>
+                </Pressable>
+              </>
+            )}
+
+            {updateSession.isError && (
+              <Text testID="action-error" style={styles.errorText}>
+                Could not save. Check the connection and try again.
+              </Text>
+            )}
+
+            <View style={styles.sheetActions}>
+              <Pressable
+                testID="btn-actions-cancel"
+                accessibilityRole="button"
+                style={[styles.button, styles.buttonMuted]}
+                onPress={closeActions}>
+                <Text style={styles.buttonLabel}>Cancel</Text>
+              </Pressable>
+            </View>
+          </ScrollView>
+        </View>
+      )}
     </View>
   );
 }
@@ -426,6 +577,17 @@ const styles = StyleSheet.create({
   sheetContent: {
     padding: spacing.lg,
     gap: spacing.md,
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: colors.background,
+  },
+  activityList: {
+    flexGrow: 0,
   },
   sheetTitle: {
     ...typography.heading,
