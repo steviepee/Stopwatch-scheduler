@@ -73,6 +73,7 @@ jest.mock('../services/api', () => ({
     removeFromCalendar: jest.fn(),
   },
   calendarImportAPI: { getEvents: jest.fn() },
+  insightsAPI: { getPeakHours: jest.fn().mockResolvedValue({ peak_hour: null }) },
 }));
 
 jest.mock('react-native-gesture-handler', () => {

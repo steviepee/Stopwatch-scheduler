@@ -6,7 +6,7 @@ import { GlassView } from 'expo-glass-effect';
 
 import { colors, radii, spacing, touchTarget, typography } from '@/theme/tokens';
 import { PickerField } from '@/components/PickerField';
-import { calendarImportAPI, taskAPI, scheduleAPI } from '@/services/api';
+import { calendarImportAPI, taskAPI, scheduleAPI, insightsAPI } from '@/services/api';
 import { useUserOptions, type UserOptions } from '@/services/options';
 import { formatElapsed } from '@/timer/format';
 import type { GenerateActivity, GenerateEvent, GenerateRequest, Schedule, ScheduleCreate, StrategyOption, Task } from '@/types';
@@ -73,6 +73,11 @@ function formatTime(date: Date): string {
   return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
+function formatHour(hour: number): string {
+  const period = hour >= 12 ? 'PM' : 'AM';
+  return `${hour % 12 || 12} ${period}`;
+}
+
 function localDateKey(date: Date): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -110,6 +115,7 @@ export default function ScheduleScreen() {
   const userOptions = useUserOptions();
   const { data: tasks } = useQuery({ queryKey: ['tasks'], queryFn: taskAPI.getAll });
   const { data: regimens } = useQuery({ queryKey: ['regimens'], queryFn: () => scheduleAPI.getAll(true) });
+  const { data: peakHours } = useQuery({ queryKey: ['peak-hours'], queryFn: insightsAPI.getPeakHours });
 
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -294,6 +300,15 @@ export default function ScheduleScreen() {
     setDayEnd((prev) => onDate(prev, date));
   }
 
+  function handleUsePeakHour() {
+    if (peakHours?.peak_hour == null) return;
+    setStartTime((prev) => {
+      const result = new Date(prev);
+      result.setHours(peakHours.peak_hour!, 0, 0, 0);
+      return result;
+    });
+  }
+
   function handleGenerate() {
     const request = buildRequest();
     setGenerateRequest(request);
@@ -396,6 +411,11 @@ export default function ScheduleScreen() {
           onChange={setStartTime}
         />
       </View>
+      {peakHours?.peak_hour != null && (
+        <Pressable testID="peak-hour-hint" accessibilityRole="button" onPress={handleUsePeakHour}>
+          <Text style={styles.caption}>Your peak hour: {formatHour(peakHours.peak_hour)}. Use it.</Text>
+        </Pressable>
+      )}
       <View style={styles.row}>
         <Text style={styles.rowLabel}>Day end</Text>
         <PickerField

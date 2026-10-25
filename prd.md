@@ -352,10 +352,10 @@ designed in its own session after Build 2b ships (D79).
   - [x] Test: null or an error → no hint; Start time unchanged on load
 
 ### B45.impl — Mobile: peak-hours hint
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract; add the call to `services/api.ts`.
 - **Acceptance Criteria:**
-  - [ ] All B45.tests pass; mobile suite, tsc, and export pass
+  - [x] All B45.tests pass; mobile suite, tsc, and export pass
 
 ### B46.tests — Web: peak-hours hint
 - **Status:** PENDING

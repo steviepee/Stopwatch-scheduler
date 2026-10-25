@@ -53,6 +53,7 @@ jest.mock('../services/api', () => ({
     addItem: jest.fn(),
     applyRegimen: jest.fn(),
   },
+  insightsAPI: { getPeakHours: jest.fn().mockResolvedValue({ peak_hour: null }) },
 }));
 
 jest.mock('../services/auth', () => ({
