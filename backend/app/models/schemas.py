@@ -82,8 +82,22 @@ class StopwatchSessionBase(BaseModel):
     start_time: Optional[UTCDateTime] = None
     end_time: Optional[UTCDateTime] = None
 
+def _check_new_activity_name(task_id: Optional[int], new_activity_name: Optional[str]) -> None:
+    if new_activity_name is None:
+        return
+    if task_id is not None:
+        raise ValueError("new_activity_name cannot be sent with task_id")
+    if not new_activity_name.strip():
+        raise ValueError("new_activity_name cannot be blank")
+
+
 class StopwatchSessionCreate(StopwatchSessionBase):
-    pass
+    new_activity_name: Optional[str] = None
+
+    @model_validator(mode="after")
+    def check_new_activity_name(self):
+        _check_new_activity_name(self.task_id, self.new_activity_name)
+        return self
 
 class StopwatchSessionUpdate(BaseModel):
     name: Optional[str] = None
@@ -92,6 +106,12 @@ class StopwatchSessionUpdate(BaseModel):
     notes: Optional[str] = None
     start_time: Optional[UTCDateTime] = None
     end_time: Optional[UTCDateTime] = None
+    new_activity_name: Optional[str] = None
+
+    @model_validator(mode="after")
+    def check_new_activity_name(self):
+        _check_new_activity_name(self.task_id, self.new_activity_name)
+        return self
 
 class StopwatchSession(StopwatchSessionBase):
     id: int

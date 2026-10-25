@@ -146,11 +146,11 @@ designed in its own session after Build 2b ships (D79).
   - [x] Test: move between Activities still updates both (existing behaviour, kept)
 
 ### B35.impl — Backend: Recordings create, join, and leave Activities
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract in `routers/sessions.py` and `models/schemas.py`.
   One helper resolves a name to an Activity for both routes.
 - **Acceptance Criteria:**
-  - [ ] All B35.tests pass; full suite passes
+  - [x] All B35.tests pass; full suite passes
 
 ### B36.tests — Mobile: a Recording makes or joins an Activity when saved
 - **Status:** PENDING
