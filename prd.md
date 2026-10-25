@@ -181,7 +181,7 @@ designed in its own session after Build 2b ships (D79).
   - [x] All B36.tests pass; mobile suite, tsc, and export pass
 
 ### B37.tests — Mobile: actions on a saved Recording
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D78. Extend `RecordingsScreen.test.tsx`.
 - **Contract:** Tapping a Recording row opens its actions. With no Activity: **Attach to
   Activity** (opens an Activity picker with search; choosing sends `PUT` with `task_id`) and
@@ -191,10 +191,10 @@ designed in its own session after Build 2b ships (D79).
   one marked) and **Detach** (sends `task_id: null`). Existing delete stays. After any change
   the list shows the new Activity, and `['sessions']` and `['tasks']` are invalidated.
 - **Acceptance Criteria:**
-  - [ ] Test: a no-Activity Recording offers Attach and Make it an Activity; an attached one offers Change and Detach
-  - [ ] Test: each action sends the body above
-  - [ ] Test: Make it an Activity becomes "Attach to <name>" when the name matches
-  - [ ] Test: after success the row's Activity label updates
+  - [x] Test: a no-Activity Recording offers Attach and Make it an Activity; an attached one offers Change and Detach
+  - [x] Test: each action sends the body above
+  - [x] Test: Make it an Activity becomes "Attach to <name>" when the name matches
+  - [x] Test: after success the row's Activity label updates
 
 ### B37.impl — Mobile: actions on a saved Recording
 - **Status:** PENDING

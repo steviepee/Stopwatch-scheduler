@@ -29,8 +29,17 @@ import type { StopwatchSession, Task } from '../types';
 //
 // B30 contract: `manual-hours` and `manual-minutes` start empty (value '') with a placeholder of
 // '0', so typing does not append to a 0. An empty field counts as 0.
+//
+// B37 contract (D78): tapping a Recording row opens `session-actions`. With no Activity:
+// `action-attach` ("Attach to Activity") opens a search picker (`action-picker-search`,
+// `action-picker-<task_id>` rows) that sends `PUT { task_id }`; `action-make-activity` ("Make it
+// an Activity", or "Attach to <name>" when the trimmed name matches one case-insensitively)
+// sends `PUT { new_activity_name }` or `PUT { task_id }` to match. With an Activity:
+// `action-change` opens the same picker (current Activity's row reads "<name> (current)") and
+// `action-detach` sends `PUT { task_id: null }`. On success the sheet closes and the row's
+// Activity label updates.
 jest.mock('../services/api', () => ({
-  sessionAPI: { getAll: jest.fn(), delete: jest.fn(), create: jest.fn() },
+  sessionAPI: { getAll: jest.fn(), delete: jest.fn(), create: jest.fn(), update: jest.fn() },
   taskAPI: { getAll: jest.fn() },
 }));
 
@@ -52,6 +61,7 @@ jest.mock('@react-native-community/datetimepicker', () => {
 const mockedGetAll = sessionAPI.getAll as jest.Mock;
 const mockedDelete = sessionAPI.delete as jest.Mock;
 const mockedCreate = sessionAPI.create as jest.Mock;
+const mockedUpdate = sessionAPI.update as jest.Mock;
 const mockedTasksGetAll = taskAPI.getAll as jest.Mock;
 
 const GYM: Task = {
@@ -99,6 +109,7 @@ beforeEach(() => {
   mockedGetAll.mockReset();
   mockedDelete.mockReset();
   mockedCreate.mockReset();
+  mockedUpdate.mockReset();
   mockedTasksGetAll.mockReset();
   mockedTasksGetAll.mockResolvedValue([GYM, READING]);
   mockPickerValue = new Date('2026-01-01T00:00:00.000Z');
@@ -482,5 +493,113 @@ describe('hand-entered recording', () => {
     expect(screen.getByTestId('btn-manual-save')).toBeDisabled();
     await fireEvent.press(screen.getByTestId('btn-manual-save'));
     expect(mockedCreate).not.toHaveBeenCalled();
+  });
+});
+
+describe('recording actions (B37, D78)', () => {
+  it('offers Attach to Activity and Make it an Activity for a Recording with no Activity', async () => {
+    mockedGetAll.mockResolvedValue([BREAK_SESSION]);
+    await renderScreen();
+
+    await fireEvent.press(await screen.findByTestId('session-row-3'));
+    await screen.findByTestId('session-actions');
+
+    expect(screen.getByTestId('action-attach')).toBeTruthy();
+    expect(screen.getByTestId('action-make-activity')).toBeTruthy();
+    expect(screen.queryByTestId('action-change')).toBeNull();
+    expect(screen.queryByTestId('action-detach')).toBeNull();
+  });
+
+  it('offers Change Activity and Detach for an attached Recording', async () => {
+    mockedGetAll.mockResolvedValue([GYM_SESSION]);
+    await renderScreen();
+
+    await fireEvent.press(await screen.findByTestId('session-row-2'));
+    await screen.findByTestId('session-actions');
+
+    expect(screen.getByTestId('action-change')).toBeTruthy();
+    expect(screen.getByTestId('action-detach')).toBeTruthy();
+    expect(screen.queryByTestId('action-attach')).toBeNull();
+    expect(screen.queryByTestId('action-make-activity')).toBeNull();
+  });
+
+  it('Attach to Activity opens a search picker; choosing an Activity sends task_id', async () => {
+    mockedUpdate.mockResolvedValue({ ...BREAK_SESSION, task_id: 7 });
+    mockedGetAll.mockResolvedValueOnce([BREAK_SESSION]);
+    mockedGetAll.mockResolvedValueOnce([{ ...BREAK_SESSION, task_id: 7 }]);
+    await renderScreen();
+
+    await fireEvent.press(await screen.findByTestId('session-row-3'));
+    await fireEvent.press(await screen.findByTestId('action-attach'));
+    await fireEvent.changeText(await screen.findByTestId('action-picker-search'), 'gy');
+    await screen.findByTestId('action-picker-7');
+    expect(screen.queryByTestId('action-picker-8')).toBeNull();
+    await fireEvent.press(screen.getByTestId('action-picker-7'));
+
+    expect(mockedUpdate).toHaveBeenCalledWith(3, { task_id: 7 });
+    await waitFor(() => expect(screen.queryByTestId('session-actions')).toBeNull());
+  });
+
+  it('Make it an Activity sends new_activity_name when the trimmed name matches no Activity', async () => {
+    mockedUpdate.mockResolvedValue({ ...BREAK_SESSION, task_id: 99 });
+    mockedGetAll.mockResolvedValue([BREAK_SESSION]);
+    await renderScreen();
+
+    await fireEvent.press(await screen.findByTestId('session-row-3'));
+    await fireEvent.press(await screen.findByTestId('action-make-activity'));
+
+    expect(mockedUpdate).toHaveBeenCalledWith(3, { new_activity_name: 'Quick Break' });
+  });
+
+  it('Make it an Activity reads "Attach to <name>" and sends task_id when the name matches an Activity (D77)', async () => {
+    const matching = session({ id: 4, name: 'gym ', duration: 300 });
+    mockedUpdate.mockResolvedValue({ ...matching, task_id: 7 });
+    mockedGetAll.mockResolvedValue([matching]);
+    await renderScreen();
+
+    await fireEvent.press(await screen.findByTestId('session-row-4'));
+    await screen.findByText('Attach to Gym');
+    await fireEvent.press(screen.getByTestId('action-make-activity'));
+
+    expect(mockedUpdate).toHaveBeenCalledWith(4, { task_id: 7 });
+  });
+
+  it('Change Activity opens the picker with the current Activity marked, and switching sends the new task_id', async () => {
+    mockedUpdate.mockResolvedValue({ ...GYM_SESSION, task_id: 8 });
+    mockedGetAll.mockResolvedValue([GYM_SESSION]);
+    await renderScreen();
+
+    await fireEvent.press(await screen.findByTestId('session-row-2'));
+    await fireEvent.press(await screen.findByTestId('action-change'));
+
+    await screen.findByText('Gym (current)');
+    await fireEvent.press(await screen.findByTestId('action-picker-8'));
+
+    expect(mockedUpdate).toHaveBeenCalledWith(2, { task_id: 8 });
+  });
+
+  it('Detach sends task_id: null', async () => {
+    mockedUpdate.mockResolvedValue({ ...GYM_SESSION, task_id: undefined });
+    mockedGetAll.mockResolvedValue([GYM_SESSION]);
+    await renderScreen();
+
+    await fireEvent.press(await screen.findByTestId('session-row-2'));
+    await fireEvent.press(await screen.findByTestId('action-detach'));
+
+    expect(mockedUpdate).toHaveBeenCalledWith(2, { task_id: null });
+  });
+
+  it('closes the sheet and shows the updated Activity on the row after a successful change', async () => {
+    mockedUpdate.mockResolvedValue({ ...BREAK_SESSION, task_id: 7 });
+    mockedGetAll.mockResolvedValueOnce([BREAK_SESSION]);
+    mockedGetAll.mockResolvedValueOnce([{ ...BREAK_SESSION, task_id: 7 }]);
+    await renderScreen();
+
+    await fireEvent.press(await screen.findByTestId('session-row-3'));
+    await fireEvent.press(await screen.findByTestId('action-attach'));
+    await fireEvent.press(await screen.findByTestId('action-picker-7'));
+
+    await waitFor(() => expect(screen.queryByTestId('session-actions')).toBeNull());
+    await waitFor(() => expect(screen.getByTestId('session-activity-3')).toHaveTextContent('Gym'));
   });
 });
