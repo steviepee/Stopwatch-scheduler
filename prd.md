@@ -404,3 +404,17 @@ Native code; needs an EAS build, and a new fingerprint means U9's rebuild again.
 ### B24. Stop button on the foreground notification
 - **Status:** HOLD — needs design. The timer's Kotlin module can only start and stop its
   notification; app code does not run while the phone is locked.
+
+### Follow-ups folded into Build 2c (added 2026-10-25; HOLD, settle in the design session)
+- **Mobile Recording delete needs a confirmation.** A long press on a Recording deletes it at
+  once, with no prompt or undo (`recordings.tsx` `onLongPress`); the server also drops its Time
+  Log and re-averages the Activity. The web app already confirms (`HomePage.tsx`).
+- **"Offline — showing nothing" shows on any query error**, including a 401
+  (`activities.tsx`). Should say Offline only when the device is; check Recordings and Schedule
+  for the same pattern.
+- **URL scheme** in `app.json` is still the template `mobile`; change to `stopwatchscheduler`
+  (native, rides 2c's rebuild).
+- **Mobile suite on a cold run**: once 9 failures cold, all green warm. Settle with
+  `npx jest --ci --clearCache` then a cold run before the loop starts.
+- **Dev-only Settings-gear nudge** in `(tabs)/_layout.tsx` (`__DEV__ ? spacing.xxl`): decide
+  whether to drop it and turn the Expo dev Tools button back on.
