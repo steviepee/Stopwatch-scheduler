@@ -97,7 +97,7 @@ designed in its own session after Build 2b ships (D79).
   - [x] `bash -n deploy.sh` passes
 
 ### U9. USER — Rebuild the phone app once for updates
-- **Status:** USER
+- **Status:** USER — DONE 2026-10-25. Existing 10/20 preview APK (runtime `9c9f0995`) and 10/24 dev APK kept; `deploy.sh` published `ad7d284` and the phone applied it.
 - **Description:** After B34 lands and is committed. From `mobile/`, in an Ubuntu tab:
   ```bash
   npm install -g eas-cli          # 23.2 → 24.x, also an open follow-up
@@ -109,9 +109,9 @@ designed in its own session after Build 2b ships (D79).
   phone update), force-close the standalone app, open it, close it, and open it again — the
   update downloads on the first open and applies on the second.
 - **Acceptance Criteria:**
-  - [ ] Both apps installed; the standalone app still lists Activities and Recordings
-  - [ ] `eas update:list --branch preview` shows the update `deploy.sh` published
-  - [ ] The phone runs it (any B35+ change that has landed is visible, or `eas update:list` shows it downloaded under the build's runtime version)
+  - [x] Both apps installed; the standalone app still lists Activities and Recordings
+  - [x] `eas update:list --branch preview` shows the update `deploy.sh` published
+  - [x] The phone runs it (any B35+ change that has landed is visible, or `eas update:list` shows it downloaded under the build's runtime version)
 
 ### B35.tests — Backend: Recordings create, join, and leave Activities
 - **Status:** DONE
@@ -371,7 +371,7 @@ designed in its own session after Build 2b ships (D79).
   - [x] All B46.tests pass; web tsc clean; `npm run build` succeeds
 
 ### U10. USER — Build 2b gate
-- **Status:** USER
+- **Status:** USER — DONE 2026-10-25. All six checks passed on phone and web.
 - **Description:** After the loop finishes: commit, then `./deploy.sh` from the repo root. On
   the phone, reopen the standalone app twice so the update applies (no APK). Then, on the phone
   and on the web app:
@@ -388,7 +388,7 @@ designed in its own session after Build 2b ships (D79).
      the averages follow each step.
   Record results in `progress.md`.
 - **Acceptance Criteria:**
-  - [ ] All six pass on both clients; any failure recorded with the task it reopens
+  - [x] All six pass on both clients; any failure recorded with the task it reopens
 
 ---
 

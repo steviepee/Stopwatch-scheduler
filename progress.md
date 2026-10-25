@@ -1738,3 +1738,15 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Gotchas:**
   - `ScheduleBuilder.tsx` has no other `useEffect` or data-fetching hook anywhere in the file (confirmed by grep before writing) — the calendar-import flow is a manual button click, not mount-time — so this is the first `useEffect` in the component; a plain `.then`/`.catch` on `insightsAPI.getPeakHours()` was used rather than reaching for react-query, since nothing else in this file uses it either.
   - `startHour` is already a plain `"HH:MM"` string state (not a `Date`), so `handleUsePeakHour` only needed a template string, no date-object plumbing — simpler than mobile's `setHours` approach since the web builder never stored a full `Date` for the time picker.
+
+## U9. USER: Rebuild the phone app once for updates
+- **Date:** 2026-10-25
+- **Status:** DONE
+- **Summary:** No rebuild needed. The 10/20 preview APK was built from `ded6c50` (B34.impl), runtime `9c9f0995`, and no native-affecting file changed since. `./deploy.sh` deployed `ad7d284` to Azure and published the preview update under that runtime; the standalone app applied it after two cold starts (quadrant picker visible, Activities and Recordings intact).
+- **Gotchas:** Updates apply on the second cold start, not the first. The home-screen long-press menu has no Force stop; swipe the app from recents or use Settings → Apps.
+
+## U10. USER: Build 2b gate
+- **Date:** 2026-10-25
+- **Status:** DONE
+- **Summary:** All six checks passed on phone and web: quadrant badges, seven-Strategy dropdown (Eisenhower and the Q4 message), the Frog marker and replace confirmation, the peak-hour hint, new Activity from a Recording (online and offline), and Make/Change/Detach on a Recording. Build 2b is complete.
+- **Gotchas:** A long press on a mobile Recording deletes it with no confirmation; folded into Build 2c.
