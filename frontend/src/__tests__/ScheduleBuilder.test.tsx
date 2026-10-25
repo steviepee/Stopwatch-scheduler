@@ -5,7 +5,7 @@ import ActivityInput from '../components/ActivityInput';
 import ScheduleBuilderComponent from '../components/ScheduleBuilder';
 import ScheduleListComponent from '../components/ScheduleList';
 import HomePage from '../pages/HomePage';
-import { calendarImportAPI, googleCalendarAPI, scheduleAPI, sessionAPI, taskAPI } from '../services/api';
+import { calendarImportAPI, googleCalendarAPI, insightsAPI, scheduleAPI, sessionAPI, taskAPI } from '../services/api';
 import type { Schedule, ScheduleItemCreate, Task } from '../types';
 
 // B11 contract (Build 2a, D39, D44, B8 on the web): the Schedule tab saves into the day, Apply
@@ -102,6 +102,19 @@ import type { Schedule, ScheduleItemCreate, Task } from '../types';
 //     `save-success`, unconditionally of `step` (the builder resets to setup on success).
 //   - `ScheduleItem.is_frog` (server-set, already on the type). `ItemBlock` shows
 //     `frog-marker-{itemId}` inside the Block for a frog Item; other Blocks do not.
+//
+// B46 contract (D75, web; mirrors mobile's B45). The PRD names only the hint's wording, not a
+// testID; this session keeps mobile's own choices for both: `peak-hour-hint` for the hint and
+// `input-start-time` for the setup step's Start Time `<input type="time">` (which had no testID
+// before this task), documented here for B46.impl to follow.
+//   - On mount, `insightsAPI.getPeakHours()` (no args — `tz_offset` is built inside the API
+//     client, same convention as `calendarImportAPI.getEvents`). When `peak_hour` is not null, a
+//     `peak-hour-hint` renders under Start Time reading "Your peak hour: `<h>` `<AM/PM>`. Use
+//     it." in hour-only 12-hour clock (no minutes — unlike the Start Time field itself, which is
+//     a plain `HH:MM` 24-hour `<input type="time">` and needs no new formatter).
+//   - Tapping it sets Start Time to that hour, minutes zero (`HH:00`), and nothing else; it is
+//     never applied on its own. `peak_hour: null` or a rejected call renders no hint and leaves
+//     Start Time untouched.
 
 process.env.TZ = 'America/Chicago';
 
@@ -125,6 +138,7 @@ vi.mock('../services/api', () => ({
     login: vi.fn(),
   },
   calendarImportAPI: { getEvents: vi.fn().mockResolvedValue([]) },
+  insightsAPI: { getPeakHours: vi.fn() },
 }));
 
 vi.mock('../components/calendar', () => ({ CalendarView: () => null }));
@@ -173,6 +187,7 @@ const tasksApi = taskAPI as unknown as Record<string, Mock>;
 const sessions = sessionAPI as unknown as Record<string, Mock>;
 const google = googleCalendarAPI as unknown as Record<string, Mock>;
 const calImport = calendarImportAPI as unknown as Record<string, Mock>;
+const insights = insightsAPI as unknown as Record<string, Mock>;
 
 const OPTIONS: Option[] = [
   {
@@ -310,6 +325,7 @@ beforeEach(() => {
   schedules.getRange.mockResolvedValue([]);
   schedules.generate.mockResolvedValue({ options: OPTIONS });
   timeline.reorderTo = [];
+  insights.getPeakHours.mockResolvedValue({ peak_hour: null });
 });
 
 afterEach(() => {
@@ -693,6 +709,52 @@ describe("ScheduleBuilder: the day's Frog (B44, D73/D74)", () => {
 
     await screen.findByTestId('save-success');
     expect(screen.queryByTestId('frog-replace-notice')).not.toBeInTheDocument();
+  });
+});
+
+describe('ScheduleBuilder: peak-hours hint (B46, D75)', () => {
+  it('shows a morning peak hour in 12-hour clock, hour only', async () => {
+    insights.getPeakHours.mockResolvedValue({ peak_hour: 9 });
+    render(<ScheduleBuilder tasks={TASKS} onScheduleCreated={vi.fn()} />);
+
+    expect(await screen.findByTestId('peak-hour-hint')).toHaveTextContent('Your peak hour: 9 AM. Use it.');
+  });
+
+  it('shows an afternoon peak hour in 12-hour clock, hour only', async () => {
+    insights.getPeakHours.mockResolvedValue({ peak_hour: 14 });
+    render(<ScheduleBuilder tasks={TASKS} onScheduleCreated={vi.fn()} />);
+
+    expect(await screen.findByTestId('peak-hour-hint')).toHaveTextContent('Your peak hour: 2 PM. Use it.');
+  });
+
+  it('tapping the hint sets Start Time to that hour, minutes zero', async () => {
+    insights.getPeakHours.mockResolvedValue({ peak_hour: 9 });
+    render(<ScheduleBuilder tasks={TASKS} onScheduleCreated={vi.fn()} />);
+    await screen.findByTestId('peak-hour-hint');
+
+    fireEvent.click(screen.getByTestId('peak-hour-hint'));
+
+    expect(screen.getByTestId('input-start-time')).toHaveValue('09:00');
+  });
+
+  it('shows no hint when peak_hour is null, and leaves Start Time unchanged', async () => {
+    insights.getPeakHours.mockResolvedValue({ peak_hour: null });
+    render(<ScheduleBuilder tasks={TASKS} onScheduleCreated={vi.fn()} />);
+    await waitFor(() => expect(insights.getPeakHours).toHaveBeenCalled());
+    await act(async () => {});
+
+    expect(screen.queryByTestId('peak-hour-hint')).toBeNull();
+    expect(screen.getByTestId('input-start-time')).toHaveValue('08:00');
+  });
+
+  it('shows no hint when the call fails, and leaves Start Time unchanged', async () => {
+    insights.getPeakHours.mockRejectedValue(new Error('network'));
+    render(<ScheduleBuilder tasks={TASKS} onScheduleCreated={vi.fn()} />);
+    await waitFor(() => expect(insights.getPeakHours).toHaveBeenCalled());
+    await act(async () => {});
+
+    expect(screen.queryByTestId('peak-hour-hint')).toBeNull();
+    expect(screen.getByTestId('input-start-time')).toHaveValue('08:00');
   });
 });
 

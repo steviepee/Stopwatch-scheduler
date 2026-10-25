@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Task, TaskCreate, TaskUpdate, TaskStats, TimeLogCreate, TimeLog, StopwatchSession, StopwatchSessionCreate, StopwatchSessionUpdate, StopwatchSessionWithTask, Schedule, ScheduleCreate, ScheduleUpdate, ScheduleItem, ScheduleItemCreate, ScheduleItemPlace, ScheduleItemUpdate, ApplyRegimen, GenerateRequest, GenerateResponse } from '../types';
+import { Task, TaskCreate, TaskUpdate, TaskStats, TimeLogCreate, TimeLog, StopwatchSession, StopwatchSessionCreate, StopwatchSessionUpdate, StopwatchSessionWithTask, Schedule, ScheduleCreate, ScheduleUpdate, ScheduleItem, ScheduleItemCreate, ScheduleItemPlace, ScheduleItemUpdate, ApplyRegimen, GenerateRequest, GenerateResponse, PeakHoursResponse } from '../types';
 
 const API_BASE_URL = '/api';
 
@@ -227,6 +227,13 @@ export const scheduleAPI = {
 export const calendarImportAPI = {
   getEvents: async (date: string): Promise<{ summary: string; start: string; end: string }[]> => {
     const response = await api.get('/auth/calendar/events', { params: { date, tz_offset: new Date().getTimezoneOffset() } });
+    return response.data;
+  },
+};
+
+export const insightsAPI = {
+  getPeakHours: async (): Promise<PeakHoursResponse> => {
+    const response = await api.get('/insights/peak-hours', { params: { tz_offset: new Date().getTimezoneOffset() } });
     return response.data;
   },
 };

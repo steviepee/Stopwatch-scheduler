@@ -358,11 +358,11 @@ designed in its own session after Build 2b ships (D79).
   - [x] All B45.tests pass; mobile suite, tsc, and export pass
 
 ### B46.tests — Web: peak-hours hint
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D75, web. Extend `ScheduleBuilder.test.tsx`.
 - **Contract:** As B45, under the builder's start time.
 - **Acceptance Criteria:**
-  - [ ] Test: as B45's three, in the web builder
+  - [x] Test: as B45's three, in the web builder
 
 ### B46.impl — Web: peak-hours hint
 - **Status:** PENDING
