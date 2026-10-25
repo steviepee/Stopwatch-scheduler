@@ -30,6 +30,9 @@ import type { ScheduleItem, Task } from '../types';
 // (recorded by the mock below) and the select Pressable's `hitSlop` prop — topping its touch
 // area up to 44 px, centred. Later-starting Blocks get a higher `zIndex`. A short Block's name
 // renders with `numberOfLines={1}`.
+//
+// B43 contract (D73): a Block whose Item has `is_frog` shows a `frog-marker-{itemId}` marker;
+// a Block whose Item does not has none.
 jest.mock('../services/api', () => ({
   taskAPI: { getAll: jest.fn() },
   scheduleAPI: {
@@ -311,6 +314,22 @@ describe('google events overlay', () => {
     expect(mockedUpdateItem).not.toHaveBeenCalled();
     expect(mockedPlaceActivity).not.toHaveBeenCalled();
     expect(mockedDeleteItem).not.toHaveBeenCalled();
+  });
+});
+
+describe('frog marker (B43, D73)', () => {
+  it('shows the marker only on a frog Item’s Block', async () => {
+    schedules = [
+      today([
+        item({ id: 1, task_id: 11, task: task({ id: 11, name: 'Taxes' }), is_frog: true }),
+        item({ id: 2, task_id: 12, task: task({ id: 12, name: 'Laundry' }) }),
+      ]),
+    ];
+    await renderScreen();
+
+    await screen.findByTestId('item-block-1');
+    expect(screen.getByTestId('frog-marker-1')).toBeTruthy();
+    expect(screen.queryByTestId('frog-marker-2')).toBeNull();
   });
 });
 

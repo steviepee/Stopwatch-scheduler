@@ -300,7 +300,7 @@ designed in its own session after Build 2b ships (D79).
   - [x] All B42.tests pass; web tsc clean; `npm run build` succeeds
 
 ### B43.tests — Mobile: the day's Frog
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D73, D74. Extend `ScheduleScreen.test.tsx` and `CalendarDayScreen.test.tsx`.
   The server already stores `is_frog` on Schedule Items and keeps one per Schedule.
 - **Contract:**
@@ -313,10 +313,10 @@ designed in its own session after Build 2b ships (D79).
     a different Frog, the save confirmation reads "Frog is now <new> (was <old>)."
   - Calendar Blocks whose Item has `is_frog` show a frog marker (testID `frog-marker-<item id>`).
 - **Acceptance Criteria:**
-  - [ ] Test: only one toggle can be on; Generate sends `is_frog` on that Activity only
-  - [ ] Test: saving the Shortest First plan still sends `is_frog` on the Frog's Item
-  - [ ] Test: with an existing Frog on the date, the confirmation names new and old
-  - [ ] Test: a frog Item's Block shows the marker; others do not
+  - [x] Test: only one toggle can be on; Generate sends `is_frog` on that Activity only
+  - [x] Test: saving the Shortest First plan still sends `is_frog` on the Frog's Item
+  - [x] Test: with an existing Frog on the date, the confirmation names new and old
+  - [x] Test: a frog Item's Block shows the marker; others do not
 
 ### B43.impl — Mobile: the day's Frog
 - **Status:** PENDING

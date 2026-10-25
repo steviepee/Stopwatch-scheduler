@@ -105,6 +105,25 @@ import type { GenerateResponse, Schedule, ScheduleItem, StrategyOption, Task } f
 //     `not-urgent-not-important`, a `eisenhower-empty-notice` renders
 //     "None of these Activities have a quadrant yet. Set them on the Activities tab." in
 //     place of `strategy-timeline` and the excluded/flagged lines.
+//
+// B43 contract (D73, D74): the day's Frog. Not in the PRD by testID — this session's choice,
+// documented here for B43.impl to follow:
+//   - Each selected Activity's row gets a `frog-toggle-{task_id}` Switch (same convention as
+//     `checkbox-regimen`). Turning one on sets local state to that task's id; since only one
+//     id can be held, turning another on turns the previous Switch's `value` back to false —
+//     no explicit "turn off" of the old one is needed.
+//   - Generate's `activities` entries carry `is_frog: true` only for the Activity whose
+//     `task_id` matches the held frog id; every other entry's `is_frog` is not `true` (absent
+//     or false — the contract does not say which, so tests only assert it is not `true`).
+//   - Save maps the selected option's `timeline` into `items` as today, and marks `is_frog:
+//     true` on the one entry whose `task_id` matches the held frog id — found by id, not by
+//     position, so it survives a Strategy switch reordering the timeline.
+//   - Before create, Save (day plans only — a Regimen has no `target_date` to check) calls
+//     `scheduleAPI.getRange(date, date)` for the date being saved to and looks for an existing
+//     Item with `is_frog` true across its Schedules. If one exists and the save's own Frog
+//     (by name, from the timeline entry) differs from it, a `frog-replace-notice` renders
+//     "Frog is now <new> (was <old>)." No held Frog, or the same name, or no existing Frog —
+//     no notice.
 jest.mock('../services/api', () => ({
   taskAPI: { getAll: jest.fn() },
   scheduleAPI: {
@@ -744,6 +763,107 @@ describe('strategy dropdown (B41, D71/D72)', () => {
     );
     expect(screen.queryAllByTestId(/^timeline-entry-/)).toHaveLength(0);
     expect(screen.queryAllByText(/Didn't fit/)).toHaveLength(0);
+  });
+});
+
+describe("the day's Frog (B43, D73/D74)", () => {
+  async function selectBothAndToggleFrog(frogId: number) {
+    await screen.findByTestId('activity-row-7');
+    await selectActivity(7);
+    await selectActivity(8);
+    await fireEvent(screen.getByTestId(`frog-toggle-${frogId}`), 'valueChange', true);
+    await pickStart(new Date('2026-02-03T08:00:00.000Z'));
+  }
+
+  it('only one toggle can be on, and Generate sends is_frog on that Activity only', async () => {
+    mockedGenerate.mockResolvedValue({ options: [] } as GenerateResponse);
+    await renderScreen();
+
+    await screen.findByTestId('activity-row-7');
+    await selectActivity(7);
+    await selectActivity(8);
+
+    await fireEvent(screen.getByTestId('frog-toggle-7'), 'valueChange', true);
+    expect(screen.getByTestId('frog-toggle-7')).toHaveProp('value', true);
+
+    await fireEvent(screen.getByTestId('frog-toggle-8'), 'valueChange', true);
+    expect(screen.getByTestId('frog-toggle-8')).toHaveProp('value', true);
+    expect(screen.getByTestId('frog-toggle-7')).toHaveProp('value', false);
+
+    await fireEvent.press(screen.getByTestId('btn-generate'));
+
+    await waitFor(() => expect(mockedGenerate).toHaveBeenCalledTimes(1));
+    const activities = mockedGenerate.mock.calls[0][0].activities;
+    expect(activities.find((a: { task_id: number }) => a.task_id === 8).is_frog).toBe(true);
+    expect(activities.find((a: { task_id: number }) => a.task_id === 7).is_frog).not.toBe(true);
+  });
+
+  it("saving the Shortest First plan still sends is_frog on the Frog's Item", async () => {
+    mockedGenerate.mockResolvedValue({
+      options: [
+        option({ strategy: 'your-order', label: 'Your Order', timeline: TIMELINE }),
+        option({ strategy: 'shortest-first', label: 'Shortest First', timeline: [TIMELINE[1], TIMELINE[0]] }),
+      ],
+    });
+    mockedCreate.mockResolvedValue({ ...REGIMEN, id: 61, name: null, is_regimen: false, items: [] });
+    await renderScreen();
+
+    await selectBothAndToggleFrog(8);
+    await fireEvent.press(screen.getByTestId('btn-generate'));
+    await screen.findByTestId('strategy-picker');
+    await fireEvent.press(screen.getByTestId('strategy-picker-option-shortest-first'));
+    await fireEvent.press(screen.getByTestId('btn-save'));
+
+    await waitFor(() => expect(mockedCreate).toHaveBeenCalledTimes(1));
+    const items = mockedCreate.mock.calls[0][0].items;
+    expect(items.find((i: { task_id: number }) => i.task_id === 8).is_frog).toBe(true);
+    expect(items.find((i: { task_id: number }) => i.task_id === 7).is_frog).not.toBe(true);
+  });
+
+  it('with an existing Frog on the date, the confirmation names new and old', async () => {
+    const start = new Date('2026-02-03T08:00:00.000Z');
+    mockedGetRange.mockResolvedValue([
+      {
+        ...REGIMEN,
+        id: 70,
+        name: null,
+        is_regimen: false,
+        target_date: localKey(start),
+        items: [
+          scheduleItem({
+            id: 40,
+            task_id: 20,
+            task: { ...GYM, id: 20, name: 'Laundry' },
+            is_frog: true,
+            scheduled_time: '2026-02-01T07:00:00Z',
+          }),
+        ],
+      },
+    ]);
+    mockedGenerate.mockResolvedValue({ options: [option({ strategy: 'your-order', timeline: TIMELINE })] });
+    mockedCreate.mockResolvedValue({ ...REGIMEN, id: 71, name: null, is_regimen: false, items: [] });
+    await renderScreen();
+
+    await selectBothAndToggleFrog(8);
+    await fireEvent.press(screen.getByTestId('btn-generate'));
+    await screen.findByTestId('strategy-picker');
+    await fireEvent.press(screen.getByTestId('btn-save'));
+
+    expect(await screen.findByTestId('frog-replace-notice')).toHaveTextContent(
+      'Frog is now Reading (was Laundry).'
+    );
+  });
+
+  it('no held Frog and an existing one on the date shows no replace notice', async () => {
+    mockedGenerate.mockResolvedValue({ options: [option({ strategy: 'your-order', timeline: TIMELINE })] });
+    mockedCreate.mockResolvedValue({ ...REGIMEN, id: 72, name: null, is_regimen: false, items: [] });
+    await renderScreen();
+
+    await reachSaveStep();
+    await fireEvent.press(screen.getByTestId('btn-save'));
+
+    await screen.findByText('Saved');
+    expect(screen.queryByTestId('frog-replace-notice')).toBeNull();
   });
 });
 
