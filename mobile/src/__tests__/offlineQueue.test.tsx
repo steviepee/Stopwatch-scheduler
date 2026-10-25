@@ -233,6 +233,36 @@ describe('useCreateSession when the network returns', () => {
   });
 });
 
+describe('useCreateSession with a new_activity_name payload (B36)', () => {
+  it('queues offline and replays the body unchanged, including new_activity_name', async () => {
+    const client = newClient();
+    const view = await mountCreateSession(client);
+    onlineManager.setOnline(false);
+
+    const newActivityBody = {
+      name: 'Laundry',
+      duration: 600,
+      start_time: '2026-09-06T08:00:00Z',
+      end_time: '2026-09-06T08:10:00Z',
+      new_activity_name: 'Laundry',
+    };
+
+    await act(async () => {
+      view.result.current.mutate(newActivityBody);
+    });
+    await waitFor(() => expect(view.result.current.isPaused).toBe(true));
+    expect(requests).toHaveLength(0);
+
+    await act(async () => {
+      onlineManager.setOnline(true);
+    });
+
+    await waitFor(() => expect(requests).toHaveLength(1));
+    expect(fullUrl(requests[0])).toBe(`${ENV_URL}/sessions/`);
+    expect(JSON.parse(requests[0].data)).toEqual(newActivityBody);
+  });
+});
+
 describe('persisted offline queue', () => {
   it('resumes a paused save on a fresh query client restored from storage', async () => {
     const first = newClient();

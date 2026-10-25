@@ -153,7 +153,7 @@ designed in its own session after Build 2b ships (D79).
   - [x] All B35.tests pass; full suite passes
 
 ### B36.tests — Mobile: a Recording makes or joins an Activity when saved
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D76, D77. Extend `StopwatchScreen.test.tsx` (the stop-and-save picker in
   `(tabs)/index.tsx`) and `RecordingsScreen.test.tsx` (the hand-entry `ManualForm`).
 - **Contract:** In both pickers, below "None" and the matching Activities:
@@ -167,11 +167,11 @@ designed in its own session after Build 2b ships (D79).
     one payload with `new_activity_name` and replays it unchanged. On success, `['tasks']` is
     invalidated (already the case).
 - **Acceptance Criteria:**
-  - [ ] Test: name "Laundry", no such Activity → the new row shows; saving sends `new_activity_name: "Laundry"` and no `task_id`
-  - [ ] Test: name "laundry " with Activity "Laundry" → no new row; "Attach to Laundry" is offered
-  - [ ] Test: default selection is None; saving without touching the picker sends neither field
-  - [ ] Test: the hand-entry form behaves the same
-  - [ ] Test: an offline save persists a payload carrying `new_activity_name` (extend `offlineQueue.test.tsx` if that is where the queue is exercised)
+  - [x] Test: name "Laundry", no such Activity → the new row shows; saving sends `new_activity_name: "Laundry"` and no `task_id`
+  - [x] Test: name "laundry " with Activity "Laundry" → no new row; "Attach to Laundry" is offered
+  - [x] Test: default selection is None; saving without touching the picker sends neither field
+  - [x] Test: the hand-entry form behaves the same
+  - [x] Test: an offline save persists a payload carrying `new_activity_name` (extend `offlineQueue.test.tsx` if that is where the queue is exercised)
 
 ### B36.impl — Mobile: a Recording makes or joins an Activity when saved
 - **Status:** PENDING

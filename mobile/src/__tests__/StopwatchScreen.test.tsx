@@ -43,6 +43,12 @@ const READING: Task = {
   name: 'Reading',
 };
 
+const LAUNDRY: Task = {
+  ...GYM,
+  id: 9,
+  name: 'Laundry',
+};
+
 const FINISH_RESULT: FinishedRecording = {
   durationSeconds: 754.5,
   startUtc: '2026-09-06T12:00:00.000Z',
@@ -337,6 +343,85 @@ describe('saving', () => {
 
     expect(timer.reset).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(screen.queryByTestId('input-name')).toBeNull());
+  });
+});
+
+describe('new Activity row (B36, D76, D77)', () => {
+  it('shows "+ New Activity: \'Laundry\'" when the typed name matches no Activity, and selecting it sends new_activity_name with no task_id', async () => {
+    const mutate = jest.fn();
+    mockedUseCreateSession.mockReturnValue({ mutate, isPending: false });
+    mockedUseTimer.mockReturnValue(timerMock({ status: 'paused', elapsedMs: 1_000 }));
+    await renderScreen();
+
+    await fireEvent.press(screen.getByTestId('btn-save-open'));
+    await screen.findByText('Gym');
+    await fireEvent.changeText(screen.getByTestId('input-name'), 'Laundry');
+    await screen.findByText("+ New Activity: 'Laundry'");
+
+    await fireEvent.press(screen.getByTestId('activity-new'));
+    await fireEvent.press(screen.getByTestId('btn-save-confirm'));
+
+    expect(mutate).toHaveBeenCalledTimes(1);
+    const body = mutate.mock.calls[0][0];
+    expect(body.new_activity_name).toBe('Laundry');
+    expect(body.task_id).toBeUndefined();
+  });
+
+  it('shows no new-Activity row for a blank name', async () => {
+    mockedUseTimer.mockReturnValue(timerMock({ status: 'paused', elapsedMs: 1_000 }));
+    await renderScreen();
+
+    await fireEvent.press(screen.getByTestId('btn-save-open'));
+    await screen.findByText('Gym');
+
+    expect(screen.queryByTestId('activity-new')).toBeNull();
+  });
+
+  it('name "laundry " with Activity "Laundry" present shows no new row, and offers "Attach to Laundry"', async () => {
+    mockedGetAll.mockResolvedValue([GYM, LAUNDRY]);
+    mockedUseTimer.mockReturnValue(timerMock({ status: 'paused', elapsedMs: 1_000 }));
+    await renderScreen();
+
+    await fireEvent.press(screen.getByTestId('btn-save-open'));
+    await screen.findByText('Gym');
+    await fireEvent.changeText(screen.getByTestId('input-name'), 'laundry ');
+
+    expect(screen.queryByTestId('activity-new')).toBeNull();
+    await screen.findByText('Attach to Laundry');
+    expect(screen.queryByText('Laundry')).toBeNull();
+  });
+
+  it('selecting "Attach to <name>" sends task_id and no new_activity_name, as today', async () => {
+    const mutate = jest.fn();
+    mockedUseCreateSession.mockReturnValue({ mutate, isPending: false });
+    mockedGetAll.mockResolvedValue([GYM, LAUNDRY]);
+    mockedUseTimer.mockReturnValue(timerMock({ status: 'paused', elapsedMs: 1_000 }));
+    await renderScreen();
+
+    await fireEvent.press(screen.getByTestId('btn-save-open'));
+    await screen.findByText('Gym');
+    await fireEvent.changeText(screen.getByTestId('input-name'), 'laundry ');
+    await fireEvent.press(await screen.findByText('Attach to Laundry'));
+    await fireEvent.press(screen.getByTestId('btn-save-confirm'));
+
+    const body = mutate.mock.calls[0][0];
+    expect(body.task_id).toBe(LAUNDRY.id);
+    expect(body.new_activity_name).toBeUndefined();
+  });
+
+  it('default selection is None; saving without touching the picker sends neither field', async () => {
+    const mutate = jest.fn();
+    mockedUseCreateSession.mockReturnValue({ mutate, isPending: false });
+    mockedUseTimer.mockReturnValue(timerMock({ status: 'paused', elapsedMs: 1_000 }));
+    await renderScreen();
+
+    await fireEvent.press(screen.getByTestId('btn-save-open'));
+    await fireEvent.press(screen.getByTestId('btn-save-confirm'));
+
+    expect(mutate).toHaveBeenCalledTimes(1);
+    const body = mutate.mock.calls[0][0];
+    expect(body.task_id).toBeUndefined();
+    expect(body.new_activity_name).toBeUndefined();
   });
 });
 

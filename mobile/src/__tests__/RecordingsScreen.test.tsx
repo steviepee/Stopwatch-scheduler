@@ -65,6 +65,8 @@ const GYM: Task = {
 
 const READING: Task = { ...GYM, id: 8, name: 'Reading', average_duration: 900, total_recordings: 5 };
 
+const LAUNDRY: Task = { ...GYM, id: 9, name: 'Laundry' };
+
 function session(overrides: Partial<StopwatchSession>): StopwatchSession {
   return {
     id: 1,
@@ -361,6 +363,59 @@ describe('hand-entered recording', () => {
       end_time: new Date(picked.getTime() + 900_000).toISOString(),
     });
     expect('task_id' in body).toBe(false);
+  });
+
+  it('shows "+ New Activity: \'Laundry\'" when the typed name matches no Activity, and selecting it sends new_activity_name with no task_id (B36, D76, D77)', async () => {
+    mockedCreate.mockResolvedValue(session({ id: 60 }));
+    await openForm();
+
+    await fireEvent.changeText(screen.getByTestId('manual-name'), 'Laundry');
+    await screen.findByText("+ New Activity: 'Laundry'");
+    await fireEvent.press(screen.getByTestId('manual-activity-new'));
+    await setDuration('0', '10');
+    const picked = new Date(2026, 8, 29, 9, 0);
+    await pickStart(picked);
+    await fireEvent.press(screen.getByTestId('btn-manual-save'));
+
+    await waitFor(() => expect(mockedCreate).toHaveBeenCalled());
+    const body = sentBody();
+    expect(body.new_activity_name).toBe('Laundry');
+    expect('task_id' in body).toBe(false);
+  });
+
+  it('shows no new-Activity row for a blank name', async () => {
+    await openForm();
+
+    expect(screen.queryByTestId('manual-activity-new')).toBeNull();
+  });
+
+  it('name "laundry " with Activity "Laundry" present shows no new row, and offers "Attach to Laundry"', async () => {
+    mockedTasksGetAll.mockResolvedValue([GYM, READING, LAUNDRY]);
+    await openForm();
+
+    await fireEvent.changeText(screen.getByTestId('manual-name'), 'laundry ');
+
+    expect(screen.queryByTestId('manual-activity-new')).toBeNull();
+    await screen.findByText('Attach to Laundry');
+    expect(screen.queryByText('Laundry')).toBeNull();
+  });
+
+  it('selecting "Attach to <name>" sends task_id and no new_activity_name, as today', async () => {
+    mockedCreate.mockResolvedValue(session({ id: 61 }));
+    mockedTasksGetAll.mockResolvedValue([GYM, READING, LAUNDRY]);
+    await openForm();
+
+    await fireEvent.changeText(screen.getByTestId('manual-name'), 'laundry ');
+    await fireEvent.press(await screen.findByText('Attach to Laundry'));
+    await setDuration('0', '10');
+    const picked = new Date(2026, 8, 29, 9, 30);
+    await pickStart(picked);
+    await fireEvent.press(screen.getByTestId('btn-manual-save'));
+
+    await waitFor(() => expect(mockedCreate).toHaveBeenCalled());
+    const body = sentBody();
+    expect(body.task_id).toBe(LAUNDRY.id);
+    expect(body.new_activity_name).toBeUndefined();
   });
 
   it('disables Save at zero duration', async () => {
