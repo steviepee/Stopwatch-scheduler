@@ -82,6 +82,12 @@ import type { Task } from '../types';
 //     `btn-close-block-actions`, which clears the selection (and edit mode).
 //   - `ItemBlock` renders no buttons; it keeps the selected/editing styling and, in edit mode,
 //     `item-block-{itemId}-resize-handle`. Changing the week clears the selection.
+//
+// B44 contract (D73, web; mirrors mobile's B43): `ScheduleItem.is_frog` (server-set, already on
+// the type) shows a `frog-marker-{itemId}` inside the Block for a frog Item, same pattern as
+// `item-block-{itemId}-changed`; other Blocks have none. `ScheduleBuilder.test.tsx` covers the
+// rest of D73/D74 (the toggle, Generate, Save, the replace notice) — this file only covers what
+// `ItemBlock` renders once `is_frog` is on an Item.
 
 vi.mock('../services/api', () => ({
   taskAPI: { getAll: vi.fn(), getStats: vi.fn() },
@@ -178,6 +184,7 @@ const tasks: Task[] = [
 // "Today" is Wednesday 2026-09-30, so the week is 2026-09-27 (Sun) .. 2026-10-03 (Sat).
 function makeItem(
   id: number, scheduleId: number, task: Task, start: string, duration: number, eventId?: string, stale = false,
+  frog = false,
 ) {
   return {
     id,
@@ -189,6 +196,7 @@ function makeItem(
     scheduled_time: start,
     ...(eventId ? { calendar_event_id: eventId } : {}),
     calendar_stale: stale,
+    is_frog: frog,
     created_at: '',
   };
 }
@@ -832,5 +840,27 @@ describe('CalendarView — changed marker and Push changes', () => {
     expect(api.clearDay).not.toHaveBeenCalled();
     expect(api.deleteItem).not.toHaveBeenCalled();
     expect(screen.queryByTestId('day-action-error')).not.toBeInTheDocument();
+  });
+});
+
+describe('CalendarView — frog marker (B44, D73)', () => {
+  function addDayWithFrog() {
+    schedules.push({
+      id: 103,
+      target_date: '2026-10-02',
+      items: [
+        makeItem(41, 103, tasks[0], iso(2026, 9, 2, 8, 0), 1800, undefined, false, true),
+        makeItem(42, 103, tasks[2], iso(2026, 9, 2, 10, 0), 1800),
+      ],
+    });
+  }
+
+  it("a frog Item's Block shows the marker; others do not", async () => {
+    addDayWithFrog();
+    await renderView();
+    const frogBlock = screen.getByTestId('item-block-41');
+    expect(within(frogBlock).getByTestId('frog-marker-41')).toBeInTheDocument();
+    expect(screen.queryByTestId('frog-marker-42')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('frog-marker-21')).not.toBeInTheDocument();
   });
 });

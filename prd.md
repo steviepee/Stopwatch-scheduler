@@ -325,11 +325,11 @@ designed in its own session after Build 2b ships (D79).
   - [x] All B43.tests pass; mobile suite, tsc, and export pass
 
 ### B44.tests — Web: the day's Frog
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D73, D74, web. Extend `ScheduleBuilder.test.tsx` and `CalendarView.test.tsx`.
 - **Contract:** As B43, in `ScheduleBuilder.tsx` and `calendar/ItemBlock.tsx`.
 - **Acceptance Criteria:**
-  - [ ] Test: as B43's four, in the web builder and calendar
+  - [x] Test: as B43's four, in the web builder and calendar
 
 ### B44.impl — Web: the day's Frog
 - **Status:** PENDING

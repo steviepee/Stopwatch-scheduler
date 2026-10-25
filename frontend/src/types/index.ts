@@ -88,6 +88,7 @@ export interface ScheduleItem {
   scheduled_time?: string;
   calendar_event_id?: string;
   calendar_stale?: boolean;
+  is_frog?: boolean;
   task?: Task;
   created_at: string;
 }
@@ -98,6 +99,7 @@ export interface ScheduleItemCreate {
   estimated_duration: number;
   position?: number;
   scheduled_time?: string;
+  is_frog?: boolean;
 }
 
 export interface ScheduleItemPlace {
@@ -112,6 +114,7 @@ export interface ScheduleItemUpdate {
   estimated_duration?: number;
   position?: number;
   scheduled_time?: string;
+  is_frog?: boolean;
 }
 
 export interface Schedule {

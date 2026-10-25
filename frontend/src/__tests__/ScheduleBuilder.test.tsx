@@ -76,6 +76,32 @@ import type { Schedule, ScheduleItemCreate, Task } from '../types';
 // reason is `not-urgent-not-important`, an `eisenhower-empty-notice` replaces the timeline and
 // both notes: "None of these Activities have a quadrant yet. Set them on the Activities tab."
 // Any other empty-timeline reason keeps the ordinary "Didn't fit" line.
+//
+// B44 contract (D73, D74, web; mirrors mobile's B43). The PRD names no testIDs beyond
+// `frog-toggle-<task_id>` and `frog-marker-<item id>`; everything else below is this session's
+// own choice, documented here for B44.impl to follow:
+//   - Each "Added activities" row (setup step) that matched an existing Activity (has a
+//     `taskId`) gets a `frog-toggle-{taskId}` checkbox. A row added from a name with no match
+//     (no `taskId`) gets no toggle — there is no stable id to carry the flag through a Strategy
+//     switch or a save, the same reason mobile's toggle lives only on an existing-Activity row.
+//     At most one checkbox is checked; checking one unchecks whichever was checked before,
+//     checking the held one off clears it (held in one `frogId` state, not per-row state).
+//   - Generate's `activities` entries carry `is_frog: true` on the one whose `task_id ===
+//     frogId` only; this applies on the initial Generate and every reorder-triggered one.
+//   - `ScheduleBuilder` (not `ScheduleTimeline`) stamps `is_frog: true` onto the chosen Item,
+//     matching by `task_id === frogId` AFTER `ScheduleTimeline`'s `onSelect` fires — matched by
+//     id, not position, since switching Strategy can reorder or drop entries. (`ScheduleTimeline`
+//     itself needs no `frogId` prop; marking happens one level up.)
+//   - Save, day plans only (a Regimen has no `target_date`): before `scheduleAPI.create`, calls
+//     `scheduleAPI.getRange(date, date)` (unconditionally for a day-plan save, not gated on
+//     `frogId` — only whether a notice CAN be produced is). If any Item across the returned
+//     Schedules has `is_frog` true, and a `frogId` is held, and the new Frog's name (read off
+//     the matching chosen Item: the matched Activity's name from `tasks`, else its
+//     `custom_name`) differs from the old Item's name (`task?.name ?? custom_name`), a
+//     `frog-replace-notice` reads "Frog is now `<new>` (was `<old>`)." It renders next to
+//     `save-success`, unconditionally of `step` (the builder resets to setup on success).
+//   - `ScheduleItem.is_frog` (server-set, already on the type). `ItemBlock` shows
+//     `frog-marker-{itemId}` inside the Block for a frog Item; other Blocks do not.
 
 process.env.TZ = 'America/Chicago';
 
@@ -541,6 +567,132 @@ describe('ScheduleTimeline: one Strategy dropdown (B42, D71/D72)', () => {
     const notDraggable = ['Gym', 'Stretch'].map((n) => screen.getByText(n).closest('[draggable="true"]'));
     expect(notDraggable[0]).toBeNull();
     expect(notDraggable[1]).toBeNull();
+  });
+});
+
+describe("ScheduleBuilder: the day's Frog (B44, D73/D74)", () => {
+  const FROG_TASKS: Task[] = [
+    { id: 1, name: 'Gym', average_duration: 1800, total_recordings: 3, created_at: '', updated_at: '' },
+    { id: 9, name: 'Run', average_duration: 1200, total_recordings: 2, created_at: '', updated_at: '' },
+  ];
+  const DEFAULT_TIMELINE_ITEMS = timeline.items;
+
+  afterEach(() => {
+    timeline.items = DEFAULT_TIMELINE_ITEMS;
+  });
+
+  function renderFrogSetup(date = '2026-10-02') {
+    const onScheduleCreated = vi.fn();
+    render(<ScheduleBuilder tasks={FROG_TASKS} onScheduleCreated={onScheduleCreated} />);
+    fireEvent.change(screen.getByTestId('input-target-date'), { target: { value: date } });
+    addActivity('Gym', '30');
+    addActivity('Run', '20');
+    return { onScheduleCreated };
+  }
+
+  async function useThisSchedule() {
+    fireEvent.click(screen.getByText('Generate Schedule Options'));
+    await screen.findByText('Use This Schedule');
+    fireEvent.click(screen.getByText('Use This Schedule'));
+    await screen.findByTestId('btn-save-schedule');
+  }
+
+  type ReqActivity = { task_id?: number | null; name: string; is_frog?: boolean };
+  type BodyItem = { task_id?: number | null; custom_name?: string; is_frog?: boolean };
+
+  it('only one toggle can be on; Generate sends is_frog on that Activity only', async () => {
+    renderFrogSetup();
+    const gymToggle = screen.getByTestId('frog-toggle-1');
+    const runToggle = screen.getByTestId('frog-toggle-9');
+    expect(gymToggle).not.toBeChecked();
+    expect(runToggle).not.toBeChecked();
+
+    fireEvent.click(gymToggle);
+    expect(gymToggle).toBeChecked();
+    fireEvent.click(runToggle);
+    expect(runToggle).toBeChecked();
+    expect(gymToggle).not.toBeChecked();
+
+    fireEvent.click(screen.getByText('Generate Schedule Options'));
+    await screen.findByText('Use This Schedule');
+
+    const req = schedules.generate.mock.calls[0][0];
+    const activities = req.activities as ReqActivity[];
+    expect(activities.find((a) => a.name === 'Run')!.is_frog).toBe(true);
+    expect(activities.find((a) => a.name === 'Gym')!.is_frog).toBeFalsy();
+  });
+
+  it('a toggle switched back off sends no is_frog at all', async () => {
+    renderFrogSetup();
+    const gymToggle = screen.getByTestId('frog-toggle-1');
+    fireEvent.click(gymToggle);
+    fireEvent.click(gymToggle);
+    expect(gymToggle).not.toBeChecked();
+
+    fireEvent.click(screen.getByText('Generate Schedule Options'));
+    await screen.findByText('Use This Schedule');
+
+    const req = schedules.generate.mock.calls[0][0];
+    const activities = req.activities as ReqActivity[];
+    expect(activities.every((a) => !a.is_frog)).toBe(true);
+  });
+
+  it('Save flags the chosen Item by task_id, not position, even after a reordered timeline', async () => {
+    timeline.items = [
+      { task_id: 9, estimated_duration: 1200, position: 0, scheduled_time: '2026-10-02T13:00:00.000Z' },
+      { task_id: 1, estimated_duration: 1800, position: 1, scheduled_time: '2026-10-02T13:30:00.000Z' },
+    ];
+    schedules.create.mockResolvedValue(DAY_ITEMS);
+    renderFrogSetup();
+    fireEvent.click(screen.getByTestId('frog-toggle-1')); // Gym is the Frog, sits at position 1
+    await useThisSchedule();
+    fireEvent.click(screen.getByTestId('btn-save-schedule'));
+
+    await waitFor(() => expect(schedules.create).toHaveBeenCalledTimes(1));
+    const items = schedules.create.mock.calls[0][0].items as BodyItem[];
+    expect(items.find((i) => i.task_id === 1)!.is_frog).toBe(true);
+    expect(items.find((i) => i.task_id === 9)!.is_frog).toBeFalsy();
+  });
+
+  it("with an existing Frog on the date, the save confirmation names new and old", async () => {
+    schedules.create.mockResolvedValue(DAY_ITEMS);
+    schedules.getRange.mockResolvedValue([
+      {
+        id: 50, name: null, schedule_type: 'day', target_date: '2026-10-02', is_regimen: false,
+        created_at: '', updated_at: '',
+        items: [{
+          id: 90, schedule_id: 50, custom_name: 'Laundry', is_frog: true, estimated_duration: 600,
+          position: 0, scheduled_time: '2026-10-02T09:00:00Z', created_at: '',
+        }],
+      },
+    ]);
+    renderFrogSetup();
+    fireEvent.click(screen.getByTestId('frog-toggle-1')); // Gym
+    await useThisSchedule();
+    fireEvent.click(screen.getByTestId('btn-save-schedule'));
+
+    const notice = await screen.findByTestId('frog-replace-notice');
+    expect(notice).toHaveTextContent('Frog is now Gym (was Laundry).');
+  });
+
+  it('no replace notice when no Frog is held, even with an existing Frog on the date', async () => {
+    schedules.create.mockResolvedValue(DAY_ITEMS);
+    schedules.getRange.mockResolvedValue([
+      {
+        id: 50, name: null, schedule_type: 'day', target_date: '2026-10-02', is_regimen: false,
+        created_at: '', updated_at: '',
+        items: [{
+          id: 90, schedule_id: 50, custom_name: 'Laundry', is_frog: true, estimated_duration: 600,
+          position: 0, scheduled_time: '2026-10-02T09:00:00Z', created_at: '',
+        }],
+      },
+    ]);
+    renderFrogSetup();
+    await useThisSchedule();
+    fireEvent.click(screen.getByTestId('btn-save-schedule'));
+
+    await screen.findByTestId('save-success');
+    expect(screen.queryByTestId('frog-replace-notice')).not.toBeInTheDocument();
   });
 });
 
