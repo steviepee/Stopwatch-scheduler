@@ -700,6 +700,7 @@ function DayBlock({
         style={[styles.block, { top, zIndex: Math.round(top) + 3 }, heightStyle, selected && styles.selectedBlock, dimmed && styles.dimmed]}>
         {children}
         {item.calendar_stale && <View testID={`item-block-${item.id}-changed`} style={styles.changedMarker} />}
+        {item.is_frog && <View testID={`frog-marker-${item.id}`} style={styles.frogMarker} />}
         {editing && (
           <GestureDetector gesture={resizeGesture}>
             <View testID={`item-block-${item.id}-resize-handle`} style={styles.resizeHandle}>
@@ -985,6 +986,15 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: radii.pill,
     backgroundColor: colors.primaryDeep,
+  },
+  frogMarker: {
+    position: 'absolute',
+    top: spacing.xs,
+    left: spacing.xs,
+    width: 8,
+    height: 8,
+    borderRadius: radii.pill,
+    backgroundColor: colors.red,
   },
   resizeHandle: {
     position: 'absolute',

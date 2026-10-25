@@ -319,10 +319,10 @@ designed in its own session after Build 2b ships (D79).
   - [x] Test: a frog Item's Block shows the marker; others do not
 
 ### B43.impl — Mobile: the day's Frog
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract in `(tabs)/schedule.tsx` and the calendar Block.
 - **Acceptance Criteria:**
-  - [ ] All B43.tests pass; mobile suite, tsc, and export pass
+  - [x] All B43.tests pass; mobile suite, tsc, and export pass
 
 ### B44.tests — Web: the day's Frog
 - **Status:** PENDING

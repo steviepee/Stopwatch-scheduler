@@ -120,6 +120,8 @@ export default function ScheduleScreen() {
   const [selectedStrategy, setSelectedStrategy] = useState<string | null>(null);
   const [scheduleName, setScheduleName] = useState('');
   const [isRegimen, setIsRegimen] = useState(false);
+  const [frogId, setFrogId] = useState<number | null>(null);
+  const [frogReplaceNotice, setFrogReplaceNotice] = useState<string | null>(null);
   const [savedKey, setSavedKey] = useState<string | null>(null);
   const [applyOpenId, setApplyOpenId] = useState<number | null>(null);
   const [pushedById, setPushedById] = useState<Record<number, Schedule>>({});
@@ -153,20 +155,38 @@ export default function ScheduleScreen() {
   });
 
   const saveMutation = useMutation({
-    mutationFn: (option: StrategyOption) => {
+    mutationFn: async (option: StrategyOption) => {
       const items = option.timeline.map((entry, i) => ({
         task_id: entry.task_id ?? undefined,
         estimated_duration: Math.round((new Date(entry.end).getTime() - new Date(entry.start).getTime()) / 1000),
         position: i,
         scheduled_time: entry.start,
+        ...(entry.task_id !== null && entry.task_id === frogId ? { is_frog: true } : {}),
       }));
+
+      let replaceNotice: string | null = null;
+      if (!isRegimen) {
+        const date = localDateKey(startTime);
+        const schedules = await scheduleAPI.getRange(date, date);
+        const existingFrogItem = schedules.flatMap((schedule) => schedule.items).find((item) => item.is_frog);
+        if (existingFrogItem && frogId !== null) {
+          const oldName = existingFrogItem.task?.name ?? existingFrogItem.custom_name ?? '';
+          const newName = option.timeline.find((entry) => entry.task_id === frogId)?.name ?? '';
+          if (newName && oldName && newName !== oldName) {
+            replaceNotice = `Frog is now ${newName} (was ${oldName}).`;
+          }
+        }
+      }
+
       const body: ScheduleCreate = isRegimen
         ? { name: scheduleName.trim(), is_regimen: true, items }
         : { target_date: localDateKey(startTime), is_regimen: false, items };
-      return scheduleAPI.create(body);
+      const schedule = await scheduleAPI.create(body);
+      return { schedule, replaceNotice };
     },
-    onSuccess: (_data, option) => {
+    onSuccess: ({ replaceNotice }, option) => {
       setSavedKey(saveKey(option.strategy));
+      setFrogReplaceNotice(replaceNotice);
       queryClient.invalidateQueries({ queryKey: ['regimens'] });
       queryClient.invalidateQueries({ queryKey: ['schedules'] });
     },
@@ -256,6 +276,7 @@ export default function ScheduleScreen() {
           durations[task.id] !== undefined
             ? Number(durations[task.id]) * 60
             : Number(defaultMinutes(task)) * 60,
+        ...(task.id === frogId ? { is_frog: true } : {}),
       }));
 
     const startIso = startTime.toISOString();
@@ -292,7 +313,7 @@ export default function ScheduleScreen() {
     selectedOption.timeline.length === 0 &&
     selectedOption.excluded.length > 0 &&
     selectedOption.excluded.every((entry) => entry.reason === 'not-urgent-not-important');
-  const savedSchedule = saveMutation.data;
+  const savedSchedule = saveMutation.data?.schedule;
   const isSaved = !!selectedOption && savedKey === saveKey(selectedOption.strategy);
   const nameMissing = isRegimen && !scheduleName.trim();
   const saveDisabled = saveMutation.isPending || isSaved || nameMissing;
@@ -342,6 +363,14 @@ export default function ScheduleScreen() {
                 onChangeText={(text) => setDurations((prev) => ({ ...prev, [task.id]: text }))}
               />
               <DurationHints task={task} options={userOptions} />
+              <View style={styles.row}>
+                <Text style={styles.rowLabel}>Frog</Text>
+                <Switch
+                  testID={`frog-toggle-${task.id}`}
+                  value={frogId === task.id}
+                  onValueChange={(value) => setFrogId(value ? task.id : null)}
+                />
+              </View>
             </>
           )}
         </View>
@@ -481,6 +510,11 @@ export default function ScheduleScreen() {
           {saveMutation.isError && (
             <Text testID="save-error" style={styles.caption}>
               Couldn't save. Check the connection and try again.
+            </Text>
+          )}
+          {frogReplaceNotice && (
+            <Text testID="frog-replace-notice" style={styles.caption}>
+              {frogReplaceNotice}
             </Text>
           )}
         </GlassView>
