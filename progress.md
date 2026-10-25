@@ -1564,3 +1564,38 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Gotchas:**
   - With `taskAPI.getById` mocked but given no `mockResolvedValue` (the pre-existing stats/logs-only tests in this file), the query function returns `undefined` rather than a promise; TanStack Query logs a console.error ("Query data cannot be undefined...") for that query but still resolves `task` to `undefined` without throwing or failing the test — matches the B39.tests header comment's expectation that the screen "must tolerate that query still being pending." The code only reads `task.is_urgent`/`is_important` inside a `task ? ... : undefined` guard, so this is silent in practice; the console noise is pre-existing-test fallout, not a new bug.
   - `TaskUpdate` was kept to just `is_urgent`/`is_important` (no `name`) since that's all B39's contract sends; a future task renaming Activities through this type can widen it then.
+
+## B40.tests. Web: quadrant picker and badge
+- **Date:** 2026-10-24
+- **Status:** DONE
+- **Summary:** Added `frontend/src/__tests__/TaskDetailModal.test.tsx` with D70's web quadrant
+  contract (documented in the file's header comment, same approach as B39.tests): unlike
+  mobile's route-param detail screen, `TaskDetailModal` already receives the full `task` prop, so
+  the contract reads `is_urgent`/`is_important` straight off the prop instead of adding a new
+  fetch. A 2x2 grid (`quadrant-q1`..`quadrant-q4`, labels "Urgent & Important"/"Important"/
+  "Urgent"/"Neither") gets a " (current)" text suffix on the matching cell (SessionList's picker
+  convention, B38); tapping a cell calls a new `taskAPI.update(id, { is_urgent, is_important })`
+  with that quadrant's flag pair, then highlights the new quadrant and calls `onTaskUpdated` with
+  the response — the prop HomePage already wires to update its task list. `TaskList` gets an
+  `activity-quadrant-<id>` badge, "Q1"/"Q2"/"Q3", absent for Q4 (both flags false, including the
+  no-flags default), tested in the same file since no `TaskList.test.tsx` exists yet.
+- **Files changed:** frontend/src/__tests__/TaskDetailModal.test.tsx, prd.md, progress.md
+- **Verification:** from `frontend/`: `npx vitest run src/__tests__/TaskDetailModal.test.tsx`
+  gave 4 failed, 1 passed — the 4 failures are the new quadrant tests (picker highlight, flag
+  pair per cell, highlight-after-success, badge rendering), as expected before B40.impl; the one
+  pre-existing-shape test ("no badge when both flags are false/missing") already passes today, a
+  legitimate regression guard like B39.tests hit. Full suite `npx vitest run`: 1 file fails (only
+  this one, same 4), 105/109 tests pass elsewhere — no regressions. `npx tsc --noEmit` clean.
+- **Gotchas:**
+  - `taskAPI.update` doesn't exist on the real module yet, so `taskAPI.update as jest.Mock` (or
+    rather its vitest equivalent) fails `tsc` the same way B39.tests hit on mobile — go through
+    `(taskAPI as unknown as { update: Mock }).update` instead.
+  - Fixture quadrant tasks (`Q1_TASK`, `IMPORTANT`, etc.) are plain object spreads off `GYM` with
+    no `: Task` annotation, same reason as B39.tests: `is_urgent`/`is_important` aren't on `Task`
+    yet, and annotating the literal directly would trip the excess-property check. Passing them
+    by reference into JSX props (`task={IMPORTANT}`) sidesteps the check entirely.
+  - `TaskDetailModal`'s existing code calls `taskAPI.getById(task.id).then(...)` with no `.catch`
+    and no react-query cushioning it; a `vi.fn()` with no `mockResolvedValue` returns `undefined`
+    synchronously, and `undefined.then` throws and crashes the render. Every test that renders
+    `TaskDetailModal` must set `mockedGetById.mockResolvedValue(DETAIL)` first — there is no
+    free pass like mobile's "query still pending" case.

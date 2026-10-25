@@ -241,13 +241,13 @@ designed in its own session after Build 2b ships (D79).
   - [x] All B39.tests pass; mobile suite, tsc, and export pass
 
 ### B40.tests — Web: quadrant picker and badge
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D70, web. Add `frontend/src/__tests__/TaskDetailModal.test.tsx`; badges in
   `TaskList.tsx`.
 - **Contract:** As B39, in `TaskDetailModal.tsx` and the Activities list.
 - **Acceptance Criteria:**
-  - [ ] Test: each cell sends the right pair of flags; current quadrant highlighted
-  - [ ] Test: list badges show Q1–Q3 and nothing for Q4
+  - [x] Test: each cell sends the right pair of flags; current quadrant highlighted
+  - [x] Test: list badges show Q1–Q3 and nothing for Q4
 
 ### B40.impl — Web: quadrant picker and badge
 - **Status:** PENDING
