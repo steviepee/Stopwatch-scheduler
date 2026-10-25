@@ -12,6 +12,7 @@ interface StopwatchProps {
 export default function Stopwatch({ tasks, onSaveTime, onSaveSession, onModalChange }: StopwatchProps) {
   const { time, isRunning, start, pause, reset, formatTime } = useStopwatch();
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
+  const [sessionActivityChoice, setSessionActivityChoice] = useState('');
   const [notes, setNotes] = useState('');
   const [sessionName, setSessionName] = useState('');
   const [showSaveModal, setShowSaveModal] = useState(false);
@@ -19,6 +20,10 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession, onModalCha
   const startTimeRef = useRef<Date | null>(null);
 
   const timeDisplay = formatTime(time);
+  const trimmedSessionName = sessionName.trim();
+  const matchedActivity = trimmedSessionName
+    ? tasks.find((t) => t.name.toLowerCase() === trimmedSessionName.toLowerCase())
+    : undefined;
 
   const handleStart = () => {
     startTimeRef.current = new Date();
@@ -42,7 +47,11 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession, onModalCha
     const session: StopwatchSessionCreate = {
       name: sessionName.trim(),
       duration: durationInSeconds,
-      task_id: selectedTaskId || undefined,
+      ...(sessionActivityChoice === '__new__'
+        ? { new_activity_name: sessionName.trim() }
+        : sessionActivityChoice
+          ? { task_id: Number(sessionActivityChoice) }
+          : {}),
       notes: notes || undefined,
       start_time: startTimeRef.current?.toISOString(),
       end_time: endTime.toISOString(),
@@ -66,6 +75,7 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession, onModalCha
     reset();
     setNotes('');
     setSelectedTaskId(null);
+    setSessionActivityChoice('');
     setSessionName('');
     startTimeRef.current = null;
   };
@@ -167,16 +177,22 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession, onModalCha
                     Link to Activity (optional)
                   </label>
                   <select
-                    value={selectedTaskId || ''}
-                    onChange={(e) => setSelectedTaskId(e.target.value ? Number(e.target.value) : null)}
+                    data-testid="select-activity"
+                    value={sessionActivityChoice}
+                    onChange={(e) => setSessionActivityChoice(e.target.value)}
                     className="bg-white/60 border border-slate-300 text-slate-800 placeholder-slate-500 w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-400"
                   >
                     <option value="">No activity linked</option>
                     {tasks.map((task) => (
                       <option key={task.id} value={task.id}>
-                        {task.name}
+                        {matchedActivity?.id === task.id ? `Attach to ${task.name}` : task.name}
                       </option>
                     ))}
+                    {trimmedSessionName && !matchedActivity && (
+                      <option value="__new__" data-testid="option-activity-new">
+                        {`+ New Activity: '${trimmedSessionName}'`}
+                      </option>
+                    )}
                   </select>
                 </div>
               </>

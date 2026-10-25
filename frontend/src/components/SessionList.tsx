@@ -1,13 +1,20 @@
 import { useState, useEffect, useMemo } from 'react';
-import { StopwatchSession, StopwatchSessionCreate, Task } from '../types';
+import { StopwatchSession, StopwatchSessionCreate, StopwatchSessionUpdate, Task } from '../types';
 import { googleCalendarAPI, sessionAPI } from '../services/api';
 
 interface SessionListProps {
   sessions: StopwatchSession[];
-  tasks: Task[];
+  tasks?: Task[];
   onDeleteSession: (sessionId: number) => void;
   onUpdateSession: (sessionId: number, name: string) => void;
   onSessionCreated: (session: StopwatchSession) => void;
+  onSessionUpdated?: (session: StopwatchSession) => void;
+}
+
+function matchActivityByName(tasks: Task[], name: string): Task | undefined {
+  const trimmed = name.trim();
+  if (!trimmed) return undefined;
+  return tasks.find((t) => t.name.toLowerCase() === trimmed.toLowerCase());
 }
 
 function toLocalInput(date: Date): string {
@@ -39,15 +46,21 @@ function ManualForm({
 
   const duration = ((Number(hours) || 0) * 60 + (Number(minutes) || 0)) * 60;
   const startValue = editedStart ?? toLocalInput(new Date(openedAt.getTime() - duration * 1000));
+  const trimmedName = name.trim();
+  const matchedActivity = matchActivityByName(tasks, trimmedName);
 
   const handleSave = async () => {
     if (duration <= 0 || saving) return;
     const start = new Date(startValue);
     const task = tasks.find(t => t.id === Number(activityId));
     const body: StopwatchSessionCreate = {
-      name: name.trim() || task?.name || 'Recording',
+      name: trimmedName || task?.name || 'Recording',
       duration,
-      ...(task ? { task_id: task.id } : {}),
+      ...(activityId === '__new__'
+        ? { new_activity_name: trimmedName }
+        : task
+          ? { task_id: task.id }
+          : {}),
       start_time: start.toISOString(),
       end_time: new Date(start.getTime() + duration * 1000).toISOString(),
     };
@@ -80,8 +93,15 @@ function ManualForm({
       >
         <option value="">No Activity</option>
         {tasks.map(t => (
-          <option key={t.id} value={t.id}>{t.name}</option>
+          <option key={t.id} value={t.id}>
+            {matchedActivity?.id === t.id ? `Attach to ${t.name}` : t.name}
+          </option>
         ))}
+        {trimmedName && !matchedActivity && (
+          <option value="__new__" data-testid="manual-option-activity-new">
+            {`+ New Activity: '${trimmedName}'`}
+          </option>
+        )}
       </select>
       <div className="flex gap-2 items-center">
         <input
@@ -136,12 +156,115 @@ function ManualForm({
   );
 }
 
+function SessionActions({
+  session,
+  tasks,
+  onUpdated,
+  onClose,
+}: {
+  session: StopwatchSession;
+  tasks: Task[];
+  onUpdated: (session: StopwatchSession) => void;
+  onClose: () => void;
+}) {
+  const [mode, setMode] = useState<'menu' | 'picker'>('menu');
+  const [search, setSearch] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const currentTask = tasks.find(t => t.id === session.task_id);
+  const matchedActivity = !currentTask ? matchActivityByName(tasks, session.name) : undefined;
+
+  const save = async (body: StopwatchSessionUpdate) => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const updated = await sessionAPI.update(session.id, body);
+      onUpdated(updated);
+      onClose();
+    } catch {
+      setSaving(false);
+    }
+  };
+
+  const filteredTasks = tasks.filter(t => t.name.toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div data-testid={`session-actions-${session.id}`} className="mt-2 glass-inner rounded-lg p-3 space-y-2">
+      {mode === 'menu' ? (
+        currentTask ? (
+          <div className="flex gap-2">
+            <button
+              data-testid={`action-change-${session.id}`}
+              onClick={() => setMode('picker')}
+              className="glass-button text-xs py-1 px-3 rounded-lg"
+            >
+              Change Activity
+            </button>
+            <button
+              data-testid={`action-detach-${session.id}`}
+              onClick={() => save({ task_id: null })}
+              className="glass-button text-xs py-1 px-3 rounded-lg"
+            >
+              Detach
+            </button>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <button
+              data-testid={`action-attach-${session.id}`}
+              onClick={() => setMode('picker')}
+              className="glass-button text-xs py-1 px-3 rounded-lg"
+            >
+              Attach to Activity
+            </button>
+            <button
+              data-testid={`action-make-activity-${session.id}`}
+              onClick={() =>
+                matchedActivity
+                  ? save({ task_id: matchedActivity.id })
+                  : save({ new_activity_name: session.name.trim() })
+              }
+              className="glass-button text-xs py-1 px-3 rounded-lg"
+            >
+              {matchedActivity ? `Attach to ${matchedActivity.name}` : 'Make it an Activity'}
+            </button>
+          </div>
+        )
+      ) : (
+        <div className="space-y-2">
+          <input
+            type="text"
+            data-testid={`action-picker-search-${session.id}`}
+            placeholder="Search activities..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="glass-input w-full px-3 py-1 rounded-lg text-sm"
+          />
+          <div className="flex flex-col gap-1">
+            {filteredTasks.map(t => (
+              <button
+                key={t.id}
+                data-testid={`action-picker-${session.id}-${t.id}`}
+                onClick={() => save({ task_id: t.id })}
+                className="glass-button text-xs py-1 px-3 rounded-lg text-left"
+              >
+                {t.name}{currentTask?.id === t.id ? ' (current)' : ''}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function SessionList({
   sessions,
-  tasks,
+  tasks = [],
   onDeleteSession,
   onUpdateSession,
   onSessionCreated,
+  onSessionUpdated = () => {},
 }: SessionListProps) {
   const [manualOpen, setManualOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -150,6 +273,8 @@ export default function SessionList({
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [openActionsId, setOpenActionsId] = useState<number | null>(null);
+  const [sessionOverrides, setSessionOverrides] = useState<Record<number, StopwatchSession>>({});
 
   const filteredSessions = useMemo(() => {
     const q = searchQuery.toLowerCase();
@@ -354,7 +479,10 @@ export default function SessionList({
         <p className="text-white/70 text-center py-8">No recordings match your filters.</p>
       ) : (
         <div className="space-y-3 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
-          {filteredSessions.map((session) => (
+          {filteredSessions.map((session) => {
+            const effectiveSession = sessionOverrides[session.id] ?? session;
+            const linkedActivity = tasks.find(t => t.id === effectiveSession.task_id);
+            return (
             <div
               key={session.id}
               className="glass-inner rounded-xl p-4 transition-all duration-300 ease-out hover:scale-105 hover:shadow-[0_12px_40px_rgba(0,0,0,0.4)] hover:bg-white/5 hover:backdrop-blur-sm"
@@ -410,11 +538,24 @@ export default function SessionList({
                         {session.notes}
                       </p>
                     )}
+                    <p className="flex items-center gap-2">
+                      <span className="text-white/50">Activity:</span>
+                      <span data-testid={`session-activity-${session.id}`}>
+                        {linkedActivity?.name ?? '—'}
+                      </span>
+                    </p>
                   </div>
                 </div>
 
                 <div className="flex flex-col gap-2 items-end">
                   <div className="flex gap-2">
+                    <button
+                      data-testid={`btn-session-actions-${session.id}`}
+                      onClick={() => setOpenActionsId(openActionsId === session.id ? null : session.id)}
+                      className="text-white/70 hover:text-white text-sm px-2 py-1"
+                    >
+                      Actions
+                    </button>
                     {/* Delete Button */}
                     <button
                       onClick={() => onDeleteSession(session.id)}
@@ -425,8 +566,20 @@ export default function SessionList({
                   </div>
                 </div>
               </div>
+              {openActionsId === session.id && (
+                <SessionActions
+                  session={effectiveSession}
+                  tasks={tasks}
+                  onUpdated={updated => {
+                    setSessionOverrides(prev => ({ ...prev, [updated.id]: updated }));
+                    onSessionUpdated(updated);
+                  }}
+                  onClose={() => setOpenActionsId(null)}
+                />
+              )}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

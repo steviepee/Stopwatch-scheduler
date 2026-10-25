@@ -214,11 +214,11 @@ designed in its own session after Build 2b ships (D79).
   - [x] Test: each Recording action sends B37's body and the list updates
 
 ### B38.impl — Web: Recordings make, join, and leave Activities
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract in `Stopwatch.tsx`, the hand-entry form,
   `SessionList.tsx`, and `services/api.ts`; add `new_activity_name` to the web types.
 - **Acceptance Criteria:**
-  - [ ] All B38.tests pass; web tsc clean; `npm run build` succeeds
+  - [x] All B38.tests pass; web tsc clean; `npm run build` succeeds
 
 ### B39.tests — Mobile: quadrant picker and badge
 - **Status:** PENDING

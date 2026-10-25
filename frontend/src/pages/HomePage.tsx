@@ -171,6 +171,16 @@ export default function HomePage({ onSignOut }: HomePageProps) {
     }
   }, [addSessionToState]);
 
+  const handleSessionUpdated = useCallback(async (session: StopwatchSession) => {
+    updateSessionInState(session);
+    try {
+      const updatedTasks = await taskAPI.getAll();
+      setTasks(updatedTasks);
+    } catch (error) {
+      console.error('Error refreshing activities:', error);
+    }
+  }, [updateSessionInState]);
+
   const handleDeleteSession = useCallback(async (sessionId: number) => {
     if (!confirm('Are you sure you want to delete this recording?')) return;
     try {
@@ -303,6 +313,7 @@ export default function HomePage({ onSignOut }: HomePageProps) {
                 onDeleteSession={handleDeleteSession}
                 onUpdateSession={handleUpdateSession}
                 onSessionCreated={handleSessionCreated}
+                onSessionUpdated={handleSessionUpdated}
               />
             )}
 
