@@ -28,6 +28,16 @@ import type { StopwatchSession, Task } from '../types';
 // B30 contract: `manual-hours` and `manual-minutes` start empty with `placeholder="0"`, so typing
 // does not append to a 0. An empty field counts as 0.
 //
+// B38 contract (D76, D77, web parity with mobile's B36): `manual-activity`'s options stay "No
+// Activity" (value "") plus one per Activity (value = id), except:
+//   - when the typed `manual-name` (trimmed) matches no Activity's name case-insensitively and
+//     is non-blank, an extra option is appended: value "__new__", text
+//     `+ New Activity: '<name>'`, `data-testid="manual-option-activity-new"`;
+//   - when it matches one, that Activity's option text reads `Attach to <name>` instead of the
+//     plain name (no new-Activity option in that case).
+// Selecting `__new__` and saving sends `new_activity_name` (the trimmed name) and no `task_id`.
+// Selecting a real option sends `task_id` as today.
+//
 // These tests run in America/Chicago with the clock frozen at 10:00:30 local on 2026-09-29.
 
 process.env.TZ = 'America/Chicago';
@@ -53,6 +63,7 @@ const create = sessionAPI.create as unknown as Mock;
 const TASKS: Task[] = [
   { id: 1, name: 'Gym', average_duration: 1800, total_recordings: 3, created_at: '', updated_at: '' },
   { id: 2, name: 'Run', average_duration: 2400, total_recordings: 5, created_at: '', updated_at: '' },
+  { id: 9, name: 'Laundry', average_duration: 600, total_recordings: 1, created_at: '', updated_at: '' },
 ];
 
 const CREATED = {
@@ -214,5 +225,68 @@ describe('hand-entered Recording', () => {
     expect(screen.getByTestId('btn-manual-save')).toBeDisabled();
     fireEvent.click(screen.getByTestId('btn-manual-save'));
     expect(create).not.toHaveBeenCalled();
+  });
+});
+
+describe('new Activity row (B38, D76, D77)', () => {
+  it('shows "+ New Activity: \'Walk\'" when the name matches no Activity, and selecting it sends new_activity_name with no task_id', async () => {
+    create.mockResolvedValue(CREATED);
+    renderList();
+
+    fireEvent.change(screen.getByTestId('manual-name'), { target: { value: 'Walk' } });
+    const option = screen.getByTestId('manual-option-activity-new');
+    expect(option).toHaveTextContent("+ New Activity: 'Walk'");
+
+    fireEvent.change(screen.getByTestId('manual-activity'), { target: { value: '__new__' } });
+    setDuration('0', '45');
+    fireEvent.click(screen.getByTestId('btn-manual-save'));
+
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    const body = create.mock.calls[0][0];
+    expect(body.new_activity_name).toBe('Walk');
+    expect(body.task_id).toBeUndefined();
+  });
+
+  it('shows no new-Activity row for a blank name', () => {
+    renderList();
+    expect(screen.queryByTestId('manual-option-activity-new')).not.toBeInTheDocument();
+  });
+
+  it('name "laundry " with Activity "Laundry" present shows no new row, and offers "Attach to Laundry"', () => {
+    renderList();
+    fireEvent.change(screen.getByTestId('manual-name'), { target: { value: 'laundry ' } });
+
+    expect(screen.queryByTestId('manual-option-activity-new')).not.toBeInTheDocument();
+    expect(screen.getByText('Attach to Laundry')).toBeInTheDocument();
+    expect(screen.queryByText('Laundry')).not.toBeInTheDocument();
+  });
+
+  it('selecting "Attach to Laundry" sends task_id and no new_activity_name', async () => {
+    create.mockResolvedValue({ ...CREATED, task_id: 9 });
+    renderList();
+
+    fireEvent.change(screen.getByTestId('manual-name'), { target: { value: 'laundry ' } });
+    fireEvent.change(screen.getByTestId('manual-activity'), { target: { value: '9' } });
+    setDuration('0', '30');
+    fireEvent.click(screen.getByTestId('btn-manual-save'));
+
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    const body = create.mock.calls[0][0];
+    expect(body.task_id).toBe(9);
+    expect(body.new_activity_name).toBeUndefined();
+  });
+
+  it('default selection ("No Activity") sends neither field', async () => {
+    create.mockResolvedValue(CREATED);
+    renderList();
+
+    fireEvent.change(screen.getByTestId('manual-name'), { target: { value: 'Unmatched name' } });
+    setDuration('0', '30');
+    fireEvent.click(screen.getByTestId('btn-manual-save'));
+
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    const body = create.mock.calls[0][0];
+    expect(body.task_id).toBeUndefined();
+    expect(body.new_activity_name).toBeUndefined();
   });
 });

@@ -204,14 +204,14 @@ designed in its own session after Build 2b ships (D79).
   - [x] All B37.tests pass; mobile suite, tsc, and export pass
 
 ### B38.tests — Web: Recordings make, join, and leave Activities
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D76, D77, D78, web. Extend `Stopwatch.test.tsx`, `ManualRecording.test.tsx`
   and `SessionList.test.tsx`.
 - **Contract:** The Stopwatch save modal and hand entry get B36's rows and payloads (the web
   has no offline queue). Each Recording in `SessionList` gets B37's actions and bodies.
 - **Acceptance Criteria:**
-  - [ ] Test: new-Activity row and "Attach to <name>" behave as in B36, in the save modal and hand entry
-  - [ ] Test: each Recording action sends B37's body and the list updates
+  - [x] Test: new-Activity row and "Attach to <name>" behave as in B36, in the save modal and hand entry
+  - [x] Test: each Recording action sends B37's body and the list updates
 
 ### B38.impl — Web: Recordings make, join, and leave Activities
 - **Status:** PENDING
