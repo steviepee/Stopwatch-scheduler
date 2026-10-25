@@ -1,6 +1,6 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Task, Schedule, ScheduleCreate, ScheduleItemCreate, UserOptions, DEFAULT_USER_OPTIONS, GenerateActivity, GenerateEvent, StrategyOption } from '../types';
-import { scheduleAPI, calendarImportAPI, googleCalendarAPI } from '../services/api';
+import { scheduleAPI, calendarImportAPI, googleCalendarAPI, insightsAPI } from '../services/api';
 import ActivityInput from './ActivityInput';
 import ScheduleTimeline from './ScheduleTimeline';
 import { dateKey } from '../utils/calendarUtils';
@@ -18,6 +18,11 @@ interface ScheduleBuilderProps {
 }
 
 type BuilderStep = 'setup' | 'generate' | 'save';
+
+function formatHour(hour: number): string {
+  const period = hour >= 12 ? 'PM' : 'AM';
+  return `${hour % 12 || 12} ${period}`;
+}
 
 function formatDuration(seconds: number): string {
   if (seconds < 60) return `${Math.round(seconds)}s`;
@@ -44,6 +49,13 @@ export default function ScheduleBuilder({ tasks, options, onScheduleCreated }: S
   const [generateError, setGenerateError] = useState(false);
   const [importingCal, setImportingCal] = useState(false);
   const [calImported, setCalImported] = useState(false);
+  const [peakHour, setPeakHour] = useState<number | null>(null);
+
+  useEffect(() => {
+    insightsAPI.getPeakHours()
+      .then(res => setPeakHour(res.peak_hour))
+      .catch(() => setPeakHour(null));
+  }, []);
 
   // Save step state
   const [scheduleName, setScheduleName] = useState('');
@@ -64,6 +76,11 @@ export default function ScheduleBuilder({ tasks, options, onScheduleCreated }: S
   const handleRemoveActivity = useCallback((idx: number) => {
     setActivities(prev => prev.filter((_, i) => i !== idx));
   }, []);
+
+  const handleUsePeakHour = () => {
+    if (peakHour == null) return;
+    setStartHour(`${String(peakHour).padStart(2, '0')}:00`);
+  };
 
   const runGenerate = async (list: ActivityEntry[], events: GenerateEvent[]) => {
     const seq = ++generateSeq.current;
@@ -246,10 +263,21 @@ export default function ScheduleBuilder({ tasks, options, onScheduleCreated }: S
               <label className="block text-white/60 text-xs mb-1">Start Time</label>
               <input
                 type="time"
+                data-testid="input-start-time"
                 value={startHour}
                 onChange={e => setStartHour(e.target.value)}
                 className="glass-input w-full px-3 py-2 rounded-xl text-white text-sm"
               />
+              {peakHour != null && (
+                <button
+                  type="button"
+                  data-testid="peak-hour-hint"
+                  onClick={handleUsePeakHour}
+                  className="block text-left text-amber-300/80 hover:text-amber-300 text-xs mt-1"
+                >
+                  Your peak hour: {formatHour(peakHour)}. Use it.
+                </button>
+              )}
             </div>
             <div className="flex items-end">
               <button

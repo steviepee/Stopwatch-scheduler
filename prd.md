@@ -365,10 +365,10 @@ designed in its own session after Build 2b ships (D79).
   - [x] Test: as B45's three, in the web builder
 
 ### B46.impl — Web: peak-hours hint
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
-  - [ ] All B46.tests pass; web tsc clean; `npm run build` succeeds
+  - [x] All B46.tests pass; web tsc clean; `npm run build` succeeds
 
 ### U10. USER — Build 2b gate
 - **Status:** USER
