@@ -62,6 +62,20 @@ import type { Schedule, ScheduleItemCreate, Task } from '../types';
 //
 // B33 contract (D40): `ActivityInput`'s fallback, when there is no suggested duration and no
 // custom one, is 600 s (was 1800). A suggested or custom duration is unchanged.
+//
+// B42 contract (D71, D72, web; mirrors mobile's B41): Generate sends no `strategies` key (the
+// server then computes all seven). `ScheduleTimeline` drops its per-option tab buttons for one
+// `<select data-testid="strategy-picker">` — one `<option value={strategy}>{label}</option>` per
+// response option — defaulting to "your-order" whenever its `options` prop is set (these testIDs
+// are this session's own choice, the PRD only names the `<select>`, documented here for
+// B42.impl to follow). Below it: `strategy-description` (the selected option's description), its
+// timeline rows (as before — draggable only while "your-order" is selected), a "Didn't fit:
+// <names>" line when `excluded` is non-empty, and a new "Consider delegating: <names>" line when
+// `flagged` is non-empty. Changing the select swaps all of this locally — no new `generate` call.
+// When the selected option is `eisenhower`, its timeline is empty, and every `excluded` entry's
+// reason is `not-urgent-not-important`, an `eisenhower-empty-notice` replaces the timeline and
+// both notes: "None of these Activities have a quadrant yet. Set them on the Activities tab."
+// Any other empty-timeline reason keeps the ordinary "Didn't fit" line.
 
 process.env.TZ = 'America/Chicago';
 
@@ -307,7 +321,7 @@ describe('ScheduleBuilder: generating around the day', () => {
     expect(req.activities.map((a: ReorderActivity) => a.name)).toEqual(['Stretch', 'Walk']);
     expect(req.activities.map((a: ReorderActivity) => a.estimated_duration)).toEqual([1200, 1800]);
 
-    expect(req.strategies).toEqual(['your-order', 'shortest-first', 'longest-first', 'best-fit']);
+    expect('strategies' in req).toBe(false);
     expect(req.avoid_existing).toBe(true);
 
     const events = req.existing_events as { name: string; start: string; end: string }[];
@@ -394,37 +408,99 @@ describe('ActivityInput: no-history fallback', () => {
   });
 });
 
-describe('ScheduleTimeline: presents the server options', () => {
-  async function renderTimeline() {
+describe('ScheduleTimeline: one Strategy dropdown (B42, D71/D72)', () => {
+  async function renderTimeline(options: Option[] = OPTIONS) {
     const { default: RealTimeline } = await vi.importActual<{ default: ComponentType<TimelineProps> }>(
       '../components/ScheduleTimeline'
     );
     const onSelect = vi.fn();
     const onReorder = vi.fn();
-    render(<RealTimeline options={OPTIONS} onSelect={onSelect} onReorder={onReorder} />);
+    render(<RealTimeline options={options} onSelect={onSelect} onReorder={onReorder} />);
     return { onSelect, onReorder };
   }
 
-  it('renders a tab per option with the server label and description, and Didn\'t fit', async () => {
-    await renderTimeline();
-    for (const o of OPTIONS) {
-      expect(screen.getByRole('button', { name: new RegExp(o.label) })).toBeInTheDocument();
-      expect(screen.getByText(o.description)).toBeInTheDocument();
-    }
+  function pickStrategy(strategy: string) {
+    fireEvent.change(screen.getByTestId('strategy-picker'), { target: { value: strategy } });
+  }
 
-    fireEvent.click(screen.getByRole('button', { name: /Your Order/ }));
+  it('lists one option per Strategy, defaults to Your Order, and renders only its description and timeline', async () => {
+    await renderTimeline();
+    const select = screen.getByTestId('strategy-picker');
+    expect(select).toHaveValue('your-order');
+    for (const o of OPTIONS) {
+      expect(screen.getByRole('option', { name: o.label })).toBeInTheDocument();
+    }
+    expect(screen.getByTestId('strategy-description')).toHaveTextContent(OPTIONS[0].description);
     expect(screen.getByText('Gym')).toBeInTheDocument();
     expect(screen.getByText('Stretch')).toBeInTheDocument();
     expect(screen.queryByText(/Didn't fit/)).not.toBeInTheDocument();
+  });
 
-    fireEvent.click(screen.getByRole('button', { name: /Shortest First/ }));
+  it('defaults to Your Order even when it is not the first option', async () => {
+    await renderTimeline([OPTIONS[1], OPTIONS[0], OPTIONS[2]]);
+    expect(screen.getByTestId('strategy-picker')).toHaveValue('your-order');
+    expect(screen.getByTestId('strategy-description')).toHaveTextContent(OPTIONS[0].description);
+  });
+
+  it('switching the dropdown swaps the description, notes, and timeline with no generate call', async () => {
+    await renderTimeline();
+    pickStrategy('shortest-first');
+
+    expect(screen.getByTestId('strategy-picker')).toHaveValue('shortest-first');
+    expect(screen.getByTestId('strategy-description')).toHaveTextContent(OPTIONS[1].description);
     expect(screen.getByText('Stretch')).toBeInTheDocument();
+    expect(screen.queryByText('Gym')).not.toBeInTheDocument();
     expect(screen.getByText(/Didn't fit:.*Gym/)).toBeInTheDocument();
+  });
+
+  it('shows a "Consider delegating" line from flagged entries', async () => {
+    const withFlag: Option = { ...OPTIONS[1], flagged: [{ name: 'Gym', reason: 'consider-delegating' }] };
+    await renderTimeline([OPTIONS[0], withFlag]);
+    pickStrategy('shortest-first');
+
+    expect(screen.getByText(/Consider delegating:.*Gym/)).toBeInTheDocument();
+  });
+
+  it('Eisenhower dropping every Activity for lacking a quadrant shows the quadrant message, not the ordinary notes', async () => {
+    const eisenhower: Option = {
+      strategy: 'eisenhower',
+      label: 'Eisenhower',
+      description: 'Q1 first, Q2 next, Q3 last; Q4 dropped.',
+      timeline: [],
+      flagged: [],
+      excluded: [
+        { name: 'Gym', reason: 'not-urgent-not-important' },
+        { name: 'Stretch', reason: 'not-urgent-not-important' },
+      ],
+    };
+    await renderTimeline([OPTIONS[0], eisenhower]);
+    pickStrategy('eisenhower');
+
+    expect(screen.getByTestId('eisenhower-empty-notice')).toHaveTextContent(
+      'None of these Activities have a quadrant yet. Set them on the Activities tab.'
+    );
+    expect(screen.queryByText(/Didn't fit/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Consider delegating/)).not.toBeInTheDocument();
+  });
+
+  it('an empty timeline for any other reason keeps the ordinary "Didn\'t fit" line, not the quadrant message', async () => {
+    const emptyNoFit: Option = {
+      strategy: 'shortest-first',
+      label: 'Shortest First',
+      description: 'Server: quick wins first',
+      timeline: [],
+      flagged: [],
+      excluded: [{ name: 'Gym', reason: 'no-free-slot' }],
+    };
+    await renderTimeline([OPTIONS[0], emptyNoFit]);
+    pickStrategy('shortest-first');
+
+    expect(screen.getByText(/Didn't fit:.*Gym/)).toBeInTheDocument();
+    expect(screen.queryByTestId('eisenhower-empty-notice')).not.toBeInTheDocument();
   });
 
   it("Use This Schedule passes Items built from the selected option's entries", async () => {
     const { onSelect } = await renderTimeline();
-    fireEvent.click(screen.getByRole('button', { name: /Your Order/ }));
     fireEvent.click(screen.getByText('Use This Schedule'));
 
     expect(onSelect).toHaveBeenCalledTimes(1);
@@ -446,9 +522,8 @@ describe('ScheduleTimeline: presents the server options', () => {
     expect(Date.parse(items[1].scheduled_time!)).toBe(Date.parse('2026-10-02T16:00:00Z'));
   });
 
-  it('dragging a row on Your Order calls onReorder with the new activity order', async () => {
+  it('dragging a row calls onReorder while Your Order is selected, but not after switching away', async () => {
     const { onReorder } = await renderTimeline();
-    fireEvent.click(screen.getByRole('button', { name: /Your Order/ }));
 
     const rows = ['Gym', 'Stretch'].map((n) => screen.getByText(n).closest('[draggable="true"]'));
     expect(rows[0]).not.toBeNull();
@@ -461,6 +536,11 @@ describe('ScheduleTimeline: presents the server options', () => {
     expect(reordered.map((a) => a.name)).toEqual(['Stretch', 'Gym']);
     expect(reordered.map((a) => a.estimated_duration)).toEqual([1200, 3600]);
     expect(reordered[1].task_id).toBe(1);
+
+    pickStrategy('longest-first');
+    const notDraggable = ['Gym', 'Stretch'].map((n) => screen.getByText(n).closest('[draggable="true"]'));
+    expect(notDraggable[0]).toBeNull();
+    expect(notDraggable[1]).toBeNull();
   });
 });
 

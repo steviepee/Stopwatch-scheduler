@@ -286,12 +286,12 @@ designed in its own session after Build 2b ships (D79).
   - [x] All B41.tests pass; mobile suite, tsc, and export pass
 
 ### B42.tests — Web: one Strategy dropdown over all seven plans
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D71, D72, web. Extend `ScheduleBuilder.test.tsx`; today
   `ScheduleBuilder.tsx` sends four Strategies.
 - **Contract:** As B41, with a `<select>`.
 - **Acceptance Criteria:**
-  - [ ] Test: as B41's five, in the web builder
+  - [x] Test: as B41's five, in the web builder
 
 ### B42.impl — Web: one Strategy dropdown over all seven plans
 - **Status:** PENDING
