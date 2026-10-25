@@ -20,6 +20,7 @@ function ManualForm({ tasks, onClose }: { tasks: Task[]; onClose: () => void }) 
   const [name, setName] = useState('');
   const [searchText, setSearchText] = useState('');
   const [selectedTask, setSelectedTask] = useState<Task | undefined>(undefined);
+  const [selectedNewActivity, setSelectedNewActivity] = useState(false);
   const [hours, setHours] = useState('');
   const [minutes, setMinutes] = useState('');
   const [editedStart, setEditedStart] = useState<Date | null>(null);
@@ -27,11 +28,27 @@ function ManualForm({ tasks, onClose }: { tasks: Task[]; onClose: () => void }) 
   const durationSeconds = (parseInt(hours, 10) || 0) * 3600 + (parseInt(minutes, 10) || 0) * 60;
   const start = editedStart ?? new Date(openedAt - durationSeconds * 1000);
 
+  const trimmedName = name.trim();
+  const matchedTask = useMemo(() => {
+    if (!trimmedName) return undefined;
+    return tasks.find((task) => task.name.toLowerCase() === trimmedName.toLowerCase());
+  }, [tasks, trimmedName]);
+
   const filteredTasks = useMemo(() => {
     const query = searchText.trim().toLowerCase();
     if (!query) return tasks;
     return tasks.filter((task) => task.name.toLowerCase().includes(query));
   }, [tasks, searchText]);
+
+  const selectTask = (task: Task | undefined) => {
+    setSelectedTask(task);
+    setSelectedNewActivity(false);
+  };
+
+  const selectNewActivity = () => {
+    setSelectedTask(undefined);
+    setSelectedNewActivity(true);
+  };
 
   const save = useMutation({
     mutationFn: (body: StopwatchSessionCreate) => sessionAPI.create(body),
@@ -44,11 +61,15 @@ function ManualForm({ tasks, onClose }: { tasks: Task[]; onClose: () => void }) 
 
   const handleSave = () => {
     save.mutate({
-      name: name.trim() || selectedTask?.name || 'Recording',
+      name: trimmedName || selectedTask?.name || 'Recording',
       duration: durationSeconds,
       start_time: start.toISOString(),
       end_time: new Date(start.getTime() + durationSeconds * 1000).toISOString(),
-      ...(selectedTask ? { task_id: selectedTask.id } : {}),
+      ...(selectedNewActivity
+        ? { new_activity_name: trimmedName }
+        : selectedTask
+          ? { task_id: selectedTask.id }
+          : {}),
     });
   };
 
@@ -88,8 +109,8 @@ function ManualForm({ tasks, onClose }: { tasks: Task[]; onClose: () => void }) 
       <Pressable
         testID="manual-activity-none"
         accessibilityRole="button"
-        style={[styles.activityRow, !selectedTask && styles.activityRowSelected]}
-        onPress={() => setSelectedTask(undefined)}>
+        style={[styles.activityRow, !selectedTask && !selectedNewActivity && styles.activityRowSelected]}
+        onPress={() => selectTask(undefined)}>
         <Text style={styles.rowName}>None</Text>
       </Pressable>
       {filteredTasks.map((task) => (
@@ -98,10 +119,21 @@ function ManualForm({ tasks, onClose }: { tasks: Task[]; onClose: () => void }) 
           testID={`manual-activity-${task.id}`}
           accessibilityRole="button"
           style={[styles.activityRow, selectedTask?.id === task.id && styles.activityRowSelected]}
-          onPress={() => setSelectedTask(task)}>
-          <Text style={styles.rowName}>{task.name}</Text>
+          onPress={() => selectTask(task)}>
+          <Text style={styles.rowName}>
+            {task === matchedTask ? `Attach to ${task.name}` : task.name}
+          </Text>
         </Pressable>
       ))}
+      {trimmedName && !matchedTask && (
+        <Pressable
+          testID="manual-activity-new"
+          accessibilityRole="button"
+          style={[styles.activityRow, selectedNewActivity && styles.activityRowSelected]}
+          onPress={selectNewActivity}>
+          <Text style={styles.rowName}>{`+ New Activity: '${trimmedName}'`}</Text>
+        </Pressable>
+      )}
 
       <View style={styles.dateRange}>
         <View style={styles.dateField}>

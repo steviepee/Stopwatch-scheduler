@@ -45,6 +45,7 @@ export interface StopwatchSessionCreate {
   name: string;
   duration: number;
   task_id?: number;
+  new_activity_name?: string;
   notes?: string;
   start_time?: string;
   end_time?: string;

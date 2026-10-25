@@ -1488,3 +1488,13 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Files changed:** backend/app/models/schemas.py, backend/app/routers/sessions.py, prd.md, progress.md
 - **Verification:** `./venv/bin/python -m pytest tests/ -q` (via python3 subprocess, cwd `backend/`): 267 passed (full suite, including all 10 of `test_session_activity.py`).
 - **Gotchas:** None — the fix matched the two bugs identified in B35.tests exactly; no surprises in schema validator ordering or in the update branch's handling of a previously-logless Recording.
+
+## B36.impl. Mobile: a Recording makes or joins an Activity when saved
+- **Date:** 2026-10-24
+- **Status:** DONE
+- **Summary:** Added `new_activity_name` to `StopwatchSessionCreate` in `mobile/src/types/index.ts`. Both `(tabs)/index.tsx` (stopwatch save sheet) and the `ManualForm` in `(tabs)/recordings.tsx` now compute a `matchedTask` (trimmed, case-insensitive name match against the loaded Activities) and track a `selectedNewActivity` boolean alongside the existing `selectedTask`. A matched Activity's row label becomes "Attach to <name>" instead of its plain name; when the trimmed name matches nothing, an extra row ("+ New Activity: '<name>'", testID `activity-new` / `manual-activity-new`) appears after the list. Selecting any task row or "None" clears `selectedNewActivity`; selecting the new row clears `selectedTask`. Save spreads `new_activity_name` when `selectedNewActivity` is set, else `task_id` when a task is selected, else neither — mirroring the existing conditional-spread pattern so an untouched save still sends neither field.
+- **Files changed:** mobile/src/types/index.ts, mobile/src/app/(tabs)/index.tsx, mobile/src/app/(tabs)/recordings.tsx, prd.md, progress.md
+- **Verification:** from `mobile/` (python3 subprocess, each step logged separately to avoid the background capture-timeout seen in B34.impl): `npx jest --ci` 17 suites / 231 tests passed (all 6 B36 failures from B36.tests now pass). `npx tsc --noEmit` clean. `npx expo export --platform android` succeeded.
+- **Gotchas:**
+  - The "Attach to <name>" swap applies only within `filteredTasks` (filtered by the separate Activity-search field, not the name field used for matching); if a search query hides the matched Activity, neither its row nor the new-Activity row would show. Not exercised by any test, and the PRD treats the two fields as independent, so left as is.
+  - `matchedTask` is found against the full task list (not `filteredTasks`), so the new-Activity row's visibility is unaffected by the search filter — only the matched row's label depends on whether that task happens to be in the filtered list.

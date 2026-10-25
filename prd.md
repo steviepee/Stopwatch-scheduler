@@ -174,11 +174,11 @@ designed in its own session after Build 2b ships (D79).
   - [x] Test: an offline save persists a payload carrying `new_activity_name` (extend `offlineQueue.test.tsx` if that is where the queue is exercised)
 
 ### B36.impl — Mobile: a Recording makes or joins an Activity when saved
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract. Add `new_activity_name` to
   `StopwatchSessionCreate` in `mobile/src/types`.
 - **Acceptance Criteria:**
-  - [ ] All B36.tests pass; mobile suite, tsc, and export pass
+  - [x] All B36.tests pass; mobile suite, tsc, and export pass
 
 ### B37.tests — Mobile: actions on a saved Recording
 - **Status:** PENDING

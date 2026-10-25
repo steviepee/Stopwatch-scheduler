@@ -43,7 +43,14 @@ export default function StopwatchScreen() {
   const [name, setName] = useState('');
   const [searchText, setSearchText] = useState('');
   const [selectedTask, setSelectedTask] = useState<Task | undefined>(undefined);
+  const [selectedNewActivity, setSelectedNewActivity] = useState(false);
   const [confirmation, setConfirmation] = useState<{ clockJumpDetected: boolean } | null>(null);
+
+  const trimmedName = name.trim();
+  const matchedTask = useMemo(() => {
+    if (!trimmedName) return undefined;
+    return (tasks ?? []).find((task) => task.name.toLowerCase() === trimmedName.toLowerCase());
+  }, [tasks, trimmedName]);
 
   const filteredTasks = useMemo(() => {
     const list = tasks ?? [];
@@ -57,17 +64,32 @@ export default function StopwatchScreen() {
     setName('');
     setSearchText('');
     setSelectedTask(undefined);
+    setSelectedNewActivity(false);
+  };
+
+  const selectTask = (task: Task | undefined) => {
+    setSelectedTask(task);
+    setSelectedNewActivity(false);
+  };
+
+  const selectNewActivity = () => {
+    setSelectedTask(undefined);
+    setSelectedNewActivity(true);
   };
 
   const handleSave = () => {
     const result = timer.finish();
-    const finalName = name.trim() || selectedTask?.name || defaultName(result.startUtc);
+    const finalName = trimmedName || selectedTask?.name || defaultName(result.startUtc);
     const body: StopwatchSessionCreate = {
       name: finalName,
       duration: result.durationSeconds,
       start_time: result.startUtc,
       end_time: result.endUtc,
-      ...(selectedTask ? { task_id: selectedTask.id } : {}),
+      ...(selectedNewActivity
+        ? { new_activity_name: trimmedName }
+        : selectedTask
+          ? { task_id: selectedTask.id }
+          : {}),
     };
     createSession.mutate(body);
     timer.reset();
@@ -133,7 +155,7 @@ export default function StopwatchScreen() {
               testID="activity-none"
               accessibilityRole="button"
               style={styles.activityRow}
-              onPress={() => setSelectedTask(undefined)}
+              onPress={() => selectTask(undefined)}
             >
               <Text style={styles.activityLabel}>None</Text>
             </Pressable>
@@ -142,11 +164,23 @@ export default function StopwatchScreen() {
                 key={task.id}
                 accessibilityRole="button"
                 style={styles.activityRow}
-                onPress={() => setSelectedTask(task)}
+                onPress={() => selectTask(task)}
               >
-                <Text style={styles.activityLabel}>{task.name}</Text>
+                <Text style={styles.activityLabel}>
+                  {task === matchedTask ? `Attach to ${task.name}` : task.name}
+                </Text>
               </Pressable>
             ))}
+            {trimmedName && !matchedTask && (
+              <Pressable
+                testID="activity-new"
+                accessibilityRole="button"
+                style={styles.activityRow}
+                onPress={selectNewActivity}
+              >
+                <Text style={styles.activityLabel}>{`+ New Activity: '${trimmedName}'`}</Text>
+              </Pressable>
+            )}
           </ScrollView>
           <View style={styles.sheetActions}>
             <ActionButton testID="btn-cancel" label="Cancel" onPress={closeSheet} variant="muted" />
