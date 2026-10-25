@@ -217,3 +217,7 @@ export interface StrategyOption {
 export interface GenerateResponse {
   options: StrategyOption[];
 }
+
+export interface PeakHoursResponse {
+  peak_hour: number | null;
+}

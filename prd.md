@@ -338,7 +338,7 @@ designed in its own session after Build 2b ships (D79).
   - [x] All B44.tests pass; web tsc clean; `npm run build` succeeds
 
 ### B45.tests — Mobile: peak-hours hint
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D75. Extend `ScheduleScreen.test.tsx`.
 - **Contract:** The Schedule tab calls
   `GET /api/insights/peak-hours?tz_offset=<new Date().getTimezoneOffset()>`. When `peak_hour`
@@ -347,9 +347,9 @@ designed in its own session after Build 2b ships (D79).
   never changed without the tap. `peak_hour: null` or a failed call → no hint, nothing else
   affected.
 - **Acceptance Criteria:**
-  - [ ] Test: `peak_hour: 9` shows "Your peak hour: 9 AM. Use it."; `peak_hour: 14` shows "2 PM"
-  - [ ] Test: tapping sets the start time to that hour on the selected date
-  - [ ] Test: null or an error → no hint; Start time unchanged on load
+  - [x] Test: `peak_hour: 9` shows "Your peak hour: 9 AM. Use it."; `peak_hour: 14` shows "2 PM"
+  - [x] Test: tapping sets the start time to that hour on the selected date
+  - [x] Test: null or an error → no hint; Start time unchanged on load
 
 ### B45.impl — Mobile: peak-hours hint
 - **Status:** PENDING

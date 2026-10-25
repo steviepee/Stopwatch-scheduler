@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 import ScheduleScreen from '../app/(tabs)/schedule';
-import { calendarImportAPI, taskAPI, scheduleAPI } from '../services/api';
+import { calendarImportAPI, taskAPI, scheduleAPI, insightsAPI } from '../services/api';
 import type { GenerateResponse, Schedule, ScheduleItem, StrategyOption, Task } from '../types';
 
 // P8d contract: src/app/(tabs)/schedule.tsx is a three-step flow on one screen.
@@ -124,6 +124,19 @@ import type { GenerateResponse, Schedule, ScheduleItem, StrategyOption, Task } f
 //     (by name, from the timeline entry) differs from it, a `frog-replace-notice` renders
 //     "Frog is now <new> (was <old>)." No held Frog, or the same name, or no existing Frog —
 //     no notice.
+//
+// B45 contract (D75): a peak-hours hint under Start time. Not in the PRD by testID — this
+// session's choice, documented here for B45.impl to follow:
+//   - On mount the screen calls `insightsAPI.getPeakHours()` once (no arguments — the
+//     `tz_offset` query param is built inside the API client itself, same convention as
+//     `calendarImportAPI.getEvents`).
+//   - When the response's `peak_hour` is not null, a `peak-hour-hint` Pressable renders under
+//     the Start time row reading "Your peak hour: <h> <AM/PM>. Use it." in 12-hour clock, hour
+//     only (no minutes) — e.g. 9 -> "9 AM", 14 -> "2 PM".
+//   - Tapping it sets Start time to that hour, minute zero, on the currently selected date (the
+//     `picker-date` value); it does not touch Day end and does not call Generate.
+//   - `peak_hour: null`, or `getPeakHours` rejecting, renders no hint and never touches Start
+//     time.
 jest.mock('../services/api', () => ({
   taskAPI: { getAll: jest.fn() },
   scheduleAPI: {
@@ -137,6 +150,7 @@ jest.mock('../services/api', () => ({
     removeFromCalendar: jest.fn(),
   },
   calendarImportAPI: { getEvents: jest.fn() },
+  insightsAPI: { getPeakHours: jest.fn() },
 }));
 
 let mockPickerValue = new Date('2026-02-01T09:00:00.000Z');
@@ -170,6 +184,7 @@ jest.mock('@react-native-community/datetimepicker', () => {
 const mockedScheduleAPI = scheduleAPI as unknown as Record<string, jest.Mock>;
 const mockedTasksGetAll = taskAPI.getAll as jest.Mock;
 const mockedGetEvents = calendarImportAPI.getEvents as jest.Mock;
+const mockedGetPeakHours = insightsAPI.getPeakHours as jest.Mock;
 const mockedSchedulesGetAll = mockedScheduleAPI.getAll;
 const mockedGetRange = mockedScheduleAPI.getRange;
 const mockedGenerate = mockedScheduleAPI.generate;
@@ -283,11 +298,13 @@ beforeEach(() => {
   for (const mock of Object.values(mockedScheduleAPI)) mock.mockReset();
   mockedTasksGetAll.mockReset();
   mockedGetEvents.mockReset();
+  mockedGetPeakHours.mockReset();
   mockedTasksGetAll.mockResolvedValue([GYM, READING]);
   mockedSchedulesGetAll.mockResolvedValue([]);
   mockedGetRange.mockResolvedValue([]);
   mockedGetEvents.mockResolvedValue([]);
   mockedAddItem.mockResolvedValue({});
+  mockedGetPeakHours.mockResolvedValue({ peak_hour: null });
   mockPickerValue = new Date('2026-02-01T09:00:00.000Z');
 });
 
@@ -1096,5 +1113,78 @@ describe('push and remove feedback', () => {
 
     await screen.findByTestId('schedule-action-success');
     expect(screen.queryByTestId('schedule-action-error')).toBeNull();
+  });
+});
+
+describe('peak-hours hint (B45, D75)', () => {
+  // Only Date is faked, so Start time's default value is fixed and react-query/waitFor timers
+  // stay real — same convention as the "plan date picker" describe block above.
+  const NOW = new Date(2026, 1, 3, 10, 7);
+
+  beforeEach(() => {
+    jest.useFakeTimers({
+      now: NOW,
+      doNotFake: [
+        'hrtime',
+        'nextTick',
+        'performance',
+        'queueMicrotask',
+        'requestAnimationFrame',
+        'cancelAnimationFrame',
+        'requestIdleCallback',
+        'cancelIdleCallback',
+        'setImmediate',
+        'clearImmediate',
+        'setInterval',
+        'clearInterval',
+        'setTimeout',
+        'clearTimeout',
+      ],
+    });
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('shows a morning peak hour in 12-hour clock, hour only', async () => {
+    mockedGetPeakHours.mockResolvedValue({ peak_hour: 9 });
+    await renderScreen();
+
+    expect(await screen.findByTestId('peak-hour-hint')).toHaveTextContent('Your peak hour: 9 AM. Use it.');
+  });
+
+  it('shows an afternoon peak hour in 12-hour clock, hour only', async () => {
+    mockedGetPeakHours.mockResolvedValue({ peak_hour: 14 });
+    await renderScreen();
+
+    expect(await screen.findByTestId('peak-hour-hint')).toHaveTextContent('Your peak hour: 2 PM. Use it.');
+  });
+
+  it('tapping the hint sets Start time to that hour on the selected date, minutes zero', async () => {
+    mockedGetPeakHours.mockResolvedValue({ peak_hour: 9 });
+    await renderScreen();
+
+    await fireEvent.press(await screen.findByTestId('peak-hour-hint'));
+
+    expect(screen.getByTestId('picker-start-time-open')).toHaveTextContent('9:00 AM');
+  });
+
+  it('shows no hint when peak_hour is null, and leaves Start time unchanged', async () => {
+    mockedGetPeakHours.mockResolvedValue({ peak_hour: null });
+    await renderScreen();
+
+    await screen.findByTestId('activity-row-7');
+    expect(screen.queryByTestId('peak-hour-hint')).toBeNull();
+    expect(screen.getByTestId('picker-start-time-open')).toHaveTextContent('10:15 AM');
+  });
+
+  it('shows no hint when the call fails, and leaves Start time unchanged', async () => {
+    mockedGetPeakHours.mockRejectedValue(new Error('network'));
+    await renderScreen();
+
+    await screen.findByTestId('activity-row-7');
+    expect(screen.queryByTestId('peak-hour-hint')).toBeNull();
+    expect(screen.getByTestId('picker-start-time-open')).toHaveTextContent('10:15 AM');
   });
 });
