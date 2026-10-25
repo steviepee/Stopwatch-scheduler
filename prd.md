@@ -221,7 +221,7 @@ designed in its own session after Build 2b ships (D79).
   - [x] All B38.tests pass; web tsc clean; `npm run build` succeeds
 
 ### B39.tests — Mobile: quadrant picker and badge
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D70. Extend `ActivitiesScreen.test.tsx`; add an activity-detail test if none
   covers `activity/[id].tsx`.
 - **Contract:** The Activity detail screen shows a 2×2 grid: top row **Urgent & Important**
@@ -230,9 +230,9 @@ designed in its own session after Build 2b ships (D79).
   `is_important` and highlights it on success. The Activities list shows a small badge (Q1–Q4)
   on each row; Q4 shows no badge, so an unset list stays quiet.
 - **Acceptance Criteria:**
-  - [ ] Test: each cell sends the right pair of flags
-  - [ ] Test: the current quadrant is highlighted from the Activity's flags
-  - [ ] Test: list badges show Q1–Q3 and nothing for Q4
+  - [x] Test: each cell sends the right pair of flags
+  - [x] Test: the current quadrant is highlighted from the Activity's flags
+  - [x] Test: list badges show Q1–Q3 and nothing for Q4
 
 ### B39.impl — Mobile: quadrant picker and badge
 - **Status:** PENDING

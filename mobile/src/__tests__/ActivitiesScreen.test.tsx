@@ -13,8 +13,27 @@ import type { Task, TaskStats, TimeLog } from '../types';
 // average, count per row, "+" to create, tap to navigate, offline message on
 // query error) and the activity/[id] detail route (the three taskAPI.getStats
 // figures plus the last ten time logs). Navigation and data are mocked.
+//
+// B39 (D70) adds the quadrant picker and badge. The PRD gives this in prose
+// only, so this session chose and documents the contract here for B39.impl:
+//   - The detail screen fetches the Activity itself via `taskAPI.getById`
+//     (query key ['task', id]) to read its current `is_urgent`/`is_important`,
+//     alongside the existing stats/logs queries. It must tolerate that query
+//     still being pending (the existing stats/logs-only tests below never
+//     mock `getById`, so it resolves to `undefined`).
+//   - A 2x2 grid, testIDs `quadrant-q1`..`quadrant-q4`, in D70's order: Q1
+//     "Urgent & Important", Q2 "Important" (top row), Q3 "Urgent", Q4
+//     "Neither" (bottom row). The cell matching the Activity's current flags
+//     renders its label with a trailing " (current)" marker, following the
+//     " (current)" convention B37 used for the active Activity in its picker.
+//   - Tapping a cell calls `taskAPI.update(id, { is_urgent, is_important })`
+//     with the pair for that quadrant (Q1 true/true, Q2 false/true, Q3
+//     true/false, Q4 false/false).
+//   - The list's badge is `activity-quadrant-<id>`, text "Q1"/"Q2"/"Q3"; a Q4
+//     Activity (both flags false, including the default/missing case) renders
+//     no such node at all.
 jest.mock('../services/api', () => ({
-  taskAPI: { getAll: jest.fn(), create: jest.fn(), getStats: jest.fn() },
+  taskAPI: { getAll: jest.fn(), getById: jest.fn(), create: jest.fn(), update: jest.fn(), getStats: jest.fn() },
   timeLogAPI: { getAll: jest.fn() },
 }));
 
@@ -26,7 +45,11 @@ jest.mock('expo-router', () => ({
 }));
 
 const mockedGetAll = taskAPI.getAll as jest.Mock;
+const mockedGetById = taskAPI.getById as jest.Mock;
 const mockedCreate = taskAPI.create as jest.Mock;
+// `update` is B39.impl's addition to taskAPI; it doesn't exist on the real
+// module's type yet, so go through `unknown` rather than widen the import.
+const mockedUpdate = (taskAPI as unknown as { update: jest.Mock }).update;
 const mockedGetStats = taskAPI.getStats as jest.Mock;
 const mockedLogsGetAll = timeLogAPI.getAll as jest.Mock;
 
@@ -70,7 +93,9 @@ async function renderDetail() {
 beforeEach(() => {
   mockPush.mockReset();
   mockedGetAll.mockReset();
+  mockedGetById.mockReset();
   mockedCreate.mockReset();
+  mockedUpdate.mockReset();
   mockedGetStats.mockReset();
   mockedLogsGetAll.mockReset();
   mockSearchParams = { id: '7' };
@@ -105,6 +130,32 @@ describe('activities list', () => {
 
     await screen.findByText('Offline — showing nothing');
     expect(screen.queryByTestId('activity-row-7')).toBeNull();
+  });
+});
+
+describe('quadrant badges (B39, D70)', () => {
+  const Q1_TASK = { ...GYM, id: 10, name: 'Taxes', is_urgent: true, is_important: true };
+  const Q2_TASK = { ...GYM, id: 11, name: 'Study', is_urgent: false, is_important: true };
+  const Q3_TASK = { ...GYM, id: 12, name: 'Email', is_urgent: true, is_important: false };
+  const Q4_TASK = { ...GYM, id: 13, name: 'Doodle', is_urgent: false, is_important: false };
+
+  it('shows Q1-Q3 badges and no badge for Q4', async () => {
+    mockedGetAll.mockResolvedValue([Q1_TASK, Q2_TASK, Q3_TASK, Q4_TASK]);
+    await renderList();
+
+    await screen.findByText('Taxes');
+    expect(screen.getByTestId('activity-quadrant-10')).toHaveTextContent('Q1');
+    expect(screen.getByTestId('activity-quadrant-11')).toHaveTextContent('Q2');
+    expect(screen.getByTestId('activity-quadrant-12')).toHaveTextContent('Q3');
+    expect(screen.queryByTestId('activity-quadrant-13')).toBeNull();
+  });
+
+  it('shows no badge for an Activity with neither flag set (the default)', async () => {
+    mockedGetAll.mockResolvedValue([GYM]);
+    await renderList();
+
+    await screen.findByText('Gym');
+    expect(screen.queryByTestId('activity-quadrant-7')).toBeNull();
   });
 });
 
@@ -206,5 +257,58 @@ describe('activity detail', () => {
     await screen.findByTestId('stat-average');
     expect(mockedGetStats).toHaveBeenCalledWith(8);
     expect(mockedLogsGetAll).toHaveBeenCalledWith(8);
+  });
+});
+
+describe('quadrant picker (B39, D70)', () => {
+  const NEITHER = { ...GYM, is_urgent: false, is_important: false };
+  const URGENT_AND_IMPORTANT = { ...GYM, is_urgent: true, is_important: true };
+  const IMPORTANT = { ...GYM, is_urgent: false, is_important: true };
+
+  beforeEach(() => {
+    mockedGetStats.mockResolvedValue({ average: 1800, median: null, previous: null });
+    mockedLogsGetAll.mockResolvedValue([]);
+  });
+
+  it('highlights the current quadrant from the Activity\'s flags', async () => {
+    mockedGetById.mockResolvedValue(IMPORTANT);
+    await renderDetail();
+
+    await screen.findByText('Important (current)');
+    expect(screen.queryByText('Urgent & Important (current)')).toBeNull();
+    expect(screen.queryByText('Urgent (current)')).toBeNull();
+    expect(screen.queryByText('Neither (current)')).toBeNull();
+    expect(screen.getByTestId('quadrant-q1')).toBeTruthy();
+    expect(screen.getByTestId('quadrant-q3')).toBeTruthy();
+    expect(screen.getByTestId('quadrant-q4')).toBeTruthy();
+  });
+
+  it('sends the right flag pair for each cell', async () => {
+    mockedGetById.mockResolvedValue(NEITHER);
+    mockedUpdate.mockResolvedValue(NEITHER);
+    await renderDetail();
+
+    await screen.findByTestId('quadrant-q1');
+    await fireEvent.press(screen.getByTestId('quadrant-q1'));
+    await fireEvent.press(screen.getByTestId('quadrant-q2'));
+    await fireEvent.press(screen.getByTestId('quadrant-q3'));
+    await fireEvent.press(screen.getByTestId('quadrant-q4'));
+
+    expect(mockedUpdate).toHaveBeenNthCalledWith(1, 7, { is_urgent: true, is_important: true });
+    expect(mockedUpdate).toHaveBeenNthCalledWith(2, 7, { is_urgent: false, is_important: true });
+    expect(mockedUpdate).toHaveBeenNthCalledWith(3, 7, { is_urgent: true, is_important: false });
+    expect(mockedUpdate).toHaveBeenNthCalledWith(4, 7, { is_urgent: false, is_important: false });
+  });
+
+  it('highlights the new quadrant after a successful tap', async () => {
+    mockedGetById.mockResolvedValueOnce(NEITHER).mockResolvedValueOnce(URGENT_AND_IMPORTANT);
+    mockedUpdate.mockResolvedValue(URGENT_AND_IMPORTANT);
+    await renderDetail();
+
+    await screen.findByText('Neither (current)');
+    await fireEvent.press(screen.getByTestId('quadrant-q1'));
+
+    await screen.findByText('Urgent & Important (current)');
+    expect(screen.queryByText('Neither (current)')).toBeNull();
   });
 });
