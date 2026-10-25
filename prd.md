@@ -114,7 +114,7 @@ designed in its own session after Build 2b ships (D79).
   - [ ] The phone runs it (any B35+ change that has landed is visible, or `eas update:list` shows it downloaded under the build's runtime version)
 
 ### B35.tests — Backend: Recordings create, join, and leave Activities
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D76, D77, D78. Add `backend/tests/test_session_activity.py`. Two existing
   bugs this fixes, both in `routers/sessions.py` `update_session`: detaching sets the Time
   Log's `task_id` to `None`, which `time_logs.task_id` (NOT NULL) rejects with a 500; and
@@ -137,13 +137,13 @@ designed in its own session after Build 2b ships (D79).
     the duration from the old Activity's average and count. No 500.
   - Responses are the Recording as today, with the resolved `task_id`.
 - **Acceptance Criteria:**
-  - [ ] Test: create with `new_activity_name: " Run "` and no Activity → Activity "Run" exists with count 1 and average equal to the duration; the Recording's `task_id` is its id
-  - [ ] Test: create with `new_activity_name: "run"` when "Run" exists → attaches to "Run"; no second Activity
-  - [ ] Test: both `task_id` and `new_activity_name` → 422; blank name → 422
-  - [ ] Test: attach a no-Activity Recording via `task_id` → a Time Log appears and the average includes it
-  - [ ] Test: attach via `new_activity_name` → new Activity created with that Recording
-  - [ ] Test: detach → 200, Time Log gone, old Activity's count and average no longer include it
-  - [ ] Test: move between Activities still updates both (existing behaviour, kept)
+  - [x] Test: create with `new_activity_name: " Run "` and no Activity → Activity "Run" exists with count 1 and average equal to the duration; the Recording's `task_id` is its id
+  - [x] Test: create with `new_activity_name: "run"` when "Run" exists → attaches to "Run"; no second Activity
+  - [x] Test: both `task_id` and `new_activity_name` → 422; blank name → 422
+  - [x] Test: attach a no-Activity Recording via `task_id` → a Time Log appears and the average includes it
+  - [x] Test: attach via `new_activity_name` → new Activity created with that Recording
+  - [x] Test: detach → 200, Time Log gone, old Activity's count and average no longer include it
+  - [x] Test: move between Activities still updates both (existing behaviour, kept)
 
 ### B35.impl — Backend: Recordings create, join, and leave Activities
 - **Status:** PENDING
