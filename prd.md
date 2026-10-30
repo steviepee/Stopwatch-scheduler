@@ -1,45 +1,40 @@
-# Stopwatch Scheduler — PRD: Build 2b (Remake Phase 5, continued)
+# Stopwatch Scheduler — PRD: Build 2c (Remake Phase 5, continued)
 
 ## Overview
 Discrete tasks for the Ralph loop. Run with `./ralph.sh`. One task per session, in order. Mark
-tasks DONE when complete; add failure notes if a task fails. Phase 6 is archived at
-`docs/prd-phase6-completed.md` (D52–D65); Build 2a at `docs/prd-build2a-completed.md`
-(D39–D50). Vocabulary is in `CONTEXT.md`.
+tasks DONE when complete; add failure notes if a task fails. Build 2b is archived at
+`docs/prd-build2b-completed.md` (D66–D79); earlier builds and phases are in `docs/`.
+Vocabulary is in `CONTEXT.md` (Pomodoro run, Work interval, Break added for this build).
 
-**What Build 2b is:** the server's planning features reach both clients, and Recordings become
-Activities in one step. The quadrant picker, the day's Frog, all seven Strategies behind one
-dropdown, and a peak-hours hint; a Recording can create or join an Activity when saved or
-afterwards; and the phone takes over-the-air updates so app-code changes stop needing a new
-APK. Designed with the user on 2026-10-15. Both clients. Single-user (D51).
+**What Build 2c is:** a Pomodoro mode on both clients, and a timer notification on the phone
+that can be acted on with the screen locked; plus the follow-ups found during Build 2b. A
+Pomodoro run paces breaks, keeps the user on one Activity, and records the work pattern; it
+saves as one Recording of the total work time with a summary of its intervals. Designed with
+the user on 2026-10-25/29. Both clients. Single-user (D51). Replaces the B23/B24 HOLD stubs.
 
-**Order:** B34 (over-the-air updates) is first so U9 — the one APK rebuild — can happen as
-soon as it lands; everything after it reaches the phone by `deploy.sh`. B35 (server) comes
-before the client tasks that use it. U10 is the gate.
-
-**Build 2c** (Pomodoro, the Stop button on the notification) is HOLD at the end: native code,
-designed in its own session after Build 2b ships (D79).
+**Order (D91):** U11 (cold-run check) before the loop. B47 (follow-ups, app code only) ships
+early by `deploy.sh`. B48 (server) before the clients. Phone: B49 core → B50 Settings → B51
+screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, both builds) and U13
+(the gate).
 
 **Statuses:** `PENDING` is the loop's. `USER` is the user's, by hand; the loop never picks it.
-`HOLD` is not yet runnable.
 
-## Decisions (2026-10-15)
+## Decisions (2026-10-29)
 
 | # | Decision | Answer |
 |---|---|---|
-| D66 | Split | **Build 2b** is app code on server features that already exist (quadrant, Frog, Strategies, peak hours) plus Recordings-to-Activities. **Build 2c** is the native pair (Pomodoro, notification Stop) and one rebuild |
-| D67 | Phone updates | **EAS Update** (`expo-updates`). One native rebuild (U9); after that, app-code changes reach the phone when the app is reopened. Native changes still need an EAS build |
-| D68 | Update targeting | **`runtimeVersion` policy `fingerprint`**: an update only reaches APKs whose native code matches, computed automatically. Build 2c's updates wait for its APK |
-| D69 | Shipping | **`deploy.sh` ships the phone update after the backend is live** (`eas update --channel preview`), one command in that order, so the phone never runs ahead of its server |
-| D70 | Quadrant picker | **A 2×2 grid on the Activity's detail screen**, both clients: Urgent and Important / Important / Urgent / Neither; one tap sets both flags. A quadrant badge in the Activities list. New Activities are Q4 |
-| D71 | Generator | Generate still computes **all 7 Strategies** in one call. **One dropdown** replaces the per-Strategy cards and **always starts on Your Order**; under it, only the selected plan's description, notes, and timeline. Switching is instant, with no new request |
-| D72 | Eisenhower empty | When Eisenhower drops every selected Activity because none has a quadrant, show **"None of these Activities have a quadrant yet. Set them on the Activities tab."** in place of the timeline. "Consider delegating" keeps its wording |
-| D73 | Frog pick | **A frog toggle on each selected Activity when generating**, at most one on. Sent to Generate and saved onto that day's Item **whichever Strategy is saved**; the Block shows a frog marker. No Frog toggle on placed Blocks |
-| D74 | Second Frog on a day | **The new one replaces the old**, and the save confirmation says so: "Frog is now Taxes (was Laundry)." |
-| D75 | Peak hours | **A tappable hint under Start time**: "Your peak hour: 9 AM. Use it." Tapping sets the start time; never applied on its own; hidden with no history |
-| D76 | Recording → Activity at save | When the Recording's name matches no Activity, the picker shows **"+ New Activity: '<name>'"**. **"None" stays the default.** When it matches one, the row is **"Attach to <name>"**. Activity and Recording are created in **one request**, so the phone's offline queue replays a single call |
-| D77 | Name match | **Case-insensitive, trimmed.** Matches MySQL's collation on the unique `tasks.name` |
-| D78 | Saved Recordings | **An action list on every Recording**, both clients: *Attach to Activity* and *Make it an Activity* when it has none; *Change Activity* and *Detach* when it has one. Averages follow every move. A new Activity's average starts from that one Recording and it starts in Q4 |
-| D79 | Build 2c timing | **Its own design session after Build 2b ships** |
+| D80 | Pomodoro's purpose | **Pacing, focus, and measurement.** It reminds you to break, keeps you on one Activity, and records the work pattern for later reference |
+| D81 | What a run saves | **One Recording per Pomodoro run.** Duration = total work time, so it feeds the Activity's average like any Recording. It also carries a summary: work interval count, break count, total break seconds. The Recordings list shows "Pomodoro · N × avg Xm work · avg break Ym". Per-Activity rollups and a separate recording structure are future work |
+| D82 | Activity | **Chosen before Start, required**: an existing Activity or "+ New Activity". The Recording's name defaults to the Activity's name |
+| D83 | Interval lengths | **Defaults 25 / 5 / 15, long break after every 4 Work intervals; all four editable in Settings and stored on the server**, shared by both clients |
+| D84 | Switching | **Every switch waits for the user's tap.** A length is a target, not a cutoff: the current interval keeps counting past it. When it is reached, **one reminder** (phone: sound and vibration; web: browser notification and a short sound), then the display shows **"+m:ss over"** |
+| D85 | Pause, Finish, Reset | **Pause** freezes the current interval; paused time is neither work nor break. **Finish** ends the run from any interval: an open Work interval counts, an open Break is dropped; it opens the save sheet with the Activity filled in, and is disabled until some work is logged. **Reset** discards the run, confirming first if any work is logged |
+| D86 | Entry | **A Stopwatch \| Pomodoro switch** on the phone's timer screen and the web stopwatch card, locked while anything is running. A run lives on one device |
+| D87 | Surviving restarts | **A Pomodoro run survives an app restart (phone) and a reload (web).** The web stopwatch is brought up to the phone's level: it too survives a reload |
+| D88 | Phone notification | **Pause/Resume on the notification** for any recording; a paused recording keeps its notification. During a run it also shows the interval, the time left or over, and **Start break / Start work**. Taps are recorded natively and applied by the app when it next runs |
+| D89 | Follow-ups | Mobile Recording long-press **asks before deleting**. Activities shows **"Offline"** only when the device is offline; any other load failure shows **"Couldn't load"** and **Retry**. URL scheme **`stopwatchscheduler`**. The dev-only Settings-gear nudge goes; the Expo Tools button is switched back on |
+| D90 | Cold-run check | **A USER setup step before the loop** (U11), not a loop task |
+| D91 | Order | Follow-ups → server → phone (core, Settings, screens, native) → web → one rebuild → gate |
 
 ## Rules for this PRD
 
@@ -48,14 +43,18 @@ designed in its own session after Build 2b ships (D79).
   mark BLOCKED and say why.
 - **The loop never touches Azure, GitHub's registry, DNS, EAS, or live MySQL.** It never runs
   `deploy.sh`, `eas build` or `eas update`.
-- **Schema changes go through Alembic**; `backend/tests/test_migrations.py` must pass. Build 2b
-  needs none: every column exists.
-- **No dependency changes** except `expo-updates` in B34.
-- **The D13 parity fixture is frozen.** No Strategy changes in this build.
+- **Schema changes go through Alembic**; `backend/tests/test_migrations.py` must pass. Build 2c
+  has one migration (B48). `docker-entrypoint.sh` runs `alembic upgrade head` on deploy.
+- **No dependency changes.** Kotlin may use what `timer-native`'s `build.gradle` already
+  provides (AndroidX core/NotificationCompat).
+- **Native code cannot be compiled here** (no Android SDK; `expo export` bundles JS only).
+  Keep Kotlin changes small and mirror the existing service's idioms; B52 is verified on device
+  in U12/U13. JS behaviour around it is tested through mocks of `modules/timer-native`.
+- **The D13 parity fixture is frozen.** No Strategy changes.
 - **Forward-compat** (`PROMPT.md`): keep DB access in the `db.query(Model)` idiom; nothing that
-  blocks an owner column later.
-- **Product names** in UI and new code: Activity, Recording, Schedule, Schedule Item, Block,
-  Frog, Quadrant, Strategy.
+  blocks an owner column later (the settings row is one row now, one per owner later).
+- **Product names** in UI and new code: Activity, Recording, Pomodoro run, Work interval,
+  Break. Not "session" for a run.
 - **Acceptance**
   - Backend: `cd backend && ./venv/bin/python -m pytest tests/`
   - Mobile, from `mobile/`: `npx jest --ci`, `npx tsc --noEmit`, `npx expo export --platform android`
@@ -66,355 +65,334 @@ designed in its own session after Build 2b ships (D79).
 
 ## Tasks
 
-### B34.tests — Mobile: over-the-air updates configured
-- **Status:** DONE
-- **Description:** D67, D68, D69. Extend `mobile/src/__tests__/appConfig.test.ts`.
-- **Contract:**
-  - `app.json` gains `"runtimeVersion": {"policy": "fingerprint"}` and
-    `"updates": {"url": "https://u.expo.dev/d31ca765-c177-496f-a42e-a0578d2fc5d4"}` (the
-    existing `extra.eas.projectId`). `app.config.js` passes both through unchanged for both
-    variants.
-  - `eas.json`: `preview` gets `"channel": "preview"`; `development` gets
-    `"channel": "development"`. Other `preview` fields unchanged.
-  - `deploy.sh`, after the `az containerapp update` line, runs from `mobile/`:
-    `eas update --channel preview --message "<short sha>: <commit subject>" --non-interactive`
-    with `EXPO_PUBLIC_API_URL=https://api.stopwatchscheduler.app/api` set, so the update bakes
-    the same URL the preview APK does. A failed backend update stops the script before it.
-- **Acceptance Criteria:**
-  - [x] Test: config has the fingerprint policy and the updates URL, with and without `APP_VARIANT=development`
-  - [x] Test: `eas.json` channels are as above and `preview` keeps its env and APK build type
-  - [x] Test: `deploy.sh` contains the `eas update --channel preview` line after `az containerapp update` (read the file as text)
-
-### B34.impl — Mobile: over-the-air updates configured
-- **Status:** DONE
-- **Description:** `npx expo install expo-updates` from `mobile/` (the one dependency change),
-  then implement to the contract. Do not run `eas update:configure` or anything that logs in to
-  EAS. Add a GOTCHAS entry: a phone update only reaches APKs with the same native fingerprint,
-  so a native change (Build 2c) needs U9's rebuild again; check with
-  `npx expo-updates fingerprint:generate` if unsure.
-- **Acceptance Criteria:**
-  - [x] All B34.tests pass; mobile suite, tsc, and export pass
-  - [x] `bash -n deploy.sh` passes
-
-### U9. USER — Rebuild the phone app once for updates
-- **Status:** USER — DONE 2026-10-25. Existing 10/20 preview APK (runtime `9c9f0995`) and 10/24 dev APK kept; `deploy.sh` published `ad7d284` and the phone applied it.
-- **Description:** After B34 lands and is committed. From `mobile/`, in an Ubuntu tab:
+### U11. USER — Settle the mobile suite on a cold run
+- **Status:** USER
+- **Description:** Before the loop. Every Ralph iteration runs the mobile suite cold, and it once
+  reported 9 failures cold that passed warm. In an Ubuntu tab, with Metro stopped:
   ```bash
-  npm install -g eas-cli          # 23.2 → 24.x, also an open follow-up
+  cd /root/Stopwatch-scheduler/mobile
+  npx jest --ci --clearCache
+  npx jest --ci > /tmp/jest-cold.txt 2>&1; echo "exit $?"; tail -5 /tmp/jest-cold.txt
+  ```
+  `exit 0` with every suite passed → done. Anything else: send the tail to Claude before
+  starting the loop.
+- **Acceptance Criteria:**
+  - [ ] A cold run exits 0, or its failures are fixed or recorded before the loop starts
+
+### B47.tests — Mobile: follow-ups (delete confirm, load errors, gear nudge)
+- **Status:** PENDING
+- **Description:** D89. Extend `RecordingsScreen.test.tsx` and `ActivitiesScreen.test.tsx`.
+- **Contract:**
+  - **Recording delete:** a long press on a Recording row calls `Alert.alert` with title
+    `Delete Recording`, message `Delete "<name>"? This cannot be undone.` and buttons `Cancel`
+    (style `cancel`) and `Delete` (style `destructive`). Only `Delete` calls
+    `sessionAPI.delete`. Same pattern as `calendar.tsx`'s alerts.
+  - **Activities load failure:** when the `['tasks']` query errors and
+    `onlineManager.isOnline()` is false → `Offline — showing nothing` (unchanged text). When it
+    errors and the device is online → `Couldn't load Activities` (testID `activities-error`)
+    and a `Retry` button (testID `activities-retry`) that refetches. Other screens have no
+    whole-screen load error; their mutation errors are unchanged.
+  - **Gear nudge:** `(tabs)/_layout.tsx` uses `spacing.xs` for the header gear's right margin
+    in all builds (no `__DEV__` branch).
+- **Acceptance Criteria:**
+  - [ ] Test: long press opens the alert; Cancel deletes nothing; Delete calls `sessionAPI.delete` with the id
+  - [ ] Test: query error while offline → the Offline text; while online → `activities-error` and Retry refetches
+  - [ ] Test: `_layout.tsx` contains no `__DEV__` (read the file as text)
+
+### B47.impl — Mobile: follow-ups (delete confirm, load errors, gear nudge)
+- **Status:** PENDING
+- **Description:** Implement to the contract. App code only, so it reaches the phone through
+  `deploy.sh` without a rebuild.
+- **Acceptance Criteria:**
+  - [ ] All B47.tests pass; mobile suite, tsc, and export pass
+
+### B48.tests — Backend: Pomodoro settings and the Pomodoro summary on Recordings
+- **Status:** PENDING
+- **Description:** D81, D83. Add `backend/tests/test_pomodoro.py`.
+- **Contract:**
+  - **Settings:** new model `PomodoroSettings` (table `pomodoro_settings`, one row) with
+    `work_minutes` (default 25), `break_minutes` (5), `long_break_minutes` (15),
+    `long_break_every` (4). `GET /api/settings/pomodoro` returns the row, creating it with the
+    defaults if absent. `PUT /api/settings/pomodoro` takes all four; each minutes value is an
+    integer 1–180 and `long_break_every` 1–12, else 422. Behind the credential gate like every
+    other route.
+  - **Recording summary:** `stopwatch_sessions` gains nullable `pomodoro_work_intervals`,
+    `pomodoro_breaks` (integers) and `pomodoro_break_seconds` (float). In
+    `StopwatchSessionBase`, all three are optional and travel together: all null, or all set
+    with `pomodoro_work_intervals >= 1`, `pomodoro_breaks >= 0`,
+    `pomodoro_break_seconds >= 0`; otherwise 422. Create returns them; list and get include
+    them. A Pomodoro Recording otherwise behaves exactly as any Recording (Time Log, average,
+    `new_activity_name`).
+  - **Migration:** one Alembic revision on top of `b8c9d0e1f2a3` adding the table and the three
+    columns; downgrade drops them.
+- **Acceptance Criteria:**
+  - [ ] Test: GET on an empty table returns 25/5/15/4; PUT then GET returns the new values
+  - [ ] Test: PUT with 0, 181, a missing field, or `long_break_every: 13` → 422
+  - [ ] Test: create a Recording with all three summary fields and an Activity → returned as sent; the Activity's average includes the duration
+  - [ ] Test: only some summary fields, or `pomodoro_work_intervals: 0` → 422
+  - [ ] Test: a plain Recording returns the three fields as null
+  - [ ] `test_migrations.py` passes with the new revision
+
+### B48.impl — Backend: Pomodoro settings and the Pomodoro summary on Recordings
+- **Status:** PENDING
+- **Description:** Implement to the contract: model, schemas, a `routers/settings.py` mounted at
+  `/api/settings`, and the migration.
+- **Acceptance Criteria:**
+  - [ ] All B48.tests pass; full suite passes
+
+### B49.tests — Mobile: Pomodoro run core
+- **Status:** PENDING
+- **Description:** D84, D85, D87. Add `mobile/src/__tests__/pomodoroCore.test.ts` for a new pure
+  module `mobile/src/timer/pomodoro.ts`, in the style of `core.ts` (no React, no I/O; every
+  function takes `Clocks` or an explicit monotonic `at`).
+- **Contract:**
+  - `PomodoroConfig = { workMinutes, breakMinutes, longBreakMinutes, longBreakEvery }`.
+  - `PomodoroState`: `status` (`running` | `paused`), `phase` (`work` | `break` | `longBreak`),
+    the current phase's monotonic start and accumulated ms (as `core.ts` does), `workMs`
+    (closed Work intervals), `breakMs` (closed Breaks), `workIntervals`, `breaks`, the run's
+    `wallStart`, `taskId` or `newActivityName`, and `config`.
+  - `startRun(config, activity, clocks)` → running, phase `work`.
+  - `switchPhase(state, at)`: from work → closes the Work interval (adds its ms, `workIntervals
+    + 1`) and enters `longBreak` when `workIntervals % longBreakEvery === 0`, else `break`; from
+    a break → closes it (adds its ms, `breaks + 1`) and enters `work`. Allowed while paused
+    (the paused interval closes at its accumulated time).
+  - `pauseRun(state, at)` / `resumeRun(state, at)`: as `core.ts`'s pause and resume, on the
+    current phase.
+  - `phaseView(state, clocks)` → `{ phase, elapsedMs, targetMs, remainingMs, overMs }`: target
+    from `config` for the phase; `remainingMs = max(0, target - elapsed)`; `overMs = max(0,
+    elapsed - target)`.
+  - `reminderDue(state, clocks)`: true once the current phase's elapsed reaches its target;
+    `markReminded(state)` records it so it is due once per phase.
+  - `finishRun(state, clocks)` → `FinishedRecording` fields plus `pomodoroWorkIntervals`,
+    `pomodoroBreaks`, `pomodoroBreakSeconds`. An open Work interval counts (and increments
+    `workIntervals`); an open Break is dropped. `durationSeconds` = total work. `canFinish`
+    is true only when total work > 0.
+  - `applyActions(state, actions)`: applies native notification actions (`pause` | `resume` |
+    `switch`, each with `atElapsedMs`) in order, using each action's own monotonic time.
+  - Restore after a reboot (monotonic clock went backwards) follows `core.restore`: the
+    current phase's elapsed comes from the wall clock and the Recording is flagged as a clock
+    jump.
+- **Acceptance Criteria:**
+  - [ ] Test: work 27 min then switch → `workIntervals` 1, phase `break`; the 4th switch from work enters `longBreak` with `longBreakEvery: 4`
+  - [ ] Test: paused time counts toward neither work nor break
+  - [ ] Test: `phaseView` at 30 min of a 25-min Work interval → remaining 0, over 5 min; `reminderDue` true once, false after `markReminded` until the next phase
+  - [ ] Test: finish during work counts the open interval; finish during a Break drops it; `canFinish` false with no work
+  - [ ] Test: `applyActions` with pause/resume/switch at given times matches calling the functions directly
+  - [ ] Test: restore after a reboot keeps closed totals and flags a clock jump
+
+### B49.impl — Mobile: Pomodoro run core
+- **Status:** PENDING
+- **Description:** Implement `mobile/src/timer/pomodoro.ts` to the contract. Add
+  `pomodoro_work_intervals`, `pomodoro_breaks`, `pomodoro_break_seconds` (optional) to
+  `StopwatchSession` and `StopwatchSessionCreate` in `mobile/src/types`, and a
+  `settingsAPI.getPomodoro` / `updatePomodoro` pair in `services/api.ts`.
+- **Acceptance Criteria:**
+  - [ ] All B49.tests pass; mobile suite, tsc, and export pass
+
+### B50.tests — Mobile: Pomodoro lengths in Settings
+- **Status:** PENDING
+- **Description:** D83. Extend `SettingsScreen.test.tsx`.
+- **Contract:** A **Pomodoro** section in `app/settings.tsx` with four number fields (testIDs
+  `pomodoro-work`, `pomodoro-break`, `pomodoro-long-break`, `pomodoro-long-every`) loaded from
+  `settingsAPI.getPomodoro` and a **Save** button (`pomodoro-save`) that sends all four. Values
+  outside 1–180 (1–12 for the count) disable Save and show the range under the field. A failed
+  load shows the defaults greyed with "Couldn't load", and Save stays disabled.
+- **Acceptance Criteria:**
+  - [ ] Test: fields show the server's values; Save sends the edited four
+  - [ ] Test: 0 or 181 disables Save and shows the range
+  - [ ] Test: load failure → defaults, "Couldn't load", Save disabled
+
+### B50.impl — Mobile: Pomodoro lengths in Settings
+- **Status:** PENDING
+- **Description:** Implement to the contract with a react-query query on `['settings',
+  'pomodoro']`.
+- **Acceptance Criteria:**
+  - [ ] All B50.tests pass; mobile suite, tsc, and export pass
+
+### B51.tests — Mobile: Pomodoro on the timer screen
+- **Status:** PENDING
+- **Description:** D81, D82, D84–D87. Extend `StopwatchScreen.test.tsx`, `timerStore.test.tsx`
+  and `RecordingsScreen.test.tsx`.
+- **Contract:**
+  - A `Stopwatch | Pomodoro` switch (testIDs `mode-stopwatch`, `mode-pomodoro`) above the
+    timer, disabled while the stopwatch or a run is not idle.
+  - **Start in Pomodoro mode** opens an Activity picker (existing Activities and "+ New
+    Activity" with a name field; no "None"). Start is disabled until one is chosen. The run
+    starts with the server's Pomodoro settings (defaults if they cannot be loaded).
+  - **While running:** the phase label (`Work` / `Break` / `Long break`), the current
+    interval's time left or `+m:ss over` (testID `pomodoro-phase-time`), the run's total work,
+    and buttons `Pause`/`Resume`, `Start break`/`Start work` (testID `pomodoro-switch`),
+    `Finish` (disabled with no work), `Reset`.
+  - **Reminder:** when `reminderDue`, the store calls a native `notifyPhaseDue(phase)` once
+    (see B52) and marks it reminded. Mocked here.
+  - **Finish** opens the existing save sheet with the Activity preselected and the name
+    defaulting to it; saving sends duration = total work and the three `pomodoro_*` fields,
+    through `useCreateSession` (so an offline save queues it).
+  - **Reset** with work logged asks `Discard this Pomodoro run?` (Cancel / Discard).
+  - **Persistence:** the run is stored under its own AsyncStorage key and restored on mount,
+    as the stopwatch is; on restore and whenever the app becomes active, the store drains
+    native actions (B52's `drainActions`, mocked) and applies them with `applyActions`.
+  - **Recordings list:** a Recording with `pomodoro_work_intervals` shows
+    `Pomodoro · N × avg Xm work · avg break Ym` under its name (avg break omitted when
+    `pomodoro_breaks` is 0).
+- **Acceptance Criteria:**
+  - [ ] Test: the mode switch is disabled while the stopwatch runs
+  - [ ] Test: Start is disabled until an Activity is chosen; "None" is not offered
+  - [ ] Test: Start break / Start work move through the phases; the 4th break is a Long break
+  - [ ] Test: past the target, `pomodoro-phase-time` shows `+m:ss over` and `notifyPhaseDue` is called once
+  - [ ] Test: Finish sends total work and the three fields with the chosen Activity
+  - [ ] Test: Reset with work asks; Cancel keeps the run
+  - [ ] Test: a stored run restores on mount and queued native actions are applied
+  - [ ] Test: the Recordings row shows the Pomodoro summary line
+
+### B51.impl — Mobile: Pomodoro on the timer screen
+- **Status:** PENDING
+- **Description:** Implement to the contract in `(tabs)/index.tsx` and a `usePomodoro` hook
+  beside `useTimer` in `timer/store.ts`. Add the JS side of B52's API to
+  `TimerNative.types.ts` and `timer/native.ts` as optional calls (no-ops when the native module
+  is absent or older), so this task does not depend on the rebuild.
+- **Acceptance Criteria:**
+  - [ ] All B51.tests pass; mobile suite, tsc, and export pass
+
+### B52.tests — Mobile: notification actions and the Pomodoro notification
+- **Status:** PENDING
+- **Description:** D84, D88, D89 (scheme). Extend `native.test.ts`, `timerStore.test.tsx` and
+  `appConfig.test.ts`. The Kotlin itself is checked on device (U12, U13).
+- **Contract (the native API, in `TimerNative.types.ts`):**
+  - `startForegroundService(startedAtElapsedMs, options?)` where `options` is
+    `{ paused?: boolean, pomodoro?: { phase, phaseStartedAtElapsedMs, phaseAccumulatedMs,
+    targetMs } }`. Called again whenever the timer's state changes (start, pause, resume,
+    phase switch); it updates the one notification.
+  - `stopForegroundService()` only on Reset and Finish/Save. **Pause no longer stops the
+    service**: a paused recording keeps its notification, reading `Paused · m:ss` with a
+    `Resume` button.
+  - `drainActions(): { action: 'pause' | 'resume' | 'switch', atElapsedMs: number }[]` returns
+    and clears the actions tapped on the notification, in order.
+  - `notifyPhaseDue(phase)` posts the one-time reminder.
+  - An `onTimerAction` event fires when the app is running; the store drains on it.
+- **Contract (Kotlin, implement in B52.impl):** the service keeps the timer's anchors in its
+  intent extras and updates its own notification every second as now. Actions are
+  `NotificationCompat` buttons with `PendingIntent.getService` (immutable): the service applies
+  pause/resume/switch to its own display at once, appends `{action, elapsedRealtime}` to a
+  `SharedPreferences` list, and emits `onTimerAction` if the module is loaded. During a run the
+  text is `Work · 12:34 left` or `Work · +3:10 over`; on reaching the target the service posts
+  the reminder itself on a second channel (`pomodoro-reminder`, default importance, sound and
+  vibration) once per phase, so it fires with the screen locked. `notifyPhaseDue` posts the
+  same reminder when the app is in front.
+  - `app.json` `scheme` becomes `stopwatchscheduler`.
+- **Acceptance Criteria:**
+  - [ ] Test: pause calls `startForegroundService` with `paused: true` and does not stop the service; reset and finish stop it
+  - [ ] Test: during a run, each phase switch re-calls `startForegroundService` with the new `pomodoro` options
+  - [ ] Test: an `onTimerAction` event drains and applies the actions; the displayed state matches
+  - [ ] Test: with the native module absent, every call is a no-op and the timer still works
+  - [ ] Test: `app.json` scheme is `stopwatchscheduler` for both variants
+
+### B52.impl — Mobile: notification actions and the Pomodoro notification
+- **Status:** PENDING
+- **Description:** Implement the JS to the contract and the Kotlin in
+  `modules/timer-native/android/` (`TimerNativeModule.kt`, `TimerForegroundService.kt`;
+  `ios/` untouched beyond stubs that keep it compiling). Change the scheme. This changes the
+  native fingerprint: nothing after it reaches the phone until U12.
+- **Acceptance Criteria:**
+  - [ ] All B52.tests pass; mobile suite, tsc, and export pass
+  - [ ] Kotlin reviewed against the existing service: same imports style, immutable PendingIntents, no new dependencies
+
+### B53.tests — Web: the stopwatch survives a reload
+- **Status:** PENDING
+- **Description:** D87. Extend `Stopwatch.test.tsx`.
+- **Contract:** `useStopwatch` keeps time from timestamps, not by counting 10 ms ticks: running
+  state is `{ startedAt, accumulatedMs }` and elapsed is `accumulatedMs + (Date.now() -
+  startedAt)`, so a throttled background tab stays accurate. The state is saved to
+  `localStorage` (`stopwatch.state`) on start, pause and reset, and restored on mount, running
+  or paused. The save modal's `start_time` survives too.
+- **Acceptance Criteria:**
+  - [ ] Test: with fake timers and a mocked `Date.now`, elapsed follows the clock, not the tick count
+  - [ ] Test: unmount while running and remount → still running with the elapsed time intact
+  - [ ] Test: reset clears the stored state
+
+### B53.impl — Web: the stopwatch survives a reload
+- **Status:** PENDING
+- **Description:** Implement to the contract in `hooks/useStopwatch.ts` and `Stopwatch.tsx`.
+- **Acceptance Criteria:**
+  - [ ] All B53.tests pass; web tsc clean; `npm run build` succeeds
+
+### B54.tests — Web: Pomodoro lengths in Options
+- **Status:** PENDING
+- **Description:** D83. Extend or add `OptionsPage` tests.
+- **Contract:** As B50, in `OptionsPage.tsx`: a Pomodoro section with the four fields
+  (`data-testid` as B50's testIDs), Save sending all four via `settingsAPI.updatePomodoro`, the
+  same ranges and load-failure behaviour. Add `settingsAPI` and the `pomodoro_*` fields to
+  `frontend/src/services/api.ts` and `frontend/src/types`.
+- **Acceptance Criteria:**
+  - [ ] Test: fields show the server's values; Save sends the edited four
+  - [ ] Test: out-of-range disables Save; load failure → defaults, Save disabled
+
+### B54.impl — Web: Pomodoro lengths in Options
+- **Status:** PENDING
+- **Description:** Implement to the contract.
+- **Acceptance Criteria:**
+  - [ ] All B54.tests pass; web tsc clean; `npm run build` succeeds
+
+### B55.tests — Web: Pomodoro on the stopwatch card
+- **Status:** PENDING
+- **Description:** D81, D82, D84–D87. Extend `Stopwatch.test.tsx` and `SessionList.test.tsx`.
+- **Contract:** A pure `frontend/src/utils/pomodoro.ts` with B49's functions and rules (copy and
+  adapt; there is no shared package; `Date.now()` is the clock). On the stopwatch card, B51's
+  behaviour: the mode switch, the required Activity before Start, the phase display, Start
+  break / Start work, Pause/Resume, Finish into the existing save modal with the Activity
+  preselected and the three fields sent, Reset with confirmation, and the summary line in the
+  Recordings list. **Reminder:** once per phase, a browser `Notification` (permission requested
+  on the first run's Start; skipped silently if denied) and a short tone through `AudioContext`.
+  **Persistence:** the run is saved to `localStorage` (`pomodoro.state`) and restored on mount.
+- **Acceptance Criteria:**
+  - [ ] Test: `utils/pomodoro.ts` passes the same cases as B49 (phases, long break, pause, finish rules)
+  - [ ] Test: Start is disabled until an Activity is chosen; the mode switch is locked while running
+  - [ ] Test: past the target, `+m:ss over` shows and `Notification` is constructed once
+  - [ ] Test: Finish sends total work and the three fields
+  - [ ] Test: a stored run restores on remount
+  - [ ] Test: `SessionList` shows the Pomodoro summary line
+
+### B55.impl — Web: Pomodoro on the stopwatch card
+- **Status:** PENDING
+- **Description:** Implement to the contract.
+- **Acceptance Criteria:**
+  - [ ] All B55.tests pass; web tsc clean; `npm run build` succeeds
+
+### U12. USER — Ship, and rebuild the phone app for the new native code
+- **Status:** USER
+- **Description:** After the loop finishes. B52 changed native code, so the phone needs new
+  APKs; phone updates only reach builds with the same native fingerprint. In an Ubuntu tab:
+  ```bash
+  cd /root/Stopwatch-scheduler
+  git status --short            # must be empty; commit first
+  ./deploy.sh                   # backend (runs the B48 migration) + web + phone update
+  cd mobile
   eas build --profile preview --platform android
   eas build --profile development --platform android
   ```
-  Install both from the links EAS prints (open on the phone). Then prove an update arrives
-  without an APK: from the repo root run `./deploy.sh` (it now ships the backend, then the
-  phone update), force-close the standalone app, open it, close it, and open it again — the
-  update downloads on the first open and applies on the second.
+  Install both from the links EAS prints (open each on the phone, tap Install/Update). Then in
+  the "(Dev)" app's dev menu, switch the **Tools button** back on (D89).
 - **Acceptance Criteria:**
-  - [x] Both apps installed; the standalone app still lists Activities and Recordings
-  - [x] `eas update:list --branch preview` shows the update `deploy.sh` published
-  - [x] The phone runs it (any B35+ change that has landed is visible, or `eas update:list` shows it downloaded under the build's runtime version)
+  - [ ] `curl -s -o /dev/null -w "%{http_code}\n" https://api.stopwatchscheduler.app/api/settings/pomodoro` prints `401` (route exists, gate on)
+  - [ ] Both apps installed; the standalone app lists Activities and Recordings
+  - [ ] The standalone app shows the Stopwatch | Pomodoro switch
 
-### B35.tests — Backend: Recordings create, join, and leave Activities
-- **Status:** DONE
-- **Description:** D76, D77, D78. Add `backend/tests/test_session_activity.py`. Two existing
-  bugs this fixes, both in `routers/sessions.py` `update_session`: detaching sets the Time
-  Log's `task_id` to `None`, which `time_logs.task_id` (NOT NULL) rejects with a 500; and
-  attaching a Recording saved with no Activity does nothing, because it has no Time Log to move.
-- **Contract:**
-  - `StopwatchSessionCreate` and `StopwatchSessionUpdate` gain optional `new_activity_name`.
-    Sending it with a non-null `task_id` → 422. Blank after trimming → 422.
-  - **Resolving a name:** trim it; find an Activity whose name equals it ignoring case
-    (`func.lower(Task.name) == name.lower()`). Found → use it. Not found → create the Activity
-    with the trimmed name (Q4). This makes an offline save that replays after the same name
-    was created elsewhere attach rather than fail.
-  - **Create** with `new_activity_name`: the Activity, the Recording (with that `task_id`), and
-    its Time Log are created in one transaction; the Activity's average and count include it.
-  - **Update** to an Activity (`task_id` or `new_activity_name`) on a Recording that has none:
-    creates the Time Log (`session_id` set, the Recording's duration) and adds the duration to
-    the Activity's average and count.
-  - **Update** from one Activity to another: as today, the Time Log moves and both averages
-    follow.
-  - **Update** with `task_id: null` on an attached Recording: deletes its Time Log and removes
-    the duration from the old Activity's average and count. No 500.
-  - Responses are the Recording as today, with the resolved `task_id`.
+### U13. USER — Build 2c gate
+- **Status:** USER
+- **Description:** On the phone (standalone app) and on the web app:
+  1. Settings/Options: change the lengths to 1 / 1 / 2, long break every 2; the other client
+     shows the same values.
+  2. Start a Pomodoro run on a chosen Activity. Let the first Work interval pass its minute:
+     one reminder, then `+m:ss over`. On the phone, do this **with the screen locked**.
+  3. From the phone's **notification**: Pause, Resume, Start break, Start work. Open the app;
+     it matches. The second break is a Long break.
+  4. Finish during a Break; save. The Recording's duration is the work only, the summary line
+     is right, and the Activity's average moved.
+  5. Reload the web page mid-run (and force-close the phone app mid-run): the run continues.
+     Same for the plain web stopwatch.
+  6. Long-press a Recording on the phone: it asks first. Turn Wi-Fi and data off and open
+     Activities with a cold cache: "Offline"; back online with a bad token in Settings:
+     "Couldn't load" and Retry. Restore the token.
+  Set the lengths back to 25 / 5 / 15 / 4. Record results in `progress.md`.
 - **Acceptance Criteria:**
-  - [x] Test: create with `new_activity_name: " Run "` and no Activity → Activity "Run" exists with count 1 and average equal to the duration; the Recording's `task_id` is its id
-  - [x] Test: create with `new_activity_name: "run"` when "Run" exists → attaches to "Run"; no second Activity
-  - [x] Test: both `task_id` and `new_activity_name` → 422; blank name → 422
-  - [x] Test: attach a no-Activity Recording via `task_id` → a Time Log appears and the average includes it
-  - [x] Test: attach via `new_activity_name` → new Activity created with that Recording
-  - [x] Test: detach → 200, Time Log gone, old Activity's count and average no longer include it
-  - [x] Test: move between Activities still updates both (existing behaviour, kept)
-
-### B35.impl — Backend: Recordings create, join, and leave Activities
-- **Status:** DONE
-- **Description:** Implement to the contract in `routers/sessions.py` and `models/schemas.py`.
-  One helper resolves a name to an Activity for both routes.
-- **Acceptance Criteria:**
-  - [x] All B35.tests pass; full suite passes
-
-### B36.tests — Mobile: a Recording makes or joins an Activity when saved
-- **Status:** DONE
-- **Description:** D76, D77. Extend `StopwatchScreen.test.tsx` (the stop-and-save picker in
-  `(tabs)/index.tsx`) and `RecordingsScreen.test.tsx` (the hand-entry `ManualForm`).
-- **Contract:** In both pickers, below "None" and the matching Activities:
-  - When the typed Recording name (trimmed) equals no Activity's name ignoring case, a row
-    `+ New Activity: '<name>'` (testID `activity-new`, `manual-activity-new`). Selecting it
-    sends `new_activity_name` and no `task_id`.
-  - When it equals one, no new row; that Activity's row reads `Attach to <name>` and selecting
-    it sends its `task_id` as today.
-  - No row with an empty name. "None" stays selected by default.
-  - The save goes through the same `useCreateSession` mutation, so an offline save queues the
-    one payload with `new_activity_name` and replays it unchanged. On success, `['tasks']` is
-    invalidated (already the case).
-- **Acceptance Criteria:**
-  - [x] Test: name "Laundry", no such Activity → the new row shows; saving sends `new_activity_name: "Laundry"` and no `task_id`
-  - [x] Test: name "laundry " with Activity "Laundry" → no new row; "Attach to Laundry" is offered
-  - [x] Test: default selection is None; saving without touching the picker sends neither field
-  - [x] Test: the hand-entry form behaves the same
-  - [x] Test: an offline save persists a payload carrying `new_activity_name` (extend `offlineQueue.test.tsx` if that is where the queue is exercised)
-
-### B36.impl — Mobile: a Recording makes or joins an Activity when saved
-- **Status:** DONE
-- **Description:** Implement to the contract. Add `new_activity_name` to
-  `StopwatchSessionCreate` in `mobile/src/types`.
-- **Acceptance Criteria:**
-  - [x] All B36.tests pass; mobile suite, tsc, and export pass
-
-### B37.tests — Mobile: actions on a saved Recording
-- **Status:** DONE
-- **Description:** D78. Extend `RecordingsScreen.test.tsx`.
-- **Contract:** Tapping a Recording row opens its actions. With no Activity: **Attach to
-  Activity** (opens an Activity picker with search; choosing sends `PUT` with `task_id`) and
-  **Make it an Activity** (sends `PUT` with `new_activity_name` = the Recording's name; when
-  that name already matches an Activity ignoring case, the action reads **Attach to <name>**
-  and sends that `task_id` instead). With an Activity: **Change Activity** (same picker, current
-  one marked) and **Detach** (sends `task_id: null`). Existing delete stays. After any change
-  the list shows the new Activity, and `['sessions']` and `['tasks']` are invalidated.
-- **Acceptance Criteria:**
-  - [x] Test: a no-Activity Recording offers Attach and Make it an Activity; an attached one offers Change and Detach
-  - [x] Test: each action sends the body above
-  - [x] Test: Make it an Activity becomes "Attach to <name>" when the name matches
-  - [x] Test: after success the row's Activity label updates
-
-### B37.impl — Mobile: actions on a saved Recording
-- **Status:** DONE
-- **Description:** Implement to the contract in `(tabs)/recordings.tsx`; add `update` to
-  `sessionAPI` in `services/api.ts` if absent. Online only: show an error on failure, no queue.
-- **Acceptance Criteria:**
-  - [x] All B37.tests pass; mobile suite, tsc, and export pass
-
-### B38.tests — Web: Recordings make, join, and leave Activities
-- **Status:** DONE
-- **Description:** D76, D77, D78, web. Extend `Stopwatch.test.tsx`, `ManualRecording.test.tsx`
-  and `SessionList.test.tsx`.
-- **Contract:** The Stopwatch save modal and hand entry get B36's rows and payloads (the web
-  has no offline queue). Each Recording in `SessionList` gets B37's actions and bodies.
-- **Acceptance Criteria:**
-  - [x] Test: new-Activity row and "Attach to <name>" behave as in B36, in the save modal and hand entry
-  - [x] Test: each Recording action sends B37's body and the list updates
-
-### B38.impl — Web: Recordings make, join, and leave Activities
-- **Status:** DONE
-- **Description:** Implement to the contract in `Stopwatch.tsx`, the hand-entry form,
-  `SessionList.tsx`, and `services/api.ts`; add `new_activity_name` to the web types.
-- **Acceptance Criteria:**
-  - [x] All B38.tests pass; web tsc clean; `npm run build` succeeds
-
-### B39.tests — Mobile: quadrant picker and badge
-- **Status:** DONE
-- **Description:** D70. Extend `ActivitiesScreen.test.tsx`; add an activity-detail test if none
-  covers `activity/[id].tsx`.
-- **Contract:** The Activity detail screen shows a 2×2 grid: top row **Urgent & Important**
-  (Q1), **Important** (Q2); bottom row **Urgent** (Q3), **Neither** (Q4). The current quadrant
-  is highlighted. Tapping a cell sends `PUT /api/tasks/{id}` with both `is_urgent` and
-  `is_important` and highlights it on success. The Activities list shows a small badge (Q1–Q4)
-  on each row; Q4 shows no badge, so an unset list stays quiet.
-- **Acceptance Criteria:**
-  - [x] Test: each cell sends the right pair of flags
-  - [x] Test: the current quadrant is highlighted from the Activity's flags
-  - [x] Test: list badges show Q1–Q3 and nothing for Q4
-
-### B39.impl — Mobile: quadrant picker and badge
-- **Status:** DONE
-- **Description:** Implement to the contract; `update` in `taskAPI` if absent.
-- **Acceptance Criteria:**
-  - [x] All B39.tests pass; mobile suite, tsc, and export pass
-
-### B40.tests — Web: quadrant picker and badge
-- **Status:** DONE
-- **Description:** D70, web. Add `frontend/src/__tests__/TaskDetailModal.test.tsx`; badges in
-  `TaskList.tsx`.
-- **Contract:** As B39, in `TaskDetailModal.tsx` and the Activities list.
-- **Acceptance Criteria:**
-  - [x] Test: each cell sends the right pair of flags; current quadrant highlighted
-  - [x] Test: list badges show Q1–Q3 and nothing for Q4
-
-### B40.impl — Web: quadrant picker and badge
-- **Status:** DONE
-- **Description:** Implement to the contract.
-- **Acceptance Criteria:**
-  - [x] All B40.tests pass; web tsc clean; `npm run build` succeeds
-
-### B41.tests — Mobile: one Strategy dropdown over all seven plans
-- **Status:** DONE
-- **Description:** D71, D72. Extend `ScheduleScreen.test.tsx`. Today `(tabs)/schedule.tsx`
-  sends four Strategies and renders a card per plan.
-- **Contract:**
-  - Generate sends no `strategies` field (the server then computes all seven:
-    your-order, shortest-first, longest-first, best-fit, best-fit-slots, eat-the-frog,
-    eisenhower), keeping `avoid_existing: true`.
-  - The per-plan cards are replaced by **one dropdown** (testID `strategy-picker`) listing each
-    plan's `label`, selected on **Your Order** after every Generate. Under it, the selected
-    plan's `description`, its `excluded` notes ("didn't fit"), its `flagged` notes ("consider
-    delegating"), and its timeline. Changing the dropdown swaps these with no new request.
-    Save saves the selected plan, as today.
-  - **Eisenhower empty:** when the selected plan is Eisenhower, its timeline is empty, and every
-    excluded reason is `not-urgent-not-important`, show
-    "None of these Activities have a quadrant yet. Set them on the Activities tab." in place of
-    the timeline and notes.
-- **Acceptance Criteria:**
-  - [x] Test: the Generate request has no `strategies` field
-  - [x] Test: after Generate the dropdown shows "Your Order" and only that plan's timeline is rendered
-  - [x] Test: choosing another Strategy shows its description and timeline without a second Generate call
-  - [x] Test: Eisenhower with all-Q4 Activities shows the quadrant message
-  - [x] Test: Save sends the selected plan's timeline
-
-### B41.impl — Mobile: one Strategy dropdown over all seven plans
-- **Status:** DONE
-- **Description:** Implement to the contract. Reuse `PickerField` if it fits.
-- **Acceptance Criteria:**
-  - [x] All B41.tests pass; mobile suite, tsc, and export pass
-
-### B42.tests — Web: one Strategy dropdown over all seven plans
-- **Status:** DONE
-- **Description:** D71, D72, web. Extend `ScheduleBuilder.test.tsx`; today
-  `ScheduleBuilder.tsx` sends four Strategies.
-- **Contract:** As B41, with a `<select>`.
-- **Acceptance Criteria:**
-  - [x] Test: as B41's five, in the web builder
-
-### B42.impl — Web: one Strategy dropdown over all seven plans
-- **Status:** DONE
-- **Description:** Implement to the contract.
-- **Acceptance Criteria:**
-  - [x] All B42.tests pass; web tsc clean; `npm run build` succeeds
-
-### B43.tests — Mobile: the day's Frog
-- **Status:** DONE
-- **Description:** D73, D74. Extend `ScheduleScreen.test.tsx` and `CalendarDayScreen.test.tsx`.
-  The server already stores `is_frog` on Schedule Items and keeps one per Schedule.
-- **Contract:**
-  - Each selected Activity on the Schedule tab has a frog toggle (testID
-    `frog-toggle-<task_id>`); turning one on turns any other off. Generate sends `is_frog: true`
-    on that Activity only.
-  - Save sends `is_frog: true` on the Frog's Item whichever Strategy is selected.
-  - **Replace message:** before saving to a date, the tab reads that date's Schedule
-    (`GET /api/schedules/?start_date=D&end_date=D`). If it has a Frog Item and the save carries
-    a different Frog, the save confirmation reads "Frog is now <new> (was <old>)."
-  - Calendar Blocks whose Item has `is_frog` show a frog marker (testID `frog-marker-<item id>`).
-- **Acceptance Criteria:**
-  - [x] Test: only one toggle can be on; Generate sends `is_frog` on that Activity only
-  - [x] Test: saving the Shortest First plan still sends `is_frog` on the Frog's Item
-  - [x] Test: with an existing Frog on the date, the confirmation names new and old
-  - [x] Test: a frog Item's Block shows the marker; others do not
-
-### B43.impl — Mobile: the day's Frog
-- **Status:** DONE
-- **Description:** Implement to the contract in `(tabs)/schedule.tsx` and the calendar Block.
-- **Acceptance Criteria:**
-  - [x] All B43.tests pass; mobile suite, tsc, and export pass
-
-### B44.tests — Web: the day's Frog
-- **Status:** DONE
-- **Description:** D73, D74, web. Extend `ScheduleBuilder.test.tsx` and `CalendarView.test.tsx`.
-- **Contract:** As B43, in `ScheduleBuilder.tsx` and `calendar/ItemBlock.tsx`.
-- **Acceptance Criteria:**
-  - [x] Test: as B43's four, in the web builder and calendar
-
-### B44.impl — Web: the day's Frog
-- **Status:** DONE
-- **Description:** Implement to the contract.
-- **Acceptance Criteria:**
-  - [x] All B44.tests pass; web tsc clean; `npm run build` succeeds
-
-### B45.tests — Mobile: peak-hours hint
-- **Status:** DONE
-- **Description:** D75. Extend `ScheduleScreen.test.tsx`.
-- **Contract:** The Schedule tab calls
-  `GET /api/insights/peak-hours?tz_offset=<new Date().getTimezoneOffset()>`. When `peak_hour`
-  is not null, a hint under Start time reads "Your peak hour: 9 AM. Use it." (12-hour clock).
-  Tapping it sets Start time to that hour on the selected date (minutes zero). The start time is
-  never changed without the tap. `peak_hour: null` or a failed call → no hint, nothing else
-  affected.
-- **Acceptance Criteria:**
-  - [x] Test: `peak_hour: 9` shows "Your peak hour: 9 AM. Use it."; `peak_hour: 14` shows "2 PM"
-  - [x] Test: tapping sets the start time to that hour on the selected date
-  - [x] Test: null or an error → no hint; Start time unchanged on load
-
-### B45.impl — Mobile: peak-hours hint
-- **Status:** DONE
-- **Description:** Implement to the contract; add the call to `services/api.ts`.
-- **Acceptance Criteria:**
-  - [x] All B45.tests pass; mobile suite, tsc, and export pass
-
-### B46.tests — Web: peak-hours hint
-- **Status:** DONE
-- **Description:** D75, web. Extend `ScheduleBuilder.test.tsx`.
-- **Contract:** As B45, under the builder's start time.
-- **Acceptance Criteria:**
-  - [x] Test: as B45's three, in the web builder
-
-### B46.impl — Web: peak-hours hint
-- **Status:** DONE
-- **Description:** Implement to the contract.
-- **Acceptance Criteria:**
-  - [x] All B46.tests pass; web tsc clean; `npm run build` succeeds
-
-### U10. USER — Build 2b gate
-- **Status:** USER — DONE 2026-10-25. All six checks passed on phone and web.
-- **Description:** After the loop finishes: commit, then `./deploy.sh` from the repo root. On
-  the phone, reopen the standalone app twice so the update applies (no APK). Then, on the phone
-  and on the web app:
-  1. Set quadrants on three Activities; the list shows their badges.
-  2. Generate with those three: the dropdown starts on Your Order; switch through all seven.
-     Eisenhower orders by quadrant. With only Q4 Activities selected, it shows the quadrant
-     message.
-  3. Mark one as the Frog and save Shortest First; its Block shows the frog. Save another plan
-     to the same day with a different Frog; the confirmation names both.
-  4. The peak-hour hint appears; tapping it sets the start time.
-  5. Record something with a new name, pick "+ New Activity" and save; it appears in Activities
-     with one recording. Repeat with Wi-Fi and mobile data off; it saves when back online.
-  6. On a Recording saved with "None": Make it an Activity, then Change Activity, then Detach;
-     the averages follow each step.
-  Record results in `progress.md`.
-- **Acceptance Criteria:**
-  - [x] All six pass on both clients; any failure recorded with the task it reopens
-
----
-
-## Tasks — Build 2c (HOLD: designed in its own session after Build 2b ships, D79)
-
-Native code; needs an EAS build, and a new fingerprint means U9's rebuild again.
-
-### B23. Pomodoro mode
-- **Status:** HOLD — needs design. A mode of `timer/core.ts`: work/break intervals, a
-  notification on each transition. Open: interval lengths, and whether a work interval becomes a
-  Recording.
-
-### B24. Stop button on the foreground notification
-- **Status:** HOLD — needs design. The timer's Kotlin module can only start and stop its
-  notification; app code does not run while the phone is locked.
-
-### Follow-ups folded into Build 2c (added 2026-10-25; HOLD, settle in the design session)
-- **Mobile Recording delete needs a confirmation.** A long press on a Recording deletes it at
-  once, with no prompt or undo (`recordings.tsx` `onLongPress`); the server also drops its Time
-  Log and re-averages the Activity. The web app already confirms (`HomePage.tsx`).
-- **"Offline — showing nothing" shows on any query error**, including a 401
-  (`activities.tsx`). Should say Offline only when the device is; check Recordings and Schedule
-  for the same pattern.
-- **URL scheme** in `app.json` is still the template `mobile`; change to `stopwatchscheduler`
-  (native, rides 2c's rebuild).
-- **Mobile suite on a cold run**: once 9 failures cold, all green warm. Settle with
-  `npx jest --ci --clearCache` then a cold run before the loop starts.
-- **Dev-only Settings-gear nudge** in `(tabs)/_layout.tsx` (`__DEV__ ? spacing.xxl`): decide
-  whether to drop it and turn the Expo dev Tools button back on.
+  - [ ] All six pass on both clients where they apply; any failure recorded with the task it reopens

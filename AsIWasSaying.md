@@ -1,8 +1,14 @@
-# Standing Orders — Build 2b
+# Standing Orders — Build 2c
 
-Current as of 2026-10-15. Read this, then `prd.md`.
+Current as of 2026-10-29. Read this, then `prd.md`.
 
 ## 0. Pick up here
+
+**Build 2b is complete (2026-10-25)**: U9 and U10 passed; PRD archived at
+`docs/prd-build2b-completed.md`. **Build 2c is designed (2026-10-29)** and written as `prd.md`
+(D80–D91, U11, B47–B55, U12 rebuild, U13 gate): Pomodoro on both clients, an actionable phone
+notification, and the 2b follow-ups. Next: U11 (cold-run check), then run the loop. Python 3.12
+is a separate, deferred task with a verify-first plan.
 
 **Build 2a is code-complete, including the B12 follow-ups.** Every loop task in `prd.md` is
 DONE (47), none blocked. Verified 2026-10-03 against the final commit: backend 210, mobile 210

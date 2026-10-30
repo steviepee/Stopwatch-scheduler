@@ -32,6 +32,16 @@ _Avoid_: System time, `Date.now()` as a duration source
 **Clock jump**:
 A Recording whose monotonic and wall-clock spans disagree by more than a small tolerance, meaning the phone's clock moved while it ran.
 
+**Pomodoro run**:
+One sitting of paced, single-Activity work, from Start to Finish, alternating Work intervals and Breaks. The Activity is chosen before it starts. It produces one Recording whose duration is the total work time, carrying a summary of its intervals and breaks. A run lives on one device.
+_Avoid_: Pomodoro session (Session is the code name for a Recording), cycle
+
+**Work interval**:
+A stretch of work within a Pomodoro run. Its configured length is a target, not a cutoff: work continues to count until the user switches to a Break.
+
+**Break**:
+A rest between Work intervals within a Pomodoro run. A **Long break** replaces every Nth Break. Paused time counts as neither work nor break, and a Break still open when the run finishes is dropped.
+
 ### Planning
 
 **Schedule**:

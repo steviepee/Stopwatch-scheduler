@@ -273,3 +273,27 @@ quadrants, the Frog, peak hours, existing Blocks and Google events.
 - Does it learn over time ("you planned 6 hours of focus and did 3")? That leans on plan vs
   actual, above.
 - Does its output land as a draft the user edits, or straight onto the calendar?
+
+---
+
+## Pomodoro as its own mode
+
+**Raised:** 2026-10-29, Build 2c design (D80, D81).
+
+Build 2c saves a Pomodoro run as one ordinary Recording (total work time) with a three-field
+summary (work intervals, breaks, break seconds). That keeps Activity averages honest, but it
+flattens the run: individual interval lengths, when each break happened, and how the pattern
+changes over a day are lost.
+
+**What the user wants from it:** to know their actual Pomodoro workflow for future reference:
+typical work interval and typical break, per run and per Activity across runs.
+
+**Questions to settle**
+
+- Does a run get its own record (with its intervals as children), with the Recording derived
+  from it, or does the Recording stay the unit and the run hang off it?
+- Per-Activity rollups: average work interval and average break across runs, and where they
+  show (the Activity detail screen is the obvious place).
+- Should Pomodoro history inform Strategies or the planning coach (for example, splitting a
+  long Activity into intervals on the Schedule)?
+- Migrating Build 2c's summary fields into whatever replaces them.
