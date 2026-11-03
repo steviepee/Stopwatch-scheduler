@@ -64,6 +64,13 @@ describe('app.config.js', () => {
   });
 });
 
+// B52 (D89): the URL scheme is `stopwatchscheduler` in both variants.
+describe('URL scheme', () => {
+  it.each([undefined, 'development'])('is stopwatchscheduler (APP_VARIANT=%s)', (variant) => {
+    expect(loadConfig(variant).scheme).toBe('stopwatchscheduler');
+  });
+});
+
 describe('eas.json', () => {
   it('development profile sets APP_VARIANT=development', () => {
     expect(easJson.build.development.env).toEqual(

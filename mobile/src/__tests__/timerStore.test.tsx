@@ -14,14 +14,36 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 jest.mock('../timer/native', () => ({
   isNativeAvailable: () => false,
   elapsedRealtime: () => mockClock.mono,
-  startForegroundService: (startedAtElapsedMs: number) => mockStartService(startedAtElapsedMs),
+  startForegroundService: (...args: [number, ServiceOptions?]) => mockStartService(...args),
   stopForegroundService: () => mockStopService(),
   notifyPhaseDue: (phase: string) => mockNotifyPhaseDue(phase),
   drainActions: () => mockDrainActions(),
+  addTimerActionListener: (listener: () => void) => {
+    mockActionListeners.push(listener);
+    return {
+      remove: () => {
+        const index = mockActionListeners.indexOf(listener);
+        if (index >= 0) mockActionListeners.splice(index, 1);
+      },
+    };
+  },
 }));
 
+type ServiceOptions = {
+  paused?: boolean;
+  pomodoro?: {
+    phase: string;
+    phaseStartedAtElapsedMs: number;
+    phaseAccumulatedMs: number;
+    targetMs: number;
+  };
+};
+
 const mockClock = { mono: 1_000_000 };
-const mockStartService = jest.fn(async (startedAtElapsedMs: number) => {});
+const mockActionListeners: (() => void)[] = [];
+const mockStartService = jest.fn(
+  async (startedAtElapsedMs: number, options?: ServiceOptions) => {}
+);
 const mockStopService = jest.fn(async () => {});
 const mockNotifyPhaseDue = jest.fn((phase: string) => {});
 const mockDrainActions = jest.fn(
@@ -41,6 +63,7 @@ beforeEach(async () => {
   mockNotifyPhaseDue.mockClear();
   mockDrainActions.mockReset();
   mockDrainActions.mockReturnValue([]);
+  mockActionListeners.length = 0;
   await AsyncStorage.clear();
 });
 
@@ -49,6 +72,8 @@ afterEach(() => {
 });
 
 describe('useTimer transitions', () => {
+  // B52 (D88): pause keeps the notification. It re-calls the service with `{ paused: true }`
+  // and the same anchor (mono - elapsed); a running stopwatch passes the anchor alone.
   it('starts, pauses and resumes, driving the foreground service', async () => {
     const view = await mountTimer();
 
@@ -60,7 +85,8 @@ describe('useTimer transitions', () => {
     await act(async () => view.result.current.pause());
     expect(view.result.current.status).toBe('paused');
     expect(view.result.current.elapsedMs).toBe(4_000);
-    expect(mockStopService).toHaveBeenCalledTimes(1);
+    expect(mockStartService).toHaveBeenLastCalledWith(1_000_000, { paused: true });
+    expect(mockStopService).not.toHaveBeenCalled();
 
     mockClock.mono += 10_000;
     await act(async () => view.result.current.resume());
@@ -96,6 +122,7 @@ describe('useTimer transitions', () => {
     expect(recording?.durationSeconds).toBe(90);
     expect(recording?.startUtc).toMatch(/Z$/);
     expect(view.result.current.status).toBe('idle');
+    expect(mockStopService).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -528,6 +555,9 @@ describe('usePomodoro restore and native actions', () => {
 
   it('drains and applies queued actions when the app becomes active', async () => {
     const handlers: ((state: string) => void)[] = [];
+    // The preset's AppState.addEventListener is already a jest.fn, so mockRestore would strip
+    // its implementation (later mounts get `undefined` back); put the original back instead.
+    const original = (AppState.addEventListener as jest.Mock).getMockImplementation();
     const spy = jest.spyOn(AppState, 'addEventListener').mockImplementation((type, handler) => {
       if (type === 'change') handlers.push(handler as (state: string) => void);
       return { remove: jest.fn() } as never;
@@ -547,8 +577,253 @@ describe('usePomodoro restore and native actions', () => {
       expect(view.result.current.remainingMs).toBe(3 * MIN);
       await waitFor(async () => expect((await storedRun())?.phase).toBe('break'));
     } finally {
-      spy.mockRestore();
+      spy.mockImplementation(original as never);
     }
+  });
+});
+
+// B52 (D84, D88): the notification follows every transition of either hook.
+// - `startForegroundService(anchor, options?)` from `timer/native`; anchor = mono - the elapsed
+//   the notification shows (the stopwatch's elapsed, or the run's current-phase elapsed).
+//   During a run, `options.pomodoro` = { phase, phaseStartedAtElapsedMs (the phase's
+//   monoStart while running), phaseAccumulatedMs, targetMs }; `options.paused` is true only
+//   when paused. Called on start, pause, resume and every phase switch, and when a running
+//   run is restored. `stopForegroundService()` only on reset and finish.
+// - `addTimerActionListener(listener)` from `timer/native` returns `{ remove() }`. Each hook
+//   subscribes on mount; on the event, a hook that is not idle drains (`drainActions()`) and
+//   applies the actions at their own times. An idle hook does not drain, so it cannot eat the
+//   other hook's actions. The stopwatch applies pause/resume and ignores `switch`. The
+//   stopwatch also drains when it restores a non-idle timer.
+function lastServiceCall(): [number, ServiceOptions] {
+  const calls = mockStartService.mock.calls;
+  const [anchor, options] = calls[calls.length - 1];
+  return [anchor, options ?? {}];
+}
+
+async function fireTimerAction() {
+  await act(async () => [...mockActionListeners].forEach((listener) => listener()));
+}
+
+describe('usePomodoro drives the foreground service', () => {
+  it('start, pause, resume and each switch re-call the service with the run', async () => {
+    const view = await mountPomodoro();
+
+    await act(async () => view.result.current.start(CONFIG, { taskId: 7 }));
+    let [anchor, options] = lastServiceCall();
+    expect(anchor).toBe(1_000_000);
+    expect(options.paused).toBeFalsy();
+    expect(options.pomodoro).toEqual({
+      phase: 'work',
+      phaseStartedAtElapsedMs: 1_000_000,
+      phaseAccumulatedMs: 0,
+      targetMs: 25 * MIN,
+    });
+
+    mockClock.mono += 27 * MIN;
+    const switchedAt = mockClock.mono;
+    await act(async () => view.result.current.switchPhase());
+    [anchor, options] = lastServiceCall();
+    expect(anchor).toBe(switchedAt);
+    expect(options.paused).toBeFalsy();
+    expect(options.pomodoro).toEqual({
+      phase: 'break',
+      phaseStartedAtElapsedMs: switchedAt,
+      phaseAccumulatedMs: 0,
+      targetMs: 5 * MIN,
+    });
+
+    mockClock.mono += 2 * MIN;
+    await act(async () => view.result.current.pause());
+    [anchor, options] = lastServiceCall();
+    expect(anchor).toBe(mockClock.mono - 2 * MIN);
+    expect(options.paused).toBe(true);
+    expect(options.pomodoro).toEqual(
+      expect.objectContaining({ phase: 'break', phaseAccumulatedMs: 2 * MIN, targetMs: 5 * MIN })
+    );
+    expect(mockStopService).not.toHaveBeenCalled();
+
+    mockClock.mono += 10 * MIN;
+    const resumedAt = mockClock.mono;
+    await act(async () => view.result.current.resume());
+    [anchor, options] = lastServiceCall();
+    expect(anchor).toBe(resumedAt - 2 * MIN);
+    expect(options.paused).toBeFalsy();
+    expect(options.pomodoro).toEqual({
+      phase: 'break',
+      phaseStartedAtElapsedMs: resumedAt,
+      phaseAccumulatedMs: 2 * MIN,
+      targetMs: 5 * MIN,
+    });
+
+    mockClock.mono += MIN;
+    await act(async () => view.result.current.switchPhase());
+    expect(lastServiceCall()[1].pomodoro).toEqual(
+      expect.objectContaining({ phase: 'work', phaseAccumulatedMs: 0, targetMs: 25 * MIN })
+    );
+
+    for (let i = 0; i < 5; i += 1) {
+      mockClock.mono += MIN;
+      await act(async () => view.result.current.switchPhase());
+    }
+    expect(view.result.current.phase).toBe('longBreak');
+    expect(lastServiceCall()[1].pomodoro).toEqual({
+      phase: 'longBreak',
+      phaseStartedAtElapsedMs: mockClock.mono,
+      phaseAccumulatedMs: 0,
+      targetMs: 15 * MIN,
+    });
+    expect(mockStopService).not.toHaveBeenCalled();
+  });
+
+  it('reset stops the service', async () => {
+    const view = await mountPomodoro();
+    await act(async () => view.result.current.start(CONFIG, { taskId: 7 }));
+
+    await act(async () => view.result.current.reset());
+
+    expect(mockStopService).toHaveBeenCalledTimes(1);
+  });
+
+  it('finish stops the service', async () => {
+    const view = await mountPomodoro();
+    await act(async () => view.result.current.start(CONFIG, { taskId: 7 }));
+    mockClock.mono += 10 * MIN;
+
+    await act(async () => {
+      view.result.current.finish();
+    });
+
+    expect(mockStopService).toHaveBeenCalledTimes(1);
+  });
+
+  it('a restored running run re-arms the service with its phase', async () => {
+    await AsyncStorage.setItem(
+      POMODORO_STORAGE_KEY,
+      JSON.stringify({
+        status: 'running',
+        phase: 'work',
+        monoStart: 1_000_000,
+        accumulatedMs: 0,
+        workMs: 0,
+        breakMs: 0,
+        workIntervals: 0,
+        breaks: 0,
+        wallStart: Date.now() - 22 * MIN,
+        taskId: 7,
+        config: CONFIG,
+        reminded: false,
+      } satisfies PomodoroState)
+    );
+    mockClock.mono = 1_000_000 + 22 * MIN;
+
+    await mountPomodoro();
+
+    await waitFor(() => expect(mockStartService).toHaveBeenCalled());
+    const [anchor, options] = lastServiceCall();
+    expect(anchor).toBe(1_000_000);
+    expect(options.paused).toBeFalsy();
+    expect(options.pomodoro).toEqual({
+      phase: 'work',
+      phaseStartedAtElapsedMs: 1_000_000,
+      phaseAccumulatedMs: 0,
+      targetMs: 25 * MIN,
+    });
+    expect(mockStopService).not.toHaveBeenCalled();
+  });
+});
+
+describe('onTimerAction drains and applies the notification taps', () => {
+  it('usePomodoro applies a tapped switch and pause; the view matches', async () => {
+    const view = await mountPomodoro();
+    await act(async () => view.result.current.start(CONFIG, { taskId: 7 }));
+    expect(mockActionListeners.length).toBeGreaterThan(0);
+
+    mockDrainActions.mockReturnValueOnce([
+      { action: 'switch', atElapsedMs: 1_000_000 + 25 * MIN },
+      { action: 'pause', atElapsedMs: 1_000_000 + 26 * MIN },
+    ]);
+    mockClock.mono = 1_000_000 + 30 * MIN;
+    await fireTimerAction();
+
+    expect(mockDrainActions).toHaveBeenCalled();
+    expect(view.result.current.status).toBe('paused');
+    expect(view.result.current.phase).toBe('break');
+    expect(view.result.current.totalWorkMs).toBe(25 * MIN);
+    expect(view.result.current.remainingMs).toBe(4 * MIN);
+    await waitFor(async () => expect((await storedRun())?.status).toBe('paused'));
+
+    mockDrainActions.mockReturnValueOnce([{ action: 'resume', atElapsedMs: 1_000_000 + 31 * MIN }]);
+    mockClock.mono = 1_000_000 + 32 * MIN;
+    await fireTimerAction();
+
+    expect(view.result.current.status).toBe('running');
+    expect(view.result.current.remainingMs).toBe(3 * MIN);
+  });
+
+  it('useTimer applies tapped pause and resume at their own times and ignores switch', async () => {
+    const view = await mountTimer();
+    await act(async () => view.result.current.start());
+    expect(mockActionListeners.length).toBeGreaterThan(0);
+
+    mockDrainActions.mockReturnValueOnce([{ action: 'pause', atElapsedMs: 1_004_000 }]);
+    mockClock.mono = 1_010_000;
+    await fireTimerAction();
+    expect(view.result.current.status).toBe('paused');
+    expect(view.result.current.elapsedMs).toBe(4_000);
+    await waitFor(async () => {
+      const raw = (await AsyncStorage.getItem(TIMER_STORAGE_KEY)) as string;
+      expect(JSON.parse(raw).status).toBe('paused');
+    });
+
+    mockDrainActions.mockReturnValueOnce([
+      { action: 'resume', atElapsedMs: 1_012_000 },
+      { action: 'switch', atElapsedMs: 1_013_000 },
+    ]);
+    mockClock.mono = 1_015_000;
+    await fireTimerAction();
+    expect(view.result.current.status).toBe('running');
+    expect(view.result.current.elapsedMs).toBe(7_000);
+  });
+
+  it('useTimer drains when it restores a running timer', async () => {
+    await AsyncStorage.setItem(
+      TIMER_STORAGE_KEY,
+      JSON.stringify({
+        status: 'running',
+        wallStart: Date.now() - 9_000,
+        monoStart: 1_000_000,
+        accumulatedMs: 0,
+      } satisfies PersistedTimerState)
+    );
+    mockClock.mono = 1_009_000;
+    mockDrainActions.mockReturnValueOnce([{ action: 'pause', atElapsedMs: 1_003_000 }]);
+
+    const view = await mountTimer();
+
+    expect(mockDrainActions).toHaveBeenCalled();
+    expect(view.result.current.status).toBe('paused');
+    expect(view.result.current.elapsedMs).toBe(3_000);
+  });
+
+  it('idle hooks do not drain the queue', async () => {
+    await mountTimer();
+    await mountPomodoro();
+    expect(mockActionListeners.length).toBeGreaterThanOrEqual(2);
+
+    await fireTimerAction();
+
+    expect(mockDrainActions).not.toHaveBeenCalled();
+  });
+
+  it('unmounting removes the listeners', async () => {
+    const timer = await mountTimer();
+    const run = await mountPomodoro();
+    expect(mockActionListeners.length).toBeGreaterThanOrEqual(2);
+
+    await timer.unmount();
+    await run.unmount();
+
+    expect(mockActionListeners).toHaveLength(0);
   });
 });
 

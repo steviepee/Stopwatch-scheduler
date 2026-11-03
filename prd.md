@@ -255,7 +255,7 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
   - [x] All B51.tests pass; mobile suite, tsc, and export pass
 
 ### B52.tests — Mobile: notification actions and the Pomodoro notification
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D84, D88, D89 (scheme). Extend `native.test.ts`, `timerStore.test.tsx` and
   `appConfig.test.ts`. The Kotlin itself is checked on device (U12, U13).
 - **Contract (the native API, in `TimerNative.types.ts`):**
@@ -281,11 +281,11 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
   same reminder when the app is in front.
   - `app.json` `scheme` becomes `stopwatchscheduler`.
 - **Acceptance Criteria:**
-  - [ ] Test: pause calls `startForegroundService` with `paused: true` and does not stop the service; reset and finish stop it
-  - [ ] Test: during a run, each phase switch re-calls `startForegroundService` with the new `pomodoro` options
-  - [ ] Test: an `onTimerAction` event drains and applies the actions; the displayed state matches
-  - [ ] Test: with the native module absent, every call is a no-op and the timer still works
-  - [ ] Test: `app.json` scheme is `stopwatchscheduler` for both variants
+  - [x] Test: pause calls `startForegroundService` with `paused: true` and does not stop the service; reset and finish stop it
+  - [x] Test: during a run, each phase switch re-calls `startForegroundService` with the new `pomodoro` options
+  - [x] Test: an `onTimerAction` event drains and applies the actions; the displayed state matches
+  - [x] Test: with the native module absent, every call is a no-op and the timer still works
+  - [x] Test: `app.json` scheme is `stopwatchscheduler` for both variants
 
 ### B52.impl — Mobile: notification actions and the Pomodoro notification
 - **Status:** PENDING
