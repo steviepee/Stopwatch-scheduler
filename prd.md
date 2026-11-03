@@ -334,7 +334,7 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
   - [x] All B54.tests pass; web tsc clean; `npm run build` succeeds
 
 ### B55.tests — Web: Pomodoro on the stopwatch card
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D81, D82, D84–D87. Extend `Stopwatch.test.tsx` and `SessionList.test.tsx`.
 - **Contract:** A pure `frontend/src/utils/pomodoro.ts` with B49's functions and rules (copy and
   adapt; there is no shared package; `Date.now()` is the clock). On the stopwatch card, B51's
@@ -345,12 +345,12 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
   on the first run's Start; skipped silently if denied) and a short tone through `AudioContext`.
   **Persistence:** the run is saved to `localStorage` (`pomodoro.state`) and restored on mount.
 - **Acceptance Criteria:**
-  - [ ] Test: `utils/pomodoro.ts` passes the same cases as B49 (phases, long break, pause, finish rules)
-  - [ ] Test: Start is disabled until an Activity is chosen; the mode switch is locked while running
-  - [ ] Test: past the target, `+m:ss over` shows and `Notification` is constructed once
-  - [ ] Test: Finish sends total work and the three fields
-  - [ ] Test: a stored run restores on remount
-  - [ ] Test: `SessionList` shows the Pomodoro summary line
+  - [x] Test: `utils/pomodoro.ts` passes the same cases as B49 (phases, long break, pause, finish rules)
+  - [x] Test: Start is disabled until an Activity is chosen; the mode switch is locked while running
+  - [x] Test: past the target, `+m:ss over` shows and `Notification` is constructed once
+  - [x] Test: Finish sends total work and the three fields
+  - [x] Test: a stored run restores on remount
+  - [x] Test: `SessionList` shows the Pomodoro summary line
 
 ### B55.impl — Web: Pomodoro on the stopwatch card
 - **Status:** PENDING

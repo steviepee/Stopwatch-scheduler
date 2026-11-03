@@ -306,3 +306,77 @@ describe('recording actions (B38, D78)', () => {
     await waitFor(() => expect(screen.getByTestId('session-activity-12')).toHaveTextContent('Reading'));
   });
 });
+
+// B55 contract (D81, web parity with mobile's B51 Recordings row): a Recording with
+// `pomodoro_work_intervals` shows `session-pomodoro-<id>` under its name reading
+// `Pomodoro · N × avg Xm work · avg break Ym`, X = round(duration / N / 60) and
+// Y = round(pomodoro_break_seconds / pomodoro_breaks / 60). The ` · avg break Ym` part is
+// omitted when `pomodoro_breaks` is 0. A plain Recording has no such element.
+describe('Pomodoro summary line (B55, D81)', () => {
+  const POMODORO_SESSION = {
+    id: 30,
+    name: 'Scales',
+    duration: 4500,
+    task_id: 3,
+    pomodoro_work_intervals: 3,
+    pomodoro_breaks: 2,
+    pomodoro_break_seconds: 600,
+    created_at: '2026-11-03T09:00:00',
+    updated_at: '2026-11-03T09:00:00',
+  } as StopwatchSession;
+
+  const NO_BREAK_SESSION = {
+    id: 31,
+    name: 'Etudes',
+    duration: 1500,
+    pomodoro_work_intervals: 1,
+    pomodoro_breaks: 0,
+    pomodoro_break_seconds: 0,
+    created_at: '2026-11-03T10:00:00',
+    updated_at: '2026-11-03T10:00:00',
+  } as StopwatchSession;
+
+  const PLAIN_SESSION = {
+    id: 32,
+    name: 'Walk',
+    duration: 600,
+    pomodoro_work_intervals: null,
+    pomodoro_breaks: null,
+    pomodoro_break_seconds: null,
+    created_at: '2026-11-03T11:00:00',
+    updated_at: '2026-11-03T11:00:00',
+  } as StopwatchSession;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function renderRows() {
+    render(
+      <SessionList
+        sessions={[POMODORO_SESSION, NO_BREAK_SESSION, PLAIN_SESSION]}
+        onDeleteSession={vi.fn()}
+        onUpdateSession={vi.fn()}
+      />
+    );
+  }
+
+  it('shows the Pomodoro summary with the average break', () => {
+    renderRows();
+    expect(screen.getByTestId('session-pomodoro-30')).toHaveTextContent(
+      'Pomodoro · 3 × avg 25m work · avg break 5m'
+    );
+  });
+
+  it('omits the average break when there were no breaks', () => {
+    renderRows();
+    const line = screen.getByTestId('session-pomodoro-31');
+    expect(line).toHaveTextContent('Pomodoro · 1 × avg 25m work');
+    expect(line).not.toHaveTextContent('avg break');
+  });
+
+  it('a plain Recording has no summary line', () => {
+    renderRows();
+    expect(screen.queryByTestId('session-pomodoro-32')).not.toBeInTheDocument();
+  });
+});
