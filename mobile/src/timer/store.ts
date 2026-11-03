@@ -5,6 +5,7 @@ import { AppState } from 'react-native';
 import * as core from './core';
 import type { Clocks, FinishedRecording, PersistedTimerState, TimerState } from './core';
 import {
+  addTimerActionListener,
   drainActions,
   elapsedRealtime,
   notifyPhaseDue,
@@ -46,10 +47,36 @@ function serviceAnchor(state: TimerState): number {
   return clocks.mono() - core.elapsedMs(state, clocks);
 }
 
+function syncService(state: TimerState): void {
+  if (state.status === 'running') {
+    void startForegroundService(serviceAnchor(state));
+  } else if (state.status === 'paused') {
+    void startForegroundService(serviceAnchor(state), { paused: true });
+  }
+}
+
+function drainTimer(state: TimerState): TimerState {
+  const actions = drainActions();
+  return actions.reduce((current, { action, atElapsedMs }) => {
+    const at: Clocks = { wall: clocks.wall, mono: () => atElapsedMs };
+    if (action === 'pause' && current.status === 'running') return core.pause(current, at);
+    if (action === 'resume' && current.status === 'paused') return core.resume(current, at);
+    return current;
+  }, state);
+}
+
 export function useTimer() {
   const [state, setState] = useState<TimerState>(core.IDLE_STATE);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [hydrated, setHydrated] = useState(false);
+  const stateRef = useRef<TimerState>(core.IDLE_STATE);
+
+  const apply = useCallback((next: TimerState) => {
+    stateRef.current = next;
+    setState(next);
+    setElapsedMs(core.elapsedMs(next, clocks));
+    persist(next);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,19 +85,36 @@ export function useTimer() {
       if (cancelled) return;
       if (raw) {
         const restored = core.restore(JSON.parse(raw) as PersistedTimerState, clocks);
-        setState(restored);
-        setElapsedMs(core.elapsedMs(restored, clocks));
-        if (restored.status === 'running') {
-          void startForegroundService(serviceAnchor(restored));
+        const next = restored.status === 'idle' ? restored : drainTimer(restored);
+        if (next !== restored) {
+          apply(next);
+          syncService(next);
+        } else {
+          stateRef.current = restored;
+          setState(restored);
+          setElapsedMs(core.elapsedMs(restored, clocks));
+          if (restored.status === 'running') {
+            void startForegroundService(serviceAnchor(restored));
+          }
         }
       }
       setHydrated(true);
     });
 
+    const subscription = addTimerActionListener(() => {
+      const current = stateRef.current;
+      if (current.status === 'idle') return;
+      const next = drainTimer(current);
+      if (next === current) return;
+      apply(next);
+      syncService(next);
+    });
+
     return () => {
       cancelled = true;
+      subscription.remove();
     };
-  }, []);
+  }, [apply]);
 
   useEffect(() => {
     if (state.status !== 'running') return;
@@ -79,27 +123,22 @@ export function useTimer() {
     return () => clearInterval(id);
   }, [state]);
 
-  const apply = useCallback((next: TimerState) => {
-    setState(next);
-    setElapsedMs(core.elapsedMs(next, clocks));
-    persist(next);
-  }, []);
-
   const start = useCallback(() => {
     const next = core.start(state, clocks);
     apply(next);
-    void startForegroundService(serviceAnchor(next));
+    syncService(next);
   }, [state, apply]);
 
   const pause = useCallback(() => {
-    apply(core.pause(state, clocks));
-    void stopForegroundService();
+    const next = core.pause(state, clocks);
+    apply(next);
+    syncService(next);
   }, [state, apply]);
 
   const resume = useCallback(() => {
     const next = core.resume(state, clocks);
     apply(next);
-    void startForegroundService(serviceAnchor(next));
+    syncService(next);
   }, [state, apply]);
 
   const reset = useCallback(() => {
@@ -134,41 +173,82 @@ function drainInto(run: PomodoroState): PomodoroState {
   );
 }
 
+function syncRunService(run: PomodoroState | null): void {
+  if (run === null) {
+    void stopForegroundService();
+    return;
+  }
+  const view = pomodoro.phaseView(run, clocks);
+  const anchor = clocks.mono() - view.elapsedMs;
+  const options = {
+    pomodoro: {
+      phase: run.phase,
+      phaseStartedAtElapsedMs: run.monoStart ?? anchor,
+      phaseAccumulatedMs: run.accumulatedMs,
+      targetMs: view.targetMs,
+    },
+  };
+  void startForegroundService(
+    anchor,
+    run.status === 'paused' ? { paused: true, ...options } : options
+  );
+}
+
 export function usePomodoro() {
   const [run, setRun] = useState<PomodoroState | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [, setTick] = useState(0);
   const runRef = useRef<PomodoroState | null>(null);
 
-  const apply = useCallback((next: PomodoroState | null) => {
+  const store = useCallback((next: PomodoroState | null) => {
     runRef.current = next;
     setRun(next);
     persistRun(next);
   }, []);
 
+  const apply = useCallback(
+    (next: PomodoroState | null) => {
+      store(next);
+      syncRunService(next);
+    },
+    [store]
+  );
+
   useEffect(() => {
     let cancelled = false;
+
+    const drainCurrent = () => {
+      const current = runRef.current;
+      if (current === null) return;
+      const next = drainInto(current);
+      if (next !== current) apply(next);
+    };
 
     void AsyncStorage.getItem(POMODORO_STORAGE_KEY).then((raw) => {
       if (cancelled) return;
       if (raw) {
-        apply(drainInto(pomodoro.restoreRun(JSON.parse(raw) as PomodoroState, clocks)));
+        const restored = pomodoro.restoreRun(JSON.parse(raw) as PomodoroState, clocks);
+        const next = drainInto(restored);
+        if (next !== restored || next.status === 'running') {
+          apply(next);
+        } else {
+          store(next);
+        }
       }
       setHydrated(true);
     });
 
-    const subscription = AppState.addEventListener('change', (appState) => {
-      const current = runRef.current;
-      if (appState !== 'active' || current === null) return;
-      const next = drainInto(current);
-      if (next !== current) apply(next);
+    const appStateSubscription = AppState.addEventListener('change', (appState) => {
+      if (appState === 'active') drainCurrent();
     });
+    const actionSubscription = addTimerActionListener(drainCurrent);
 
     return () => {
       cancelled = true;
-      subscription.remove();
+      appStateSubscription.remove();
+      actionSubscription.remove();
     };
-  }, [apply]);
+  }, [apply, store]);
 
   useEffect(() => {
     if (run?.status !== 'running') return;
@@ -177,13 +257,13 @@ export function usePomodoro() {
       const current = runRef.current;
       if (current && pomodoro.reminderDue(current, clocks)) {
         notifyPhaseDue(current.phase);
-        apply(pomodoro.markReminded(current));
+        store(pomodoro.markReminded(current));
       } else {
         setTick((tick) => tick + 1);
       }
     }, 1000);
     return () => clearInterval(id);
-  }, [run, apply]);
+  }, [run, store]);
 
   const start = useCallback(
     (config: PomodoroConfig, activity: PomodoroActivity) => {

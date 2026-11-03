@@ -288,14 +288,14 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
   - [x] Test: `app.json` scheme is `stopwatchscheduler` for both variants
 
 ### B52.impl — Mobile: notification actions and the Pomodoro notification
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement the JS to the contract and the Kotlin in
   `modules/timer-native/android/` (`TimerNativeModule.kt`, `TimerForegroundService.kt`;
   `ios/` untouched beyond stubs that keep it compiling). Change the scheme. This changes the
   native fingerprint: nothing after it reaches the phone until U12.
 - **Acceptance Criteria:**
-  - [ ] All B52.tests pass; mobile suite, tsc, and export pass
-  - [ ] Kotlin reviewed against the existing service: same imports style, immutable PendingIntents, no new dependencies
+  - [x] All B52.tests pass; mobile suite, tsc, and export pass
+  - [x] Kotlin reviewed against the existing service: same imports style, immutable PendingIntents, no new dependencies
 
 ### B53.tests — Web: the stopwatch survives a reload
 - **Status:** PENDING

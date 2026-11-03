@@ -19,18 +19,52 @@ class TimerNativeModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("TimerNative")
 
+    Events("onTimerAction")
+
+    OnCreate {
+      TimerForegroundService.onAction = { sendEvent("onTimerAction") }
+    }
+
+    OnDestroy {
+      TimerForegroundService.onAction = null
+    }
+
     Function("elapsedRealtime") {
       SystemClock.elapsedRealtime().toDouble()
     }
 
-    Function("startForegroundService") { startedAtElapsedMs: Double ->
+    Function("startForegroundService") { startedAtElapsedMs: Double, options: Map<String, Any?>? ->
+      val startedAt = startedAtElapsedMs.toLong()
+      val paused = options?.get("paused") == true
+      val pomodoro = options?.get("pomodoro") as? Map<*, *>
       val intent = Intent(context, TimerForegroundService::class.java)
-      intent.putExtra(TimerForegroundService.EXTRA_STARTED_AT, startedAtElapsedMs.toLong())
+      intent.putExtra(TimerForegroundService.EXTRA_STARTED_AT, startedAt)
+      intent.putExtra(TimerForegroundService.EXTRA_PAUSED, paused)
+      if (pomodoro != null) {
+        intent.putExtra(TimerForegroundService.EXTRA_PHASE, pomodoro["phase"] as? String ?: "work")
+        intent.putExtra(
+          TimerForegroundService.EXTRA_TARGET,
+          (pomodoro["targetMs"] as? Number)?.toLong() ?: 0L
+        )
+      }
+      if (paused) {
+        val pausedElapsed = (pomodoro?.get("phaseAccumulatedMs") as? Number)?.toLong()
+          ?: (SystemClock.elapsedRealtime() - startedAt)
+        intent.putExtra(TimerForegroundService.EXTRA_PAUSED_ELAPSED, pausedElapsed)
+      }
       ContextCompat.startForegroundService(context, intent)
     }
 
     Function("stopForegroundService") {
       context.stopService(Intent(context, TimerForegroundService::class.java))
+    }
+
+    Function("drainActions") {
+      TimerForegroundService.drainActions(context)
+    }
+
+    Function("notifyPhaseDue") { phase: String ->
+      TimerForegroundService.postReminder(context, phase)
     }
 
     AsyncFunction("requestNotificationPermissionAsync") { promise: Promise ->
