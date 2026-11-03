@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Task, TaskCreate, TaskUpdate, TaskStats, TimeLogCreate, TimeLog, StopwatchSession, StopwatchSessionCreate, StopwatchSessionUpdate, StopwatchSessionWithTask, Schedule, ScheduleCreate, ScheduleUpdate, ScheduleItem, ScheduleItemCreate, ScheduleItemUpdate, ScheduleItemPlace, ApplyRegimen, GenerateRequest, GenerateResponse, PeakHoursResponse } from '../types';
+import { Task, TaskCreate, TaskUpdate, TaskStats, TimeLogCreate, TimeLog, StopwatchSession, StopwatchSessionCreate, StopwatchSessionUpdate, StopwatchSessionWithTask, Schedule, ScheduleCreate, ScheduleUpdate, ScheduleItem, ScheduleItemCreate, ScheduleItemUpdate, ScheduleItemPlace, ApplyRegimen, GenerateRequest, GenerateResponse, PeakHoursResponse, PomodoroSettings } from '../types';
 import { getApiUrl, getToken } from './auth';
 
 const api = axios.create({
@@ -217,6 +217,19 @@ export const insightsAPI = {
 export const calendarImportAPI = {
   getEvents: async (date: string): Promise<{ id?: string; summary: string; start: string; end: string }[]> => {
     const response = await api.get('/auth/calendar/events', { params: { date, tz_offset: new Date().getTimezoneOffset() } });
+    return response.data;
+  },
+};
+
+// Settings APIs
+export const settingsAPI = {
+  getPomodoro: async (): Promise<PomodoroSettings> => {
+    const response = await api.get('/settings/pomodoro');
+    return response.data;
+  },
+
+  updatePomodoro: async (settings: PomodoroSettings): Promise<PomodoroSettings> => {
+    const response = await api.put('/settings/pomodoro', settings);
     return response.data;
   },
 };

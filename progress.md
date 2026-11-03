@@ -1807,3 +1807,16 @@ Each iteration appends its results here so the next session knows what worked, w
   - `finishRun.clockJumpDetected` must come from the state flag only. Core's wall-vs-duration check would flag every run with breaks or pauses.
   - `pomodoroWorkIntervals` counts the open Work interval only if it has elapsed > 0 (a zero-length open interval is not tested either way).
   - Run jest from `mobile/` as a separate `cd` call. `cd mobile && npx jest ... > file` needs approval, and a bare `npx jest` from the repo root fetches jest 30 from npm and finds no config.
+
+## B49.impl. Mobile: Pomodoro run core
+- **Date:** 2026-11-02
+- **Status:** DONE
+- **Summary:** Added the pure module `mobile/src/timer/pomodoro.ts`, which exports startRun, switchPhase, pauseRun, resumeRun, phaseView, reminderDue, markReminded, canFinish, finishRun, applyActions and restoreRun, and types the state as the test header pins it. It also exports `PomodoroPhase`, `PomodoroActivity`, `PomodoroAction`, `PhaseView` and `FinishedPomodoro` (FinishedRecording plus the three `pomodoro*` fields). The optional `pomodoro_*` fields were added to `StopwatchSession` (nullable) and `StopwatchSessionCreate`, along with a `PomodoroSettings` interface and `settingsAPI.getPomodoro`/`updatePomodoro` (`/settings/pomodoro`, no trailing slash, matching the backend route).
+- **Files changed:** mobile/src/timer/pomodoro.ts, mobile/src/types/index.ts, mobile/src/services/api.ts, prd.md, progress.md
+- **Verification:** from `mobile/`: `npx jest --ci` gave 18 suites and 286/286 passed. `npx tsc --noEmit` exited 0. `npx expo export --platform android` succeeded ("Exported: dist").
+- **Gotchas:**
+  - `resumeRun` returns the state unchanged when it is already running, so a duplicated native `resume` tap can't reset `monoStart` and lose time. `pauseRun` on a paused state is naturally a no-op.
+  - `pomodoro.ts` imports only types from `./core`. The purity test rejects any import path containing "native", so B51 must keep native calls in `store.ts`/`native.ts`, not here.
+  - After a reboot, a *paused* run restores as-is (its accumulated time is kept). Only a running run takes its phase elapsed from the wall clock.
+  - The backend `PomodoroSettings` response has no `id`, so the TS interface has only the four snake_case fields. The store has to map them to `PomodoroConfig`'s camelCase.
+  - Running git with `cd <repo> && git ...` needs approval. Run git from `mobile/` (the cwd) with `../` paths instead.

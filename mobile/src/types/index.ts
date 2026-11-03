@@ -44,6 +44,9 @@ export interface StopwatchSession {
   notes?: string;
   start_time?: string;
   end_time?: string;
+  pomodoro_work_intervals?: number | null;
+  pomodoro_breaks?: number | null;
+  pomodoro_break_seconds?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -56,6 +59,9 @@ export interface StopwatchSessionCreate {
   notes?: string;
   start_time?: string;
   end_time?: string;
+  pomodoro_work_intervals?: number;
+  pomodoro_breaks?: number;
+  pomodoro_break_seconds?: number;
 }
 
 export interface StopwatchSessionUpdate {
@@ -220,4 +226,11 @@ export interface GenerateResponse {
 
 export interface PeakHoursResponse {
   peak_hour: number | null;
+}
+
+export interface PomodoroSettings {
+  work_minutes: number;
+  break_minutes: number;
+  long_break_minutes: number;
+  long_break_every: number;
 }

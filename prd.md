@@ -181,13 +181,13 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
   - [x] Test: restore after a reboot keeps closed totals and flags a clock jump
 
 ### B49.impl — Mobile: Pomodoro run core
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement `mobile/src/timer/pomodoro.ts` to the contract. Add
   `pomodoro_work_intervals`, `pomodoro_breaks`, `pomodoro_break_seconds` (optional) to
   `StopwatchSession` and `StopwatchSessionCreate` in `mobile/src/types`, and a
   `settingsAPI.getPomodoro` / `updatePomodoro` pair in `services/api.ts`.
 - **Acceptance Criteria:**
-  - [ ] All B49.tests pass; mobile suite, tsc, and export pass
+  - [x] All B49.tests pass; mobile suite, tsc, and export pass
 
 ### B50.tests — Mobile: Pomodoro lengths in Settings
 - **Status:** PENDING
