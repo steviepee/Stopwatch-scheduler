@@ -1932,3 +1932,11 @@ Each iteration appends its results here so the next session knows what worked, w
   - Inputs are disabled until the load succeeds. On failure they keep the defaults and Save stays disabled. Validation should accept whole numbers only (`/^\d+$/`).
   - `HomePage` mounts `OptionsPage` only on the Options tab, so `ScheduleBuilder.test.tsx`'s api mock (no `settingsAPI`) isn't affected. Keep it that way.
   - `cd dir && cmd > file` was rejected by the sandbox. Run `cd` alone first, then the redirected command.
+
+## B54.impl. Web: Pomodoro lengths in Options
+- **Date:** 2026-11-03
+- **Status:** DONE
+- **Summary:** `OptionsPage.tsx` gains a Pomodoro section, mirroring mobile's `settings.tsx`. It fetches `settingsAPI.getPomodoro()` in a `useEffect` with status loading/loaded/error, and shows four number inputs plus a Save button. Save is disabled unless the settings loaded, every value is a whole number in range, and no save is in flight. A failed load keeps the defaults with the inputs disabled and shows "Couldn't load". Save sends the four values as numbers. A failed save shows "Couldn't save" instead of rejecting unhandled.
+- **Files changed:** frontend/src/components/OptionsPage.tsx, prd.md, progress.md
+- **Verification:** from `frontend/`: `npx vitest run` gave 138/138 passed, `npx tsc --noEmit` exited 0, and `npm run build` succeeded.
+- **Gotchas:** The inputs are `type="number"` with the value held as a string, so the `/^\d+$/` check also catches an empty field (the browser reports an unparseable value as `''`). The "Couldn't save" text isn't covered by tests; mobile has no equivalent.

@@ -1,5 +1,6 @@
-import { useRef } from 'react';
-import { UserOptions } from '../types';
+import { useEffect, useRef, useState } from 'react';
+import { PomodoroSettings, UserOptions } from '../types';
+import { settingsAPI } from '../services/api';
 
 interface OptionsPageProps {
   options: UserOptions;
@@ -12,8 +13,71 @@ const BACKGROUND_PRESETS = [
   { label: 'None (solid dark)', value: null },
 ];
 
+type PomodoroKey = keyof PomodoroSettings;
+
+const POMODORO_DEFAULTS: PomodoroSettings = {
+  work_minutes: 25,
+  break_minutes: 5,
+  long_break_minutes: 15,
+  long_break_every: 4,
+};
+
+const POMODORO_FIELDS: { key: PomodoroKey; label: string; testId: string; max: number }[] = [
+  { key: 'work_minutes', label: 'Work (minutes)', testId: 'pomodoro-work', max: 180 },
+  { key: 'break_minutes', label: 'Break (minutes)', testId: 'pomodoro-break', max: 180 },
+  { key: 'long_break_minutes', label: 'Long break (minutes)', testId: 'pomodoro-long-break', max: 180 },
+  { key: 'long_break_every', label: 'Long break every', testId: 'pomodoro-long-every', max: 12 },
+];
+
+function toFields(settings: PomodoroSettings): Record<PomodoroKey, string> {
+  return {
+    work_minutes: String(settings.work_minutes),
+    break_minutes: String(settings.break_minutes),
+    long_break_minutes: String(settings.long_break_minutes),
+    long_break_every: String(settings.long_break_every),
+  };
+}
+
+function inRange(value: string, max: number) {
+  return /^\d+$/.test(value) && Number(value) >= 1 && Number(value) <= max;
+}
+
 export default function OptionsPage({ options, onChange, onSignOut }: OptionsPageProps) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [pomodoro, setPomodoro] = useState(toFields(POMODORO_DEFAULTS));
+  const [pomodoroStatus, setPomodoroStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
+  const [pomodoroSaving, setPomodoroSaving] = useState(false);
+  const [pomodoroSaveFailed, setPomodoroSaveFailed] = useState(false);
+
+  useEffect(() => {
+    settingsAPI.getPomodoro()
+      .then(data => {
+        setPomodoro(toFields(data));
+        setPomodoroStatus('loaded');
+      })
+      .catch(() => setPomodoroStatus('error'));
+  }, []);
+
+  const pomodoroValid = POMODORO_FIELDS.every(f => inRange(pomodoro[f.key], f.max));
+  const pomodoroSaveDisabled = pomodoroStatus !== 'loaded' || !pomodoroValid || pomodoroSaving;
+
+  const savePomodoro = async () => {
+    setPomodoroSaving(true);
+    try {
+      const saved = await settingsAPI.updatePomodoro({
+        work_minutes: Number(pomodoro.work_minutes),
+        break_minutes: Number(pomodoro.break_minutes),
+        long_break_minutes: Number(pomodoro.long_break_minutes),
+        long_break_every: Number(pomodoro.long_break_every),
+      });
+      setPomodoro(toFields(saved));
+      setPomodoroSaveFailed(false);
+    } catch {
+      setPomodoroSaveFailed(true);
+    } finally {
+      setPomodoroSaving(false);
+    }
+  };
 
   const toggle = (key: keyof Pick<UserOptions, 'showAverage' | 'showMedian' | 'showPrevious'>) => {
     onChange({ ...options, [key]: !options[key] });
@@ -121,6 +185,47 @@ export default function OptionsPage({ options, onChange, onSignOut }: OptionsPag
               </div>
             )}
         </div>
+      </section>
+
+      {/* Pomodoro lengths */}
+      <section className="space-y-3">
+        <h3 className="text-white/60 text-xs uppercase tracking-wider">Pomodoro</h3>
+        {pomodoroStatus === 'error' && <p className="text-white/50 text-xs">Couldn't load</p>}
+        <div className="space-y-2">
+          {POMODORO_FIELDS.map(f => (
+            <label key={f.key} className="block glass-inner rounded-xl px-4 py-3">
+              <div className="flex items-center gap-3">
+                <span className="text-white text-sm flex-1">{f.label}</span>
+                <input
+                  data-testid={f.testId}
+                  type="number"
+                  min={1}
+                  max={f.max}
+                  value={pomodoro[f.key]}
+                  onChange={e => {
+                    const value = e.target.value;
+                    setPomodoro(prev => ({ ...prev, [f.key]: value }));
+                  }}
+                  disabled={pomodoroStatus !== 'loaded'}
+                  className="w-20 bg-white/10 text-white rounded-lg px-2 py-1 text-sm disabled:opacity-40"
+                />
+              </div>
+              {!inRange(pomodoro[f.key], f.max) && (
+                <div className="text-red-300 text-xs mt-1">{`1–${f.max}`}</div>
+              )}
+            </label>
+          ))}
+        </div>
+        {pomodoroSaveFailed && <p className="text-red-300 text-xs">Couldn't save</p>}
+        <button
+          type="button"
+          data-testid="pomodoro-save"
+          onClick={savePomodoro}
+          disabled={pomodoroSaveDisabled}
+          className="glass-button px-4 py-3 rounded-xl text-sm disabled:opacity-40"
+        >
+          Save
+        </button>
       </section>
 
       {onSignOut && (

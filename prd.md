@@ -328,10 +328,10 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
   - [x] Test: out-of-range disables Save; load failure → defaults, Save disabled
 
 ### B54.impl — Web: Pomodoro lengths in Options
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
-  - [ ] All B54.tests pass; web tsc clean; `npm run build` succeeds
+  - [x] All B54.tests pass; web tsc clean; `npm run build` succeeds
 
 ### B55.tests — Web: Pomodoro on the stopwatch card
 - **Status:** PENDING
