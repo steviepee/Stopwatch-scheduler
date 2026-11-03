@@ -1964,3 +1964,8 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Files changed:** frontend/src/utils/pomodoro.ts, frontend/src/components/Stopwatch.tsx, frontend/src/components/SessionList.tsx, prd.md, progress.md
 - **Verification:** from `frontend/`: `npx vitest run` gave 185/185 passed, `npx tsc --noEmit` exited 0, and `npm run build` succeeded.
 - **Gotchas:** Finish snapshots `finishRun` into state when it's clicked, so the saved duration doesn't grow while the modal is open. Cancel drops the snapshot and the run carries on. "Add to Activity" from a finished run also uses the snapshot's duration and ends the run. The sandbox rejected `$?` in a Bash command ("variable can't be checked"); use `&& echo OK || echo FAIL` instead.
+
+## U11. Settle the mobile suite on a cold run
+- **Date:** 2026-11-03
+- **Status:** DONE
+- **Summary:** Run after the loop rather than before it. Metro stopped, `npx jest --ci --clearCache`, then a cold `npx jest --ci`: exit 0, 18/18 suites, 343/343 tests, 28.5 s. The earlier cold-run failures did not recur.

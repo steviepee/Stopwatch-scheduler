@@ -66,7 +66,7 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
 ## Tasks
 
 ### U11. USER — Settle the mobile suite on a cold run
-- **Status:** USER
+- **Status:** DONE
 - **Description:** Before the loop. Every Ralph iteration runs the mobile suite cold, and it once
   reported 9 failures cold that passed warm. In an Ubuntu tab, with Metro stopped:
   ```bash
@@ -77,7 +77,7 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
   `exit 0` with every suite passed → done. Anything else: send the tail to Claude before
   starting the loop.
 - **Acceptance Criteria:**
-  - [ ] A cold run exits 0, or its failures are fixed or recorded before the loop starts
+  - [x] A cold run exits 0, or its failures are fixed or recorded before the loop starts
 
 ### B47.tests — Mobile: follow-ups (delete confirm, load errors, gear nudge)
 - **Status:** DONE
