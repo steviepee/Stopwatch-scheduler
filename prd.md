@@ -210,7 +210,7 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
   - [x] All B50.tests pass; mobile suite, tsc, and export pass
 
 ### B51.tests — Mobile: Pomodoro on the timer screen
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D81, D82, D84–D87. Extend `StopwatchScreen.test.tsx`, `timerStore.test.tsx`
   and `RecordingsScreen.test.tsx`.
 - **Contract:**
@@ -236,14 +236,14 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
     `Pomodoro · N × avg Xm work · avg break Ym` under its name (avg break omitted when
     `pomodoro_breaks` is 0).
 - **Acceptance Criteria:**
-  - [ ] Test: the mode switch is disabled while the stopwatch runs
-  - [ ] Test: Start is disabled until an Activity is chosen; "None" is not offered
-  - [ ] Test: Start break / Start work move through the phases; the 4th break is a Long break
-  - [ ] Test: past the target, `pomodoro-phase-time` shows `+m:ss over` and `notifyPhaseDue` is called once
-  - [ ] Test: Finish sends total work and the three fields with the chosen Activity
-  - [ ] Test: Reset with work asks; Cancel keeps the run
-  - [ ] Test: a stored run restores on mount and queued native actions are applied
-  - [ ] Test: the Recordings row shows the Pomodoro summary line
+  - [x] Test: the mode switch is disabled while the stopwatch runs
+  - [x] Test: Start is disabled until an Activity is chosen; "None" is not offered
+  - [x] Test: Start break / Start work move through the phases; the 4th break is a Long break
+  - [x] Test: past the target, `pomodoro-phase-time` shows `+m:ss over` and `notifyPhaseDue` is called once
+  - [x] Test: Finish sends total work and the three fields with the chosen Activity
+  - [x] Test: Reset with work asks; Cancel keeps the run
+  - [x] Test: a stored run restores on mount and queued native actions are applied
+  - [x] Test: the Recordings row shows the Pomodoro summary line
 
 ### B51.impl — Mobile: Pomodoro on the timer screen
 - **Status:** PENDING

@@ -1842,3 +1842,18 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Gotchas:**
   - Wrap the API calls in lambdas (`queryFn: () => settingsAPI.getPomodoro()`). `DisplayOptions.test.tsx` mocks `../services/api` without `settingsAPI`, so a bare `settingsAPI.getPomodoro` reference throws during render. With a lambda the query just errors and the screen still renders.
   - `mutationFn: settingsAPI.updatePomodoro` passed directly also fails the test: react-query v5 calls `mutationFn(variables, context)` and the mock records the extra context argument. The lambda passes only the settings.
+
+## B51.tests. Mobile: Pomodoro on the timer screen
+- **Date:** 2026-11-02
+- **Status:** DONE
+- **Summary:** Extended `StopwatchScreen.test.tsx` (21 tests: mode switch, Activity picker and start config, run view, Finish/save body, Reset confirm), `timerStore.test.tsx` (11 tests for `usePomodoro`: transitions, phase cadence, paused time, finish/reset storage, once-per-phase `notifyPhaseDue`, restore, native-action drain on restore and on AppState 'active') and `RecordingsScreen.test.tsx` (2 tests for the summary line). Contracts are pinned in header comments above each new block. A throwaway reference impl (store, native, index.tsx, recordings.tsx) passed all 326 tests and tsc; it was then reverted by hand.
+- **Files changed:** mobile/src/__tests__/StopwatchScreen.test.tsx, mobile/src/__tests__/timerStore.test.tsx, mobile/src/__tests__/RecordingsScreen.test.tsx, prd.md, progress.md
+- **Verification:** from `mobile/`: `npx jest --ci --forceExit` gave 34 failed (all new B51 tests) and 292 passed. `npx tsc --noEmit` fails only with 3x TS2305 (`usePomodoro`/`POMODORO_STORAGE_KEY` not exported from `timer/store`), as expected before impl. `npx expo export --platform android` succeeded.
+- **Gotchas:**
+  - Pinned API: `usePomodoro()` returns `{ status, hydrated, phase ('work' when idle), remainingMs, overMs, totalWorkMs, canFinish, activity ({taskId}|{newActivityName}|null), start(config, activity), pause, resume, switchPhase, reset, finish(): FinishedPomodoro }`. `POMODORO_STORAGE_KEY = 'pomodoro.state'`, the value is the `PomodoroState` JSON, removed on reset/finish.
+  - `timer/native` must export `notifyPhaseDue(phase)` and a **sync** `drainActions()` returning `{ action, atElapsedMs }[]` (native shape, `[]` without the module); the store maps `action` → `type` for `applyActions`. The reminder check runs on the 1 s tick (`setInterval(…, 1000)`), not on render.
+  - AppState: the test spies on `AppState.addEventListener('change', handler)` and calls the handler with 'active'. Keep a ref to the current run so the handler (registered once) sees fresh state.
+  - Screen: in Pomodoro mode `btn-start` opens `pomodoro-picker` (rows `pomodoro-activity-<id>`, `pomodoro-activity-new` → `pomodoro-new-name`, `pomodoro-start`); a non-idle run forces Pomodoro mode. `ActionButton` needs a `disabled` prop for `toBeDisabled()`. Settings query must use a lambda (`() => settingsAPI.getPomodoro()`), and the existing stopwatch Save must still call `timer.finish`, not the run's.
+  - Phase time text is exact: `12:34 left` / `+5:00 over` via `formatElapsed`. Recordings line testID `session-pomodoro-<id>`, minutes `Math.round`ed.
+  - Fixed a leak in the existing render-interval test: its `setInterval`/`clearInterval` spies were never restored, so any later test using `setInterval` after `useRealTimers` hit "setInterval is not defined". The test now `mockRestore`s both.
+  - `git checkout`/`git restore` need approval in this sandbox; revert throwaway code with Edit/Write.

@@ -658,3 +658,51 @@ describe('recording actions (B37, D78)', () => {
     await waitFor(() => expect(screen.getByTestId('session-activity-3')).toHaveTextContent('Gym'));
   });
 });
+
+// B51 (D81): a Recording with `pomodoro_work_intervals` shows `session-pomodoro-<id>` under its
+// name: `Pomodoro · N × avg Xm work · avg break Ym`, X = duration / N and Y = break seconds /
+// breaks, both in whole minutes (rounded). ` · avg break Ym` is omitted when `pomodoro_breaks`
+// is 0. A plain Recording has no such line.
+describe('recordings Pomodoro summary', () => {
+  const POMODORO_SESSION = session({
+    id: 4,
+    name: 'Gym',
+    duration: 6000,
+    task_id: 7,
+    created_at: '2026-01-04T10:00:00.000Z',
+    pomodoro_work_intervals: 4,
+    pomodoro_breaks: 3,
+    pomodoro_break_seconds: 900,
+  });
+
+  const ONE_INTERVAL_SESSION = session({
+    id: 5,
+    name: 'Reading',
+    duration: 1500,
+    task_id: 8,
+    created_at: '2026-01-05T10:00:00.000Z',
+    pomodoro_work_intervals: 1,
+    pomodoro_breaks: 0,
+    pomodoro_break_seconds: 0,
+  });
+
+  it('shows the summary line on a Pomodoro Recording and none on a plain one', async () => {
+    mockedGetAll.mockResolvedValue([POMODORO_SESSION, BREAK_SESSION]);
+    await renderScreen();
+
+    await screen.findByTestId('session-row-4');
+    expect(screen.getByTestId('session-pomodoro-4')).toHaveTextContent(
+      'Pomodoro · 4 × avg 25m work · avg break 5m'
+    );
+    expect(screen.queryByTestId('session-pomodoro-3')).toBeNull();
+  });
+
+  it('omits the average break when there were no breaks', async () => {
+    mockedGetAll.mockResolvedValue([ONE_INTERVAL_SESSION]);
+    await renderScreen();
+
+    await screen.findByTestId('session-row-5');
+    expect(screen.getByTestId('session-pomodoro-5')).toHaveTextContent('Pomodoro · 1 × avg 25m work');
+    expect(screen.getByTestId('session-pomodoro-5')).not.toHaveTextContent(/avg break/);
+  });
+});
