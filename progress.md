@@ -1820,3 +1820,15 @@ Each iteration appends its results here so the next session knows what worked, w
   - After a reboot, a *paused* run restores as-is (its accumulated time is kept). Only a running run takes its phase elapsed from the wall clock.
   - The backend `PomodoroSettings` response has no `id`, so the TS interface has only the four snake_case fields. The store has to map them to `PomodoroConfig`'s camelCase.
   - Running git with `cd <repo> && git ...` needs approval. Run git from `mobile/` (the cwd) with `../` paths instead.
+
+## B50.tests. Mobile: Pomodoro lengths in Settings
+- **Date:** 2026-11-02
+- **Status:** DONE
+- **Summary:** Added a `pomodoro lengths` block (5 tests) to `SettingsScreen.test.tsx`, with the contract in a header comment. The file now mocks `../services/api` with `requireActual` plus a mocked `settingsAPI` (server values 50/10/30/3). The tests cover: fields show the server values and Save sends the edited four as numbers; 0 and 181 disable Save and show `1–180`, and fixing the value clears it; 13 and 0 for the count disable Save and show `1–12`; a failed load shows 25/5/15/4, "Couldn't load", and Save disabled with no update call. A throwaway reference impl in `settings.tsx` passed all 16 Settings/Export tests and tsc; it was then reverted.
+- **Files changed:** mobile/src/__tests__/SettingsScreen.test.tsx, prd.md, progress.md
+- **Verification:** from `mobile/`: `npx jest --ci --forceExit` gave 5 failed (all of them the new B50 tests) and 286 passed. `npx tsc --noEmit` exited 0. `npx expo export --platform android` succeeded.
+- **Gotchas:**
+  - Pinned details the PRD left open: the range text is exactly `1–180` / `1–12` (en dash), shown only while the field is invalid. Values are sent as numbers. "Couldn't load" is exact text. Disabled is asserted with `toBeDisabled()`, so use the Pressable's `disabled` prop. Field values are strings (`toHaveProp('value', '50')`).
+  - Save must also be disabled while the query is loading or errored, not only on a range failure (the failure test asserts this).
+  - `ExportSettings.test.tsx` renders SettingsScreen without mocking `settingsAPI`. After impl, the query errors there (the mocked axios instance's `get` returns undefined), which is harmless; the reference impl passed that suite.
+  - Running this file alone without `--forceExit` hangs after the summary (the known pending-saves open handle, progress.md line ~420). Always pass `--forceExit`.

@@ -190,7 +190,7 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
   - [x] All B49.tests pass; mobile suite, tsc, and export pass
 
 ### B50.tests — Mobile: Pomodoro lengths in Settings
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D83. Extend `SettingsScreen.test.tsx`.
 - **Contract:** A **Pomodoro** section in `app/settings.tsx` with four number fields (testIDs
   `pomodoro-work`, `pomodoro-break`, `pomodoro-long-break`, `pomodoro-long-every`) loaded from
@@ -198,9 +198,9 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
   outside 1–180 (1–12 for the count) disable Save and show the range under the field. A failed
   load shows the defaults greyed with "Couldn't load", and Save stays disabled.
 - **Acceptance Criteria:**
-  - [ ] Test: fields show the server's values; Save sends the edited four
-  - [ ] Test: 0 or 181 disables Save and shows the range
-  - [ ] Test: load failure → defaults, "Couldn't load", Save disabled
+  - [x] Test: fields show the server's values; Save sends the edited four
+  - [x] Test: 0 or 181 disables Save and shows the range
+  - [x] Test: load failure → defaults, "Couldn't load", Save disabled
 
 ### B50.impl — Mobile: Pomodoro lengths in Settings
 - **Status:** PENDING
