@@ -298,7 +298,7 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
   - [x] Kotlin reviewed against the existing service: same imports style, immutable PendingIntents, no new dependencies
 
 ### B53.tests — Web: the stopwatch survives a reload
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D87. Extend `Stopwatch.test.tsx`.
 - **Contract:** `useStopwatch` keeps time from timestamps, not by counting 10 ms ticks: running
   state is `{ startedAt, accumulatedMs }` and elapsed is `accumulatedMs + (Date.now() -
@@ -306,9 +306,9 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
   `localStorage` (`stopwatch.state`) on start, pause and reset, and restored on mount, running
   or paused. The save modal's `start_time` survives too.
 - **Acceptance Criteria:**
-  - [ ] Test: with fake timers and a mocked `Date.now`, elapsed follows the clock, not the tick count
-  - [ ] Test: unmount while running and remount → still running with the elapsed time intact
-  - [ ] Test: reset clears the stored state
+  - [x] Test: with fake timers and a mocked `Date.now`, elapsed follows the clock, not the tick count
+  - [x] Test: unmount while running and remount → still running with the elapsed time intact
+  - [x] Test: reset clears the stored state
 
 ### B53.impl — Web: the stopwatch survives a reload
 - **Status:** PENDING

@@ -49,6 +49,7 @@ describe('Stopwatch', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     vi.useFakeTimers();
   });
 
@@ -126,6 +127,7 @@ describe('Stopwatch', () => {
 
 describe('new Activity row (B38, D76, D77)', () => {
   beforeEach(() => {
+    localStorage.clear();
     vi.useFakeTimers();
   });
 
@@ -186,5 +188,163 @@ describe('new Activity row (B38, D76, D77)', () => {
     const body = (onSaveSession as unknown as Mock).mock.calls[0][0];
     expect(body.task_id).toBeUndefined();
     expect(body.new_activity_name).toBeUndefined();
+  });
+});
+
+// B53 contract (D87): `useStopwatch` keeps time from timestamps, not by counting 10 ms ticks.
+// Running state is `{ startedAt, accumulatedMs }` and elapsed is
+// `accumulatedMs + (Date.now() - startedAt)`; a paused stopwatch has `startedAt: null`. The tick
+// interval only re-renders. The state is saved to localStorage under `stopwatch.state` on start,
+// pause and reset (reset removes the key), and restored on mount, running or paused. The save
+// modal's `start_time` (set on the first Start) is stored with it, so it survives a remount.
+// The timer display's own text is `HH:MM:SS` (the `.cc` span is separate).
+const STORAGE_KEY = 'stopwatch.state';
+const T0 = new Date('2026-11-02T15:00:00.000Z');
+
+function renderStopwatch(onSaveSession = vi.fn()) {
+  const utils = render(<Stopwatch tasks={mockTasks} onSaveTime={vi.fn()} onSaveSession={onSaveSession} />);
+  return { ...utils, onSaveSession };
+}
+
+async function jumpClock(ms: number) {
+  vi.setSystemTime(Date.now() + ms);
+  await act(async () => {
+    vi.advanceTimersByTime(10);
+  });
+}
+
+describe('stopwatch survives a reload (B53, D87)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.useFakeTimers();
+    vi.setSystemTime(T0);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('elapsed follows the clock, not the tick count', async () => {
+    renderStopwatch();
+    await act(async () => {
+      fireEvent.click(screen.getByText('Start'));
+    });
+    // A throttled background tab: the clock moves a minute while almost no ticks fire.
+    await jumpClock(60_000);
+    expect(screen.getByText('00:01:00')).toBeInTheDocument();
+  });
+
+  it('pausing freezes elapsed and resuming adds to it', async () => {
+    renderStopwatch();
+    await act(async () => {
+      fireEvent.click(screen.getByText('Start'));
+    });
+    await jumpClock(30_000);
+    await act(async () => {
+      fireEvent.click(screen.getByText('Stop'));
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await jumpClock(120_000);
+    expect(screen.getByText('00:00:30')).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.click(screen.getByText('Start'));
+    });
+    await jumpClock(15_000);
+    expect(screen.getByText('00:00:45')).toBeInTheDocument();
+  });
+
+  it('start saves the state under stopwatch.state', async () => {
+    renderStopwatch();
+    await act(async () => {
+      fireEvent.click(screen.getByText('Start'));
+    });
+    expect(localStorage.getItem(STORAGE_KEY)).not.toBeNull();
+  });
+
+  it('unmount while running and remount: still running with the elapsed time intact', async () => {
+    const first = renderStopwatch();
+    await act(async () => {
+      fireEvent.click(screen.getByText('Start'));
+    });
+    await jumpClock(5_000);
+    first.unmount();
+
+    vi.setSystemTime(Date.now() + 10_000);
+    renderStopwatch();
+    await act(async () => {
+      vi.advanceTimersByTime(10);
+    });
+    expect(screen.getByText('Stop')).toBeInTheDocument();
+    expect(screen.getByText('00:00:15')).toBeInTheDocument();
+  });
+
+  it('unmount while paused and remount: paused at the same elapsed', async () => {
+    const first = renderStopwatch();
+    await act(async () => {
+      fireEvent.click(screen.getByText('Start'));
+    });
+    await jumpClock(7_000);
+    await act(async () => {
+      fireEvent.click(screen.getByText('Stop'));
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    first.unmount();
+
+    vi.setSystemTime(Date.now() + 60_000);
+    renderStopwatch();
+    await act(async () => {
+      vi.advanceTimersByTime(10);
+    });
+    expect(screen.getByText('Start')).toBeInTheDocument();
+    expect(screen.getByText('00:00:07')).toBeInTheDocument();
+  });
+
+  it("the save modal's start_time survives a remount", async () => {
+    const first = renderStopwatch();
+    await act(async () => {
+      fireEvent.click(screen.getByText('Start'));
+    });
+    await jumpClock(5_000);
+    first.unmount();
+
+    const { onSaveSession } = renderStopwatch();
+    await jumpClock(5_000);
+    await act(async () => {
+      fireEvent.click(screen.getByText('Stop'));
+    });
+    setRecordingName('Reading');
+    saveRecording();
+
+    expect(onSaveSession).toHaveBeenCalledTimes(1);
+    const body = (onSaveSession as unknown as Mock).mock.calls[0][0];
+    expect(body.start_time).toBe(T0.toISOString());
+    expect(body.duration).toBeCloseTo(10, 1);
+  });
+
+  it('reset clears the stored state', async () => {
+    renderStopwatch();
+    await act(async () => {
+      fireEvent.click(screen.getByText('Start'));
+    });
+    await jumpClock(3_000);
+    await act(async () => {
+      fireEvent.click(screen.getByText('Reset'));
+    });
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+    expect(screen.getByText('00:00:00')).toBeInTheDocument();
+  });
+
+  it('saving a Recording clears the stored state', async () => {
+    renderStopwatch();
+    await act(async () => {
+      fireEvent.click(screen.getByText('Start'));
+    });
+    await jumpClock(3_000);
+    await act(async () => {
+      fireEvent.click(screen.getByText('Stop'));
+    });
+    setRecordingName('Reading');
+    saveRecording();
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
   });
 });

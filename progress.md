@@ -1899,3 +1899,15 @@ Each iteration appends its results here so the next session knows what worked, w
   - A tapped switch from Work always shows "Break", using the target last seen for that phase name (0 → counts up, no reminder) because the service doesn't know the cadence or lengths. When the app is alive, the `onTimerAction` drain re-calls the service with the right phase (`longBreak`) and target. Check this on device in U13 step 3.
   - Duplicate reminders: the JS `notifyPhaseDue` and the service tick share one companion flag (`reminderPosted`). It resets when the phase changes, when the elapsed time drops below the target, or when the service is destroyed.
   - The Kotlin module computes `pausedElapsedMs` for the intent itself (`phaseAccumulatedMs` for a run, `now - anchor` for the stopwatch), so a redelivered paused intent stays frozen.
+
+## B53.tests. Web: the stopwatch survives a reload
+- **Date:** 2026-11-02
+- **Status:** DONE
+- **Summary:** Added a `stopwatch survives a reload (B53, D87)` block to `frontend/src/__tests__/Stopwatch.test.tsx` with 8 tests. They cover: elapsed following the clock rather than the tick count (`vi.setSystemTime` jumps, then one 10 ms tick), pause/resume accumulation, start writing `stopwatch.state`, remount while running and while paused, the save modal's `start_time` surviving a remount, and reset/save clearing the key. The contract is pinned in a header comment. Added `localStorage.clear()` to the two existing `beforeEach` blocks so a stored state can't leak between tests once the feature exists. A throwaway reference impl passed 18/18. It was then restored from backups.
+- **Files changed:** frontend/src/__tests__/Stopwatch.test.tsx, prd.md, progress.md
+- **Verification:** from `frontend/`: `npx vitest run` gave 6 failed (all new B53 tests, on the un-implemented feature) and 127 passed. The two clear-the-key tests pass vacuously pre-impl. `npx tsc --noEmit` exited 0.
+- **Gotchas:**
+  - The tests assert on the timer display's own text (`getByText('00:01:00')`). The `.cc` span is a separate element, so keep the `HH:MM:SS` text nodes directly in the display div. When the save modal is open its header shows the same text, so the tests click Cancel before reading the time.
+  - Vitest's fake timers fake `Date`. `advanceTimersByTime` moves `Date.now()` too, so the clock-not-ticks test uses `vi.setSystemTime` to move the clock without firing ticks.
+  - In the reference impl, the hook stored `{ startedAt, accumulatedMs, startTime }`, exposed `startTime`, and `Stopwatch.tsx` sent `start_time: startTime ?? undefined` in place of `startTimeRef`. Reset used `removeItem`. `start` kept an existing `startTime`, so resuming after a pause does not move `start_time`.
+  - A `cat >> file <<'EOF'` heredoc holding JSX was rejected by the sandbox ("brace with quote character"). Use Edit to append.
