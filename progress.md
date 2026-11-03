@@ -1956,3 +1956,11 @@ Each iteration appends its results here so the next session knows what worked, w
   - Finish reuses the existing save modal: prefill the name and `select-activity` (`String(taskId)` or `__new__`), and branch inside `handleSaveSession` when a run exists. After saving, remove `pomodoro.state` and hide the run view.
   - Mode lock = `isRunning || time > 0 || run !== null`. A restored run starts in Pomodoro mode.
   - The test stubs `Notification` (vi.fn with static `permission`/`requestPermission`), `AudioContext` and `confirm` via `vi.stubGlobal`. The impl should guard with `typeof Notification !== 'undefined'`.
+
+## B55.impl. Web: Pomodoro on the stopwatch card
+- **Date:** 2026-11-03
+- **Status:** DONE
+- **Summary:** Added `frontend/src/utils/pomodoro.ts`, a port of mobile's B49 core that reads `Date.now()` and has a `startedAt` phase anchor and a `totalWorkMs` export. `Stopwatch.tsx` gains the mode switch, the Activity picker (it loads settings on open and falls back to 25/5/15/4), the run view and controls, and a 250 ms tick that fires the once-per-phase reminder (Notification + AudioContext tone) through a ref. Finish captures `finishRun` and prefills the existing save modal, and Reset confirms when work is logged. The run persists to `pomodoro.state`. `SessionList.tsx` shows the `session-pomodoro-<id>` summary line.
+- **Files changed:** frontend/src/utils/pomodoro.ts, frontend/src/components/Stopwatch.tsx, frontend/src/components/SessionList.tsx, prd.md, progress.md
+- **Verification:** from `frontend/`: `npx vitest run` gave 185/185 passed, `npx tsc --noEmit` exited 0, and `npm run build` succeeded.
+- **Gotchas:** Finish snapshots `finishRun` into state when it's clicked, so the saved duration doesn't grow while the modal is open. Cancel drops the snapshot and the run carries on. "Add to Activity" from a finished run also uses the snapshot's duration and ends the run. The sandbox rejected `$?` in a Bash command ("variable can't be checked"); use `&& echo OK || echo FAIL` instead.

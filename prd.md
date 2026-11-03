@@ -353,10 +353,10 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
   - [x] Test: `SessionList` shows the Pomodoro summary line
 
 ### B55.impl — Web: Pomodoro on the stopwatch card
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
-  - [ ] All B55.tests pass; web tsc clean; `npm run build` succeeds
+  - [x] All B55.tests pass; web tsc clean; `npm run build` succeeds
 
 ### U12. USER — Ship, and rebuild the phone app for the new native code
 - **Status:** USER

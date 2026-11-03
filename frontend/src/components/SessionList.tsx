@@ -524,6 +524,16 @@ export default function SessionList({
                       {session.name}
                     </h3>
                   )}
+                  {session.pomodoro_work_intervals ? (
+                    <p data-testid={`session-pomodoro-${session.id}`} className="text-sm text-white/60 mt-1">
+                      {`Pomodoro · ${session.pomodoro_work_intervals} × avg ${Math.round(
+                        session.duration / session.pomodoro_work_intervals / 60
+                      )}m work`}
+                      {session.pomodoro_breaks
+                        ? ` · avg break ${Math.round((session.pomodoro_break_seconds ?? 0) / session.pomodoro_breaks / 60)}m`
+                        : ''}
+                    </p>
+                  ) : null}
                   <div className="text-sm text-white/70 mt-1 space-y-1">
                     <p className="flex items-center gap-2">
                       <span className="text-white/50">Duration:</span>
