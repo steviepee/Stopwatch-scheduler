@@ -80,7 +80,7 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
   - [ ] A cold run exits 0, or its failures are fixed or recorded before the loop starts
 
 ### B47.tests — Mobile: follow-ups (delete confirm, load errors, gear nudge)
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D89. Extend `RecordingsScreen.test.tsx` and `ActivitiesScreen.test.tsx`.
 - **Contract:**
   - **Recording delete:** a long press on a Recording row calls `Alert.alert` with title
@@ -95,9 +95,9 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
   - **Gear nudge:** `(tabs)/_layout.tsx` uses `spacing.xs` for the header gear's right margin
     in all builds (no `__DEV__` branch).
 - **Acceptance Criteria:**
-  - [ ] Test: long press opens the alert; Cancel deletes nothing; Delete calls `sessionAPI.delete` with the id
-  - [ ] Test: query error while offline → the Offline text; while online → `activities-error` and Retry refetches
-  - [ ] Test: `_layout.tsx` contains no `__DEV__` (read the file as text)
+  - [x] Test: long press opens the alert; Cancel deletes nothing; Delete calls `sessionAPI.delete` with the id
+  - [x] Test: query error while offline → the Offline text; while online → `activities-error` and Retry refetches
+  - [x] Test: `_layout.tsx` contains no `__DEV__` (read the file as text)
 
 ### B47.impl — Mobile: follow-ups (delete confirm, load errors, gear nudge)
 - **Status:** PENDING

@@ -1,5 +1,6 @@
 import { onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react-native';
+import { Alert } from 'react-native';
 
 import RecordingsScreen from '../app/(tabs)/recordings';
 import { createQueryClient } from '../services/queryClient';
@@ -172,8 +173,61 @@ describe('recordings date range', () => {
   });
 });
 
+// B47 (D89): the long press asks first. `Alert.alert('Delete Recording',
+// 'Delete "<name>"? This cannot be undone.', [Cancel (cancel), Delete
+// (destructive)])`; only Delete calls `sessionAPI.delete`.
 describe('recordings delete', () => {
-  it('long-press deletes via the API and removes the row', async () => {
+  let alertSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    alertSpy.mockRestore();
+  });
+
+  function alertButtons(): { text: string; style?: string; onPress?: () => void }[] {
+    return alertSpy.mock.calls[alertSpy.mock.calls.length - 1][2];
+  }
+
+  function pressAlertButton(text: string) {
+    const button = alertButtons().find((b) => b.text === text);
+    if (!button) throw new Error(`No "${text}" button`);
+    button.onPress?.();
+  }
+
+  it('long-press asks before deleting', async () => {
+    mockedGetAll.mockResolvedValue([READING_SESSION, GYM_SESSION, BREAK_SESSION]);
+    await renderScreen();
+
+    await screen.findByTestId('session-row-2');
+    await fireEvent(screen.getByTestId('session-row-2'), 'longPress');
+
+    expect(alertSpy).toHaveBeenCalledTimes(1);
+    const [title, message] = alertSpy.mock.calls[0];
+    expect(title).toBe('Delete Recording');
+    expect(message).toBe('Delete "Gym"? This cannot be undone.');
+    expect(alertButtons().map((b) => [b.text, b.style])).toEqual([
+      ['Cancel', 'cancel'],
+      ['Delete', 'destructive'],
+    ]);
+    expect(mockedDelete).not.toHaveBeenCalled();
+  });
+
+  it('Cancel deletes nothing', async () => {
+    mockedGetAll.mockResolvedValue([READING_SESSION, GYM_SESSION, BREAK_SESSION]);
+    await renderScreen();
+
+    await screen.findByTestId('session-row-2');
+    await fireEvent(screen.getByTestId('session-row-2'), 'longPress');
+    pressAlertButton('Cancel');
+
+    expect(mockedDelete).not.toHaveBeenCalled();
+    expect(screen.getByTestId('session-row-2')).toBeTruthy();
+  });
+
+  it('Delete deletes via the API and removes the row', async () => {
     mockedGetAll.mockResolvedValueOnce([READING_SESSION, GYM_SESSION, BREAK_SESSION]);
     mockedGetAll.mockResolvedValueOnce([READING_SESSION, BREAK_SESSION]);
     mockedDelete.mockResolvedValue(undefined);
@@ -181,8 +235,9 @@ describe('recordings delete', () => {
 
     await screen.findByTestId('session-row-2');
     await fireEvent(screen.getByTestId('session-row-2'), 'longPress');
+    pressAlertButton('Delete');
 
-    expect(mockedDelete).toHaveBeenCalledWith(2);
+    await waitFor(() => expect(mockedDelete).toHaveBeenCalledWith(2));
     await waitFor(() => expect(screen.queryByTestId('session-row-2')).toBeNull());
   });
 });

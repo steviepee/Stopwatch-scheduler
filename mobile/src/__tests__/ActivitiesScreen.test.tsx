@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 import ActivitiesScreen from '../app/(tabs)/activities';
 import ActivityDetailScreen from '../app/activity/[id]';
@@ -99,6 +101,7 @@ beforeEach(() => {
   mockedGetStats.mockReset();
   mockedLogsGetAll.mockReset();
   mockSearchParams = { id: '7' };
+  onlineManager.setOnline(true);
 });
 
 describe('activities list', () => {
@@ -124,12 +127,44 @@ describe('activities list', () => {
     expect(mockPush).toHaveBeenCalledWith('/activity/7');
   });
 
-  it('shows the offline message instead of crashing when the query errors', async () => {
-    mockedGetAll.mockRejectedValue(new Error('network down'));
+  // B47 (D89): "Offline" only when the device is offline; any other load
+  // failure shows "Couldn't load Activities" (`activities-error`) and a Retry
+  // button (`activities-retry`) that refetches `['tasks']`.
+  it('shows the offline message when the query errors while offline', async () => {
+    // Queries use the online network mode, so one started offline pauses
+    // instead of erroring; the device drops off while the fetch is in flight.
+    mockedGetAll.mockImplementation(async () => {
+      onlineManager.setOnline(false);
+      throw new Error('network down');
+    });
     await renderList();
 
     await screen.findByText('Offline — showing nothing');
     expect(screen.queryByTestId('activity-row-7')).toBeNull();
+    expect(screen.queryByTestId('activities-error')).toBeNull();
+  });
+
+  it('shows a load error with Retry when the query errors while online', async () => {
+    mockedGetAll.mockRejectedValue(new Error('500'));
+    await renderList();
+
+    expect(await screen.findByTestId('activities-error')).toHaveTextContent("Couldn't load Activities");
+    expect(screen.queryByText('Offline — showing nothing')).toBeNull();
+    expect(mockedGetAll).toHaveBeenCalledTimes(1);
+
+    mockedGetAll.mockResolvedValue([GYM]);
+    await fireEvent.press(screen.getByTestId('activities-retry'));
+
+    await waitFor(() => expect(mockedGetAll).toHaveBeenCalledTimes(2));
+    await screen.findByTestId('activity-row-7');
+  });
+});
+
+describe('tabs layout (B47, D89)', () => {
+  it('has no __DEV__ branch for the header gear', () => {
+    const source = readFileSync(join(__dirname, '../app/(tabs)/_layout.tsx'), 'utf8');
+    expect(source).not.toContain('__DEV__');
+    expect(source).toContain('marginRight: spacing.xs');
   });
 });
 

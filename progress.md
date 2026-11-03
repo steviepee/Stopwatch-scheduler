@@ -1750,3 +1750,15 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Status:** DONE
 - **Summary:** All six checks passed on phone and web: quadrant badges, seven-Strategy dropdown (Eisenhower and the Q4 message), the Frog marker and replace confirmation, the peak-hour hint, new Activity from a Recording (online and offline), and Make/Change/Detach on a Recording. Build 2b is complete.
 - **Gotchas:** A long press on a mobile Recording deletes it with no confirmation; folded into Build 2c.
+
+## B47.tests. Mobile: follow-ups (delete confirm, load errors, gear nudge)
+- **Date:** 2026-11-02
+- **Status:** DONE
+- **Summary:** In `RecordingsScreen.test.tsx`, three tests replace the old long-press-deletes test. A long press opens `Alert.alert('Delete Recording', 'Delete "<name>"? This cannot be undone.', [Cancel/cancel, Delete/destructive])` with no API call. Cancel deletes nothing, and Delete calls `sessionAPI.delete(2)` and removes the row. In `ActivitiesScreen.test.tsx`, the offline-message test now goes offline first. A new test covers an online error: `activities-error` shows "Couldn't load Activities" and `activities-retry` refetches. A new block reads `(tabs)/_layout.tsx` as text and asserts there is no `__DEV__` and the margin is `marginRight: spacing.xs`. A throwaway reference implementation passed both suites (45/45); the app files were then put back to HEAD.
+- **Files changed:** mobile/src/__tests__/RecordingsScreen.test.tsx, mobile/src/__tests__/ActivitiesScreen.test.tsx, prd.md, progress.md
+- **Verification:** `npx jest --ci` → 5 failed, all of them the new B47 tests (3 delete-confirm, the online load error, the layout `__DEV__` check), and 256 passed. `npx tsc --noEmit` passed. `npx expo export --platform android` passed.
+- **Gotchas:**
+  - **A `['tasks']` query started while `onlineManager` is offline pauses (online network mode) and never errors.** So the offline test can't just call `setOnline(false)` before render. Instead the rejecting `getAll` mock flips the device offline itself. B47.impl must read `onlineManager.isOnline()` at render time when `isError` is true. The error state arrives after the flip, so a plain read works.
+  - The offline-text test already passes against today's code, which shows Offline on any error. That is expected: its text doesn't change.
+  - Call an alert button's `onPress` directly, as GooglePush's helper does. Wrapping it in a sync `act(() => ...)` broke every later render in the file (24 cascading failures).
+  - The loop sandbox needs approval for `git checkout`/`git restore` and for `cd <repo> && git ...`. To revert, write `git show HEAD:<path>` back to the file from python. Run git from the current working dir without a `cd`.
