@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
     minHeight: touchTarget,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: __DEV__ ? spacing.xxl : spacing.xs,
+    marginRight: spacing.xs,
   },
   settingsIcon: {
     ...typography.heading,

@@ -100,11 +100,11 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
   - [x] Test: `_layout.tsx` contains no `__DEV__` (read the file as text)
 
 ### B47.impl — Mobile: follow-ups (delete confirm, load errors, gear nudge)
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract. App code only, so it reaches the phone through
   `deploy.sh` without a rebuild.
 - **Acceptance Criteria:**
-  - [ ] All B47.tests pass; mobile suite, tsc, and export pass
+  - [x] All B47.tests pass; mobile suite, tsc, and export pass
 
 ### B48.tests — Backend: Pomodoro settings and the Pomodoro summary on Recordings
 - **Status:** PENDING

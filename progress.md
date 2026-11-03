@@ -1762,3 +1762,11 @@ Each iteration appends its results here so the next session knows what worked, w
   - The offline-text test already passes against today's code, which shows Offline on any error. That is expected: its text doesn't change.
   - Call an alert button's `onPress` directly, as GooglePush's helper does. Wrapping it in a sync `act(() => ...)` broke every later render in the file (24 cascading failures).
   - The loop sandbox needs approval for `git checkout`/`git restore` and for `cd <repo> && git ...`. To revert, write `git show HEAD:<path>` back to the file from python. Run git from the current working dir without a `cd`.
+
+## B47.impl. Mobile: follow-ups (delete confirm, load errors, gear nudge)
+- **Date:** 2026-11-02
+- **Status:** DONE
+- **Summary:** The Recording row's long press now calls `Alert.alert('Delete Recording', 'Delete "<name>"? This cannot be undone.', [Cancel/cancel, Delete/destructive])`, and only Delete runs `deleteSession.mutate`. On a `['tasks']` error, Activities shows the Offline text when `onlineManager.isOnline()` is false; otherwise it shows `activities-error` ("Couldn't load Activities") and an `activities-retry` button that calls the query's `refetch`. The `__DEV__` branch on the header gear's margin is gone (`marginRight: spacing.xs`).
+- **Files changed:** mobile/src/app/(tabs)/recordings.tsx, mobile/src/app/(tabs)/activities.tsx, mobile/src/app/(tabs)/_layout.tsx, prd.md, progress.md
+- **Verification:** from `mobile/`: `npx jest --ci` gave 17 suites and 261/261 passed. `npx tsc --noEmit` exited 0. `npx expo export --platform android` succeeded ("Exported: dist").
+- **Gotchas:** None. Reading `onlineManager.isOnline()` at render time while `isError` is true worked as B47.tests predicted. The Retry button reuses the existing `addButton` style.

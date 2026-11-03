@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useMutation, useMutationState, useQuery, useQueryClient } from '@tanstack/react-query';
 import { GlassView } from 'expo-glass-effect';
 
@@ -405,7 +405,12 @@ export default function RecordingsScreen() {
             accessibilityRole="button"
             style={styles.row}
             onPress={() => setActionsFor(session)}
-            onLongPress={() => deleteSession.mutate(session.id)}>
+            onLongPress={() =>
+              Alert.alert('Delete Recording', `Delete "${session.name}"? This cannot be undone.`, [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Delete', style: 'destructive', onPress: () => deleteSession.mutate(session.id) },
+              ])
+            }>
             <View>
               <Text testID={`session-name-${session.id}`} style={styles.rowName}>
                 {session.name}

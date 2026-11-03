@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { onlineManager, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter, type Href } from 'expo-router';
 
 import { colors, radii, spacing, touchTarget, typography } from '@/theme/tokens';
@@ -20,7 +20,7 @@ export default function ActivitiesScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const options = useUserOptions();
-  const { data: tasks, isError } = useQuery({ queryKey: ['tasks'], queryFn: taskAPI.getAll });
+  const { data: tasks, isError, refetch } = useQuery({ queryKey: ['tasks'], queryFn: taskAPI.getAll });
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [name, setName] = useState('');
@@ -45,10 +45,27 @@ export default function ActivitiesScreen() {
     createTask.mutate({ name: trimmed });
   };
 
-  if (isError) {
+  if (isError && !onlineManager.isOnline()) {
     return (
       <View style={styles.container}>
         <Text style={styles.offline}>Offline — showing nothing</Text>
+      </View>
+    );
+  }
+
+  if (isError) {
+    return (
+      <View style={styles.container}>
+        <Text testID="activities-error" style={styles.offline}>
+          Couldn't load Activities
+        </Text>
+        <Pressable
+          testID="activities-retry"
+          accessibilityRole="button"
+          style={styles.addButton}
+          onPress={() => refetch()}>
+          <Text style={styles.addButtonLabel}>Retry</Text>
+        </Pressable>
       </View>
     );
   }
