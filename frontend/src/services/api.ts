@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Task, TaskCreate, TaskUpdate, TaskStats, TimeLogCreate, TimeLog, StopwatchSession, StopwatchSessionCreate, StopwatchSessionUpdate, StopwatchSessionWithTask, Schedule, ScheduleCreate, ScheduleUpdate, ScheduleItem, ScheduleItemCreate, ScheduleItemPlace, ScheduleItemUpdate, ApplyRegimen, GenerateRequest, GenerateResponse, PeakHoursResponse } from '../types';
+import { Task, TaskCreate, TaskUpdate, TaskStats, TimeLogCreate, TimeLog, StopwatchSession, StopwatchSessionCreate, StopwatchSessionUpdate, StopwatchSessionWithTask, Schedule, ScheduleCreate, ScheduleUpdate, ScheduleItem, ScheduleItemCreate, ScheduleItemPlace, ScheduleItemUpdate, ApplyRegimen, GenerateRequest, GenerateResponse, PeakHoursResponse, PomodoroSettings } from '../types';
 
 const API_BASE_URL = '/api';
 
@@ -234,6 +234,18 @@ export const calendarImportAPI = {
 export const insightsAPI = {
   getPeakHours: async (): Promise<PeakHoursResponse> => {
     const response = await api.get('/insights/peak-hours', { params: { tz_offset: new Date().getTimezoneOffset() } });
+    return response.data;
+  },
+};
+
+export const settingsAPI = {
+  getPomodoro: async (): Promise<PomodoroSettings> => {
+    const response = await api.get('/settings/pomodoro');
+    return response.data;
+  },
+
+  updatePomodoro: async (settings: PomodoroSettings): Promise<PomodoroSettings> => {
+    const response = await api.put('/settings/pomodoro', settings);
     return response.data;
   },
 };

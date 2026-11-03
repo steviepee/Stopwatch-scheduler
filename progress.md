@@ -1919,3 +1919,16 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Files changed:** frontend/src/hooks/useStopwatch.ts, frontend/src/components/Stopwatch.tsx, prd.md, progress.md
 - **Verification:** from `frontend/`: `npx vitest run` gave 133/133 passed, `npx tsc --noEmit` exited 0, and `npm run build` succeeded.
 - **Gotchas:** `start` keeps an existing `startTime`, so resuming after a pause doesn't move `start_time`. Only reset clears it, and save goes through reset. A corrupt stored value falls back to idle.
+
+## B54.tests. Web: Pomodoro lengths in Options
+- **Date:** 2026-11-03
+- **Status:** DONE
+- **Summary:** Added `frontend/src/__tests__/OptionsPage.test.tsx` with 5 tests: it loads the server's values and Save sends the edited four as numbers, 0/181 minutes and a count of 0/13 disable Save and show `1–180`/`1–12`, and a load failure shows 25/5/15/4, "Couldn't load", and a disabled Save. Added `settingsAPI.getPomodoro`/`updatePomodoro` to `services/api.ts`, and added `PomodoroSettings` plus the optional `pomodoro_*` fields on `StopwatchSession`/`StopwatchSessionCreate` to `types/index.ts`. A throwaway reference impl in `OptionsPage.tsx` passed 138/138. It was then restored from a backup.
+- **Files changed:** frontend/src/__tests__/OptionsPage.test.tsx, frontend/src/services/api.ts, frontend/src/types/index.ts, prd.md, progress.md
+- **Verification:** from `frontend/`: `npx vitest run` gave 5 failed (all new B54 tests, on the un-implemented feature) and 133 passed. `npx tsc --noEmit` exited 0.
+- **Gotchas:**
+  - The test mocks `../services/api` with **only** `settingsAPI`, so `OptionsPage` must not call any other API at render. OptionsPage fetches the settings itself in a `useEffect`, because the web app has no react-query.
+  - The range text is exactly `1–180` / `1–12` (en dash, as mobile's `settings.tsx`), and it renders only while the value is out of range. Each test has at most one invalid field, so `getByText` stays unique.
+  - Inputs are disabled until the load succeeds. On failure they keep the defaults and Save stays disabled. Validation should accept whole numbers only (`/^\d+$/`).
+  - `HomePage` mounts `OptionsPage` only on the Options tab, so `ScheduleBuilder.test.tsx`'s api mock (no `settingsAPI`) isn't affected. Keep it that way.
+  - `cd dir && cmd > file` was rejected by the sandbox. Run `cd` alone first, then the redirected command.

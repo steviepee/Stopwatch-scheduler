@@ -317,15 +317,15 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
   - [x] All B53.tests pass; web tsc clean; `npm run build` succeeds
 
 ### B54.tests — Web: Pomodoro lengths in Options
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D83. Extend or add `OptionsPage` tests.
 - **Contract:** As B50, in `OptionsPage.tsx`: a Pomodoro section with the four fields
   (`data-testid` as B50's testIDs), Save sending all four via `settingsAPI.updatePomodoro`, the
   same ranges and load-failure behaviour. Add `settingsAPI` and the `pomodoro_*` fields to
   `frontend/src/services/api.ts` and `frontend/src/types`.
 - **Acceptance Criteria:**
-  - [ ] Test: fields show the server's values; Save sends the edited four
-  - [ ] Test: out-of-range disables Save; load failure → defaults, Save disabled
+  - [x] Test: fields show the server's values; Save sends the edited four
+  - [x] Test: out-of-range disables Save; load failure → defaults, Save disabled
 
 ### B54.impl — Web: Pomodoro lengths in Options
 - **Status:** PENDING
