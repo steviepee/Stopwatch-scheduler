@@ -141,7 +141,7 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
   - [x] All B48.tests pass; full suite passes
 
 ### B49.tests — Mobile: Pomodoro run core
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D84, D85, D87. Add `mobile/src/__tests__/pomodoroCore.test.ts` for a new pure
   module `mobile/src/timer/pomodoro.ts`, in the style of `core.ts` (no React, no I/O; every
   function takes `Clocks` or an explicit monotonic `at`).
@@ -173,12 +173,12 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
     current phase's elapsed comes from the wall clock and the Recording is flagged as a clock
     jump.
 - **Acceptance Criteria:**
-  - [ ] Test: work 27 min then switch → `workIntervals` 1, phase `break`; the 4th switch from work enters `longBreak` with `longBreakEvery: 4`
-  - [ ] Test: paused time counts toward neither work nor break
-  - [ ] Test: `phaseView` at 30 min of a 25-min Work interval → remaining 0, over 5 min; `reminderDue` true once, false after `markReminded` until the next phase
-  - [ ] Test: finish during work counts the open interval; finish during a Break drops it; `canFinish` false with no work
-  - [ ] Test: `applyActions` with pause/resume/switch at given times matches calling the functions directly
-  - [ ] Test: restore after a reboot keeps closed totals and flags a clock jump
+  - [x] Test: work 27 min then switch → `workIntervals` 1, phase `break`; the 4th switch from work enters `longBreak` with `longBreakEvery: 4`
+  - [x] Test: paused time counts toward neither work nor break
+  - [x] Test: `phaseView` at 30 min of a 25-min Work interval → remaining 0, over 5 min; `reminderDue` true once, false after `markReminded` until the next phase
+  - [x] Test: finish during work counts the open interval; finish during a Break drops it; `canFinish` false with no work
+  - [x] Test: `applyActions` with pause/resume/switch at given times matches calling the functions directly
+  - [x] Test: restore after a reboot keeps closed totals and flags a clock jump
 
 ### B49.impl — Mobile: Pomodoro run core
 - **Status:** PENDING
