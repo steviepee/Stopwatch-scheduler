@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useStopwatch } from '../hooks/useStopwatch';
 import { Task, StopwatchSessionCreate } from '../types';
 
@@ -10,14 +10,13 @@ interface StopwatchProps {
 }
 
 export default function Stopwatch({ tasks, onSaveTime, onSaveSession, onModalChange }: StopwatchProps) {
-  const { time, isRunning, start, pause, reset, formatTime } = useStopwatch();
+  const { time, isRunning, startTime, start, pause, reset, formatTime } = useStopwatch();
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [sessionActivityChoice, setSessionActivityChoice] = useState('');
   const [notes, setNotes] = useState('');
   const [sessionName, setSessionName] = useState('');
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveType, setSaveType] = useState<'session' | 'timelog'>('session');
-  const startTimeRef = useRef<Date | null>(null);
 
   const timeDisplay = formatTime(time);
   const trimmedSessionName = sessionName.trim();
@@ -26,7 +25,6 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession, onModalCha
     : undefined;
 
   const handleStart = () => {
-    startTimeRef.current = new Date();
     start();
   };
 
@@ -53,7 +51,7 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession, onModalCha
           ? { task_id: Number(sessionActivityChoice) }
           : {}),
       notes: notes || undefined,
-      start_time: startTimeRef.current?.toISOString(),
+      start_time: startTime ?? undefined,
       end_time: endTime.toISOString(),
     };
 
@@ -77,7 +75,6 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession, onModalCha
     setSelectedTaskId(null);
     setSessionActivityChoice('');
     setSessionName('');
-    startTimeRef.current = null;
   };
 
   const handleCancel = () => {

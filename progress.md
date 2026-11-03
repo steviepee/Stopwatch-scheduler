@@ -1911,3 +1911,11 @@ Each iteration appends its results here so the next session knows what worked, w
   - Vitest's fake timers fake `Date`. `advanceTimersByTime` moves `Date.now()` too, so the clock-not-ticks test uses `vi.setSystemTime` to move the clock without firing ticks.
   - In the reference impl, the hook stored `{ startedAt, accumulatedMs, startTime }`, exposed `startTime`, and `Stopwatch.tsx` sent `start_time: startTime ?? undefined` in place of `startTimeRef`. Reset used `removeItem`. `start` kept an existing `startTime`, so resuming after a pause does not move `start_time`.
   - A `cat >> file <<'EOF'` heredoc holding JSX was rejected by the sandbox ("brace with quote character"). Use Edit to append.
+
+## B53.impl. Web: the stopwatch survives a reload
+- **Date:** 2026-11-02
+- **Status:** DONE
+- **Summary:** `useStopwatch` now holds `{ startedAt, accumulatedMs, startTime }`. It loads that from `localStorage['stopwatch.state']` on mount, saves it on start and pause, and removes the key on reset. Elapsed is computed at render from `Date.now()`, and the 10 ms interval only bumps a tick counter to re-render. `Stopwatch.tsx` drops `startTimeRef` and sends the hook's `startTime` as `start_time`.
+- **Files changed:** frontend/src/hooks/useStopwatch.ts, frontend/src/components/Stopwatch.tsx, prd.md, progress.md
+- **Verification:** from `frontend/`: `npx vitest run` gave 133/133 passed, `npx tsc --noEmit` exited 0, and `npm run build` succeeded.
+- **Gotchas:** `start` keeps an existing `startTime`, so resuming after a pause doesn't move `start_time`. Only reset clears it, and save goes through reset. A corrupt stored value falls back to idle.

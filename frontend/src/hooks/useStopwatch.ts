@@ -1,31 +1,60 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
+
+const STORAGE_KEY = 'stopwatch.state';
+
+interface StoredState {
+  startedAt: number | null;
+  accumulatedMs: number;
+  startTime: string | null;
+}
+
+const IDLE: StoredState = { startedAt: null, accumulatedMs: 0, startTime: null };
+
+const loadState = (): StoredState => {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) return IDLE;
+  try {
+    return { ...IDLE, ...JSON.parse(raw) };
+  } catch {
+    return IDLE;
+  }
+};
 
 export const useStopwatch = () => {
-  const [time, setTime] = useState(0);
-  const [isRunning, setIsRunning] = useState(false);
-  const intervalRef = useRef<number | null>(null);
+  const [state, setState] = useState<StoredState>(loadState);
+  const [, setTick] = useState(0);
+  const isRunning = state.startedAt !== null;
 
   useEffect(() => {
-    if (isRunning) {
-      intervalRef.current = window.setInterval(() => {
-        setTime((prevTime) => prevTime + 10);
-      }, 10);
-    } else if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-    }
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
+    if (!isRunning) return;
+    const id = window.setInterval(() => setTick((t) => t + 1), 10);
+    return () => clearInterval(id);
   }, [isRunning]);
 
-  const start = () => setIsRunning(true);
-  const pause = () => setIsRunning(false);
+  const time = state.accumulatedMs + (state.startedAt !== null ? Date.now() - state.startedAt : 0);
+
+  const save = (next: StoredState) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    setState(next);
+  };
+
+  const start = () => {
+    if (isRunning) return;
+    save({
+      startedAt: Date.now(),
+      accumulatedMs: state.accumulatedMs,
+      startTime: state.startTime ?? new Date().toISOString(),
+    });
+  };
+
+  const pause = () => {
+    if (!isRunning) return;
+    save({ ...state, startedAt: null, accumulatedMs: time });
+  };
+
   const reset = () => {
-    setIsRunning(false);
-    setTime(0);
+    localStorage.removeItem(STORAGE_KEY);
+    setState(IDLE);
   };
 
   const formatTime = (milliseconds: number) => {
@@ -46,6 +75,7 @@ export const useStopwatch = () => {
   return {
     time,
     isRunning,
+    startTime: state.startTime,
     start,
     pause,
     reset,

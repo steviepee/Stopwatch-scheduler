@@ -311,10 +311,10 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
   - [x] Test: reset clears the stored state
 
 ### B53.impl — Web: the stopwatch survives a reload
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract in `hooks/useStopwatch.ts` and `Stopwatch.tsx`.
 - **Acceptance Criteria:**
-  - [ ] All B53.tests pass; web tsc clean; `npm run build` succeeds
+  - [x] All B53.tests pass; web tsc clean; `npm run build` succeeds
 
 ### B54.tests — Web: Pomodoro lengths in Options
 - **Status:** PENDING
