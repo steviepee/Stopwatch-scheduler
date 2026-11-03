@@ -203,11 +203,11 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
   - [x] Test: load failure → defaults, "Couldn't load", Save disabled
 
 ### B50.impl — Mobile: Pomodoro lengths in Settings
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract with a react-query query on `['settings',
   'pomodoro']`.
 - **Acceptance Criteria:**
-  - [ ] All B50.tests pass; mobile suite, tsc, and export pass
+  - [x] All B50.tests pass; mobile suite, tsc, and export pass
 
 ### B51.tests — Mobile: Pomodoro on the timer screen
 - **Status:** PENDING

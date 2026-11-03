@@ -3,13 +3,44 @@ import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from
 import axios from 'axios';
 import Constants from 'expo-constants';
 import * as WebBrowser from 'expo-web-browser';
-import { onlineManager, useMutationState, useQueryClient } from '@tanstack/react-query';
+import { onlineManager, useMutation, useMutationState, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { colors, radii, spacing, touchTarget, typography } from '@/theme/tokens';
 import { getApiUrl, getToken, setApiUrl, setToken } from '@/services/auth';
 import { CREATE_SESSION_KEY } from '@/services/queryClient';
 import { DEFAULT_USER_OPTIONS, getUserOptions, setUserOptions, type UserOptions } from '@/services/options';
 import { isNativeAvailable } from '@/timer/native';
+import { settingsAPI } from '@/services/api';
+import type { PomodoroSettings } from '@/types';
+
+type PomodoroKey = keyof PomodoroSettings;
+
+const POMODORO_DEFAULTS: PomodoroSettings = {
+  work_minutes: 25,
+  break_minutes: 5,
+  long_break_minutes: 15,
+  long_break_every: 4,
+};
+
+const POMODORO_FIELDS: { key: PomodoroKey; label: string; testID: string; max: number }[] = [
+  { key: 'work_minutes', label: 'Work (minutes)', testID: 'pomodoro-work', max: 180 },
+  { key: 'break_minutes', label: 'Break (minutes)', testID: 'pomodoro-break', max: 180 },
+  { key: 'long_break_minutes', label: 'Long break (minutes)', testID: 'pomodoro-long-break', max: 180 },
+  { key: 'long_break_every', label: 'Long break every', testID: 'pomodoro-long-every', max: 12 },
+];
+
+function toFields(settings: PomodoroSettings): Record<PomodoroKey, string> {
+  return {
+    work_minutes: String(settings.work_minutes),
+    break_minutes: String(settings.break_minutes),
+    long_break_minutes: String(settings.long_break_minutes),
+    long_break_every: String(settings.long_break_every),
+  };
+}
+
+function inRange(value: string, max: number) {
+  return /^\d+$/.test(value) && Number(value) >= 1 && Number(value) <= max;
+}
 
 type ConnectionStatus = 'idle' | 'checking' | 'unreachable' | 'rejected' | 'ok';
 type ExportResource = 'sessions' | 'tasks';
@@ -38,6 +69,29 @@ export default function SettingsScreen() {
   const [status, setStatus] = useState<ConnectionStatus>('idle');
   const [exportStatus, setExportStatus] = useState<ExportStatus>('idle');
   const [options, setOptions] = useState<UserOptions>(DEFAULT_USER_OPTIONS);
+
+  const [pomodoro, setPomodoro] = useState(toFields(POMODORO_DEFAULTS));
+  const pomodoroQuery = useQuery({ queryKey: ['settings', 'pomodoro'], queryFn: () => settingsAPI.getPomodoro() });
+  const pomodoroMutation = useMutation({
+    mutationFn: (settings: PomodoroSettings) => settingsAPI.updatePomodoro(settings),
+    onSuccess: (data) => queryClient.setQueryData(['settings', 'pomodoro'], data),
+  });
+
+  useEffect(() => {
+    if (pomodoroQuery.data) setPomodoro(toFields(pomodoroQuery.data));
+  }, [pomodoroQuery.data]);
+
+  const pomodoroValid = POMODORO_FIELDS.every((f) => inRange(pomodoro[f.key], f.max));
+  const pomodoroSaveDisabled = !pomodoroQuery.data || !pomodoroValid || pomodoroMutation.isPending;
+
+  const savePomodoro = () => {
+    pomodoroMutation.mutate({
+      work_minutes: Number(pomodoro.work_minutes),
+      break_minutes: Number(pomodoro.break_minutes),
+      long_break_minutes: Number(pomodoro.long_break_minutes),
+      long_break_every: Number(pomodoro.long_break_every),
+    });
+  };
 
   useEffect(() => {
     (async () => {
@@ -167,6 +221,34 @@ export default function SettingsScreen() {
         />
       </View>
 
+      <Text style={styles.label}>Pomodoro</Text>
+      {pomodoroQuery.isError && <Text style={styles.statusText}>Couldn't load</Text>}
+      {POMODORO_FIELDS.map((f) => (
+        <View key={f.key}>
+          <Text style={styles.infoLabel}>{f.label}</Text>
+          <TextInput
+            testID={f.testID}
+            style={[styles.input, pomodoroQuery.isError && styles.inputDisabled]}
+            value={pomodoro[f.key]}
+            onChangeText={(value) => setPomodoro((prev) => ({ ...prev, [f.key]: value }))}
+            editable={!pomodoroQuery.isError}
+            keyboardType="number-pad"
+            placeholderTextColor={colors.placeholder}
+          />
+          {!inRange(pomodoro[f.key], f.max) && (
+            <Text style={styles.statusText}>{`1–${f.max}`}</Text>
+          )}
+        </View>
+      ))}
+      <Pressable
+        testID="pomodoro-save"
+        accessibilityRole="button"
+        style={[styles.button, pomodoroSaveDisabled && styles.buttonDisabled]}
+        disabled={pomodoroSaveDisabled}
+        onPress={savePomodoro}>
+        <Text style={styles.buttonText}>Save</Text>
+      </Pressable>
+
       <Text style={styles.label}>Export</Text>
       <View style={styles.exportRow}>
         <Pressable
@@ -255,6 +337,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: spacing.md,
+  },
+  inputDisabled: {
+    opacity: 0.5,
+  },
+  buttonDisabled: {
+    opacity: 0.5,
   },
   buttonText: {
     ...typography.body,

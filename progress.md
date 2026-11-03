@@ -1832,3 +1832,13 @@ Each iteration appends its results here so the next session knows what worked, w
   - Save must also be disabled while the query is loading or errored, not only on a range failure (the failure test asserts this).
   - `ExportSettings.test.tsx` renders SettingsScreen without mocking `settingsAPI`. After impl, the query errors there (the mocked axios instance's `get` returns undefined), which is harmless; the reference impl passed that suite.
   - Running this file alone without `--forceExit` hangs after the summary (the known pending-saves open handle, progress.md line ~420). Always pass `--forceExit`.
+
+## B50.impl. Mobile: Pomodoro lengths in Settings
+- **Date:** 2026-11-02
+- **Status:** DONE
+- **Summary:** Added a Pomodoro section to `app/settings.tsx`. It has four number fields kept as strings, loaded by `useQuery(['settings', 'pomodoro'])` from `settingsAPI.getPomodoro`. Save is a `useMutation` that sends all four as numbers and writes the response back into the query cache. A field that is not a whole number in 1–180 (1–12 for the count) shows the range under itself and disables Save. Save is also disabled while there is no loaded data or a save is in flight. A failed load keeps the 25/5/15/4 defaults, greys and locks the fields, and shows "Couldn't load".
+- **Files changed:** mobile/src/app/settings.tsx, prd.md, progress.md
+- **Verification:** from `mobile/`: `npx jest --ci --forceExit` gave 291/291 passed. `npx tsc --noEmit` exited 0. `npx expo export --platform android` succeeded ("Exported: dist").
+- **Gotchas:**
+  - Wrap the API calls in lambdas (`queryFn: () => settingsAPI.getPomodoro()`). `DisplayOptions.test.tsx` mocks `../services/api` without `settingsAPI`, so a bare `settingsAPI.getPomodoro` reference throws during render. With a lambda the query just errors and the screen still renders.
+  - `mutationFn: settingsAPI.updatePomodoro` passed directly also fails the test: react-query v5 calls `mutationFn(variables, context)` and the mock records the extra context argument. The lambda passes only the settings.
