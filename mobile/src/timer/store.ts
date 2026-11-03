@@ -1,11 +1,27 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 
 import * as core from './core';
 import type { Clocks, FinishedRecording, PersistedTimerState, TimerState } from './core';
-import { elapsedRealtime, startForegroundService, stopForegroundService } from './native';
+import {
+  drainActions,
+  elapsedRealtime,
+  notifyPhaseDue,
+  startForegroundService,
+  stopForegroundService,
+} from './native';
+import * as pomodoro from './pomodoro';
+import type {
+  FinishedPomodoro,
+  PomodoroActivity,
+  PomodoroConfig,
+  PomodoroPhase,
+  PomodoroState,
+} from './pomodoro';
 
 export const TIMER_STORAGE_KEY = 'timer.state';
+export const POMODORO_STORAGE_KEY = 'pomodoro.state';
 
 const clocks: Clocks = {
   wall: () => Date.now(),
@@ -99,4 +115,124 @@ export function useTimer() {
   }, [state, apply]);
 
   return { status: state.status, elapsedMs, hydrated, start, pause, resume, reset, finish };
+}
+
+function persistRun(run: PomodoroState | null): void {
+  if (run === null) {
+    void AsyncStorage.removeItem(POMODORO_STORAGE_KEY);
+    return;
+  }
+  void AsyncStorage.setItem(POMODORO_STORAGE_KEY, JSON.stringify(run));
+}
+
+function drainInto(run: PomodoroState): PomodoroState {
+  const actions = drainActions();
+  if (actions.length === 0) return run;
+  return pomodoro.applyActions(
+    run,
+    actions.map((a) => ({ type: a.action, atElapsedMs: a.atElapsedMs }))
+  );
+}
+
+export function usePomodoro() {
+  const [run, setRun] = useState<PomodoroState | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+  const [, setTick] = useState(0);
+  const runRef = useRef<PomodoroState | null>(null);
+
+  const apply = useCallback((next: PomodoroState | null) => {
+    runRef.current = next;
+    setRun(next);
+    persistRun(next);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void AsyncStorage.getItem(POMODORO_STORAGE_KEY).then((raw) => {
+      if (cancelled) return;
+      if (raw) {
+        apply(drainInto(pomodoro.restoreRun(JSON.parse(raw) as PomodoroState, clocks)));
+      }
+      setHydrated(true);
+    });
+
+    const subscription = AppState.addEventListener('change', (appState) => {
+      const current = runRef.current;
+      if (appState !== 'active' || current === null) return;
+      const next = drainInto(current);
+      if (next !== current) apply(next);
+    });
+
+    return () => {
+      cancelled = true;
+      subscription.remove();
+    };
+  }, [apply]);
+
+  useEffect(() => {
+    if (run?.status !== 'running') return;
+
+    const id = setInterval(() => {
+      const current = runRef.current;
+      if (current && pomodoro.reminderDue(current, clocks)) {
+        notifyPhaseDue(current.phase);
+        apply(pomodoro.markReminded(current));
+      } else {
+        setTick((tick) => tick + 1);
+      }
+    }, 1000);
+    return () => clearInterval(id);
+  }, [run, apply]);
+
+  const start = useCallback(
+    (config: PomodoroConfig, activity: PomodoroActivity) => {
+      apply(pomodoro.startRun(config, activity, clocks));
+    },
+    [apply]
+  );
+
+  const pause = useCallback(() => {
+    if (runRef.current) apply(pomodoro.pauseRun(runRef.current, clocks.mono()));
+  }, [apply]);
+
+  const resume = useCallback(() => {
+    if (runRef.current) apply(pomodoro.resumeRun(runRef.current, clocks.mono()));
+  }, [apply]);
+
+  const switchPhase = useCallback(() => {
+    if (runRef.current) apply(pomodoro.switchPhase(runRef.current, clocks.mono()));
+  }, [apply]);
+
+  const reset = useCallback(() => apply(null), [apply]);
+
+  const finish = useCallback((): FinishedPomodoro => {
+    const result = pomodoro.finishRun(runRef.current as PomodoroState, clocks);
+    apply(null);
+    return result;
+  }, [apply]);
+
+  const view = run ? pomodoro.phaseView(run, clocks) : null;
+  const activity: PomodoroActivity | null = run
+    ? run.taskId !== undefined
+      ? { taskId: run.taskId }
+      : { newActivityName: run.newActivityName ?? '' }
+    : null;
+
+  return {
+    status: run ? run.status : ('idle' as const),
+    hydrated,
+    phase: run ? run.phase : ('work' as PomodoroPhase),
+    remainingMs: view ? view.remainingMs : 0,
+    overMs: view ? view.overMs : 0,
+    totalWorkMs: run ? run.workMs + (run.phase === 'work' && view ? view.elapsedMs : 0) : 0,
+    canFinish: run ? pomodoro.canFinish(run, clocks) : false,
+    activity,
+    start,
+    pause,
+    resume,
+    switchPhase,
+    reset,
+    finish,
+  };
 }

@@ -1857,3 +1857,17 @@ Each iteration appends its results here so the next session knows what worked, w
   - Phase time text is exact: `12:34 left` / `+5:00 over` via `formatElapsed`. Recordings line testID `session-pomodoro-<id>`, minutes `Math.round`ed.
   - Fixed a leak in the existing render-interval test: its `setInterval`/`clearInterval` spies were never restored, so any later test using `setInterval` after `useRealTimers` hit "setInterval is not defined". The test now `mockRestore`s both.
   - `git checkout`/`git restore` need approval in this sandbox; revert throwaway code with Edit/Write.
+
+## B51.impl. Mobile: Pomodoro on the timer screen
+- **Date:** 2026-11-02
+- **Status:** DONE
+- **Summary:** Added `usePomodoro()` and `POMODORO_STORAGE_KEY` to `timer/store.ts`. The hook keeps the `PomodoroState` (or null) in state plus a ref, persists it on every transition, restores it on mount, drains native actions on restore and on AppState 'active', and runs a 1 s tick that fires `notifyPhaseDue` once per phase. The view fields are computed at render. The timer screen gained the Stopwatch | Pomodoro switch, the Activity picker, the run view and controls, a Pomodoro save sheet that sends the three `pomodoro_*` fields, and the Reset confirm. Recordings rows show the summary line. `drainActions`/`notifyPhaseDue` are optional on the native type and no-op in `timer/native.ts` when absent.
+- **Files changed:** mobile/src/timer/store.ts, mobile/src/timer/native.ts, mobile/modules/timer-native/src/TimerNative.types.ts, mobile/src/app/(tabs)/index.tsx, mobile/src/app/(tabs)/recordings.tsx, prd.md, progress.md
+- **Verification:** from `mobile/`: `npx jest --ci --forceExit` gave 18 suites and 326/326 passed. `npx tsc --noEmit` exited 0. `npx expo export --platform android` succeeded ("Exported: dist").
+- **Gotchas:**
+  - `usePomodoro` does **not** touch the foreground service yet. B52 adds `startForegroundService(..., { paused, pomodoro })` calls on start/pause/resume/switch and `stopForegroundService` on reset/finish. All transitions go through `apply()` in the hook, so hook them there.
+  - Native actions are drained only while a run exists. A drain with no run would discard actions that B52 may want for the plain stopwatch, so B52 must decide who owns the queue when both hooks are mounted.
+  - The Pomodoro save sheet is a separate block (`savingRun`) with only the name field and a read-only "Activity: <name>" line. The Activity comes from the run and can't be changed there. The stopwatch sheet is unchanged.
+  - The Activity name for a `{ taskId }` run is looked up from the `['tasks']` query. If tasks haven't loaded, the default name falls back to the date-time name.
+  - Optional native methods are typed as `drainActions?()`/`notifyPhaseDue?()` on `TimerNative`. B52 can make them required once the Kotlin exists.
+  - A multi-line `python3 - <<EOF` edit script and a `cat >> ... <<EOF` combined with `cd .. && git` were both rejected by the sandbox. Use Edit for file changes and run git from `mobile/` with `../` paths.

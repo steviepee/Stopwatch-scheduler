@@ -14,6 +14,14 @@ function dayOf(iso: string): string {
   return iso.slice(0, 10);
 }
 
+function pomodoroSummary(session: StopwatchSession): string {
+  const intervals = session.pomodoro_work_intervals ?? 0;
+  const breaks = session.pomodoro_breaks ?? 0;
+  const work = `Pomodoro · ${intervals} × avg ${Math.round(session.duration / intervals / 60)}m work`;
+  if (!breaks) return work;
+  return `${work} · avg break ${Math.round((session.pomodoro_break_seconds ?? 0) / breaks / 60)}m`;
+}
+
 function ActivityPicker({
   tasks,
   currentTaskId,
@@ -415,6 +423,11 @@ export default function RecordingsScreen() {
               <Text testID={`session-name-${session.id}`} style={styles.rowName}>
                 {session.name}
               </Text>
+              {session.pomodoro_work_intervals ? (
+                <Text testID={`session-pomodoro-${session.id}`} style={styles.rowMetaText}>
+                  {pomodoroSummary(session)}
+                </Text>
+              ) : null}
               <Text testID={`session-date-${session.id}`} style={styles.rowMetaText}>
                 {dayOf(session.created_at)}
               </Text>

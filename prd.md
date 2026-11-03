@@ -246,13 +246,13 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
   - [x] Test: the Recordings row shows the Pomodoro summary line
 
 ### B51.impl — Mobile: Pomodoro on the timer screen
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract in `(tabs)/index.tsx` and a `usePomodoro` hook
   beside `useTimer` in `timer/store.ts`. Add the JS side of B52's API to
   `TimerNative.types.ts` and `timer/native.ts` as optional calls (no-ops when the native module
   is absent or older), so this task does not depend on the rebuild.
 - **Acceptance Criteria:**
-  - [ ] All B51.tests pass; mobile suite, tsc, and export pass
+  - [x] All B51.tests pass; mobile suite, tsc, and export pass
 
 ### B52.tests — Mobile: notification actions and the Pomodoro notification
 - **Status:** PENDING
