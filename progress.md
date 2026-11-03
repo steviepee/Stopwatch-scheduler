@@ -1770,3 +1770,15 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Files changed:** mobile/src/app/(tabs)/recordings.tsx, mobile/src/app/(tabs)/activities.tsx, mobile/src/app/(tabs)/_layout.tsx, prd.md, progress.md
 - **Verification:** from `mobile/`: `npx jest --ci` gave 17 suites and 261/261 passed. `npx tsc --noEmit` exited 0. `npx expo export --platform android` succeeded ("Exported: dist").
 - **Gotchas:** None. Reading `onlineManager.isOnline()` at render time while `isError` is true worked as B47.tests predicted. The Retry button reuses the existing `addButton` style.
+
+## B48.tests. Backend: Pomodoro settings and the Pomodoro summary on Recordings
+- **Date:** 2026-11-02
+- **Status:** DONE
+- **Summary:** Added `backend/tests/test_pomodoro.py` (34 tests, contract in the header): settings GET defaults/one row/PUT round trip/bounds/422s (0, 181, missing field, `long_break_every` 0 and 13)/gate; Recording summary returned on create, get and list, feeds the Activity and its Time Log, works with `new_activity_name`; partial or out-of-range summary is 422 and saves nothing; plain Recordings return the three fields as null; migration upgrade adds the table and three nullable columns and `downgrade -1` drops them.
+- **Files changed:** backend/tests/test_pomodoro.py, prd.md, progress.md
+- **Verification:** (python3 subprocess) backend `pytest tests/` gave 33 failed, 268 passed. All 33 failures are in `test_pomodoro.py` (404 on `/api/settings/pomodoro`, missing `pomodoro_*` keys, no `pomodoro_settings` table), as expected before impl. `test_settings_behind_gate` passes already because the gate 401s any unauthenticated `/api` path; `test_migrations.py` still passes.
+- **Gotchas:**
+  - The PRD says the revision goes "on top of `b8c9d0e1f2a3`", but the current head is `22e35c64707d` (google_credentials), which already sits on `b8c9d0e1f2a3`. Put the new revision on `22e35c64707d` (autogenerate does this) or alembic gets two heads. The test does not pin `down_revision`; it upgrades to head and downgrades one step, so the new revision must be the single head.
+  - `test_get_twice_keeps_one_row` counts rows with raw SQL on `pomodoro_settings`, so the table name must be exactly that. Field names in responses are `work_minutes`, `break_minutes`, `long_break_minutes`, `long_break_every`.
+  - Explicit `null` for one summary field with the other two set must also be 422 (validate "all None or all set" after defaults, e.g. a `model_validator(mode="after")` on `StopwatchSessionBase`).
+  - Import the new model in `alembic/env.py` and make sure `app.main` reaches it (via the settings router) so conftest's `create_all` builds the table.

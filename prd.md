@@ -107,7 +107,7 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
   - [x] All B47.tests pass; mobile suite, tsc, and export pass
 
 ### B48.tests — Backend: Pomodoro settings and the Pomodoro summary on Recordings
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D81, D83. Add `backend/tests/test_pomodoro.py`.
 - **Contract:**
   - **Settings:** new model `PomodoroSettings` (table `pomodoro_settings`, one row) with
@@ -126,12 +126,12 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
   - **Migration:** one Alembic revision on top of `b8c9d0e1f2a3` adding the table and the three
     columns; downgrade drops them.
 - **Acceptance Criteria:**
-  - [ ] Test: GET on an empty table returns 25/5/15/4; PUT then GET returns the new values
-  - [ ] Test: PUT with 0, 181, a missing field, or `long_break_every: 13` → 422
-  - [ ] Test: create a Recording with all three summary fields and an Activity → returned as sent; the Activity's average includes the duration
-  - [ ] Test: only some summary fields, or `pomodoro_work_intervals: 0` → 422
-  - [ ] Test: a plain Recording returns the three fields as null
-  - [ ] `test_migrations.py` passes with the new revision
+  - [x] Test: GET on an empty table returns 25/5/15/4; PUT then GET returns the new values
+  - [x] Test: PUT with 0, 181, a missing field, or `long_break_every: 13` → 422
+  - [x] Test: create a Recording with all three summary fields and an Activity → returned as sent; the Activity's average includes the duration
+  - [x] Test: only some summary fields, or `pomodoro_work_intervals: 0` → 422
+  - [x] Test: a plain Recording returns the three fields as null
+  - [x] `test_migrations.py` passes with the new revision
 
 ### B48.impl — Backend: Pomodoro settings and the Pomodoro summary on Recordings
 - **Status:** PENDING
