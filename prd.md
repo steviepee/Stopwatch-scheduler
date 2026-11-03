@@ -134,11 +134,11 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
   - [x] `test_migrations.py` passes with the new revision
 
 ### B48.impl — Backend: Pomodoro settings and the Pomodoro summary on Recordings
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract: model, schemas, a `routers/settings.py` mounted at
   `/api/settings`, and the migration.
 - **Acceptance Criteria:**
-  - [ ] All B48.tests pass; full suite passes
+  - [x] All B48.tests pass; full suite passes
 
 ### B49.tests — Mobile: Pomodoro run core
 - **Status:** PENDING

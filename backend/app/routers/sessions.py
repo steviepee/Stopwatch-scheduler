@@ -60,7 +60,10 @@ def create_session(session: schemas.StopwatchSessionCreate, db: Session = Depend
         task_id=resolved_task_id,
         notes=session.notes,
         start_time=session.start_time,
-        end_time=session.end_time
+        end_time=session.end_time,
+        pomodoro_work_intervals=session.pomodoro_work_intervals,
+        pomodoro_breaks=session.pomodoro_breaks,
+        pomodoro_break_seconds=session.pomodoro_break_seconds,
     )
     db.add(db_session)
     db.flush()

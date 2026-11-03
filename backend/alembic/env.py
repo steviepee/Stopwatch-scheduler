@@ -19,6 +19,7 @@ import app.models.time_log  # noqa: F401
 import app.models.stopwatch_session  # noqa: F401
 import app.models.schedule  # noqa: F401
 import app.models.google_credential  # noqa: F401
+import app.models.pomodoro_settings  # noqa: F401
 
 config = context.config
 

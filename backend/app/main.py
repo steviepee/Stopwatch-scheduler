@@ -6,7 +6,7 @@ import os
 import hmac
 from dotenv import load_dotenv
 
-from app.routers import tasks, time_logs, calendar_auth, sessions, schedules, insights, exports
+from app.routers import tasks, time_logs, calendar_auth, sessions, schedules, insights, exports, settings
 from app.routers.calendar_auth import SESSION_COOKIE, session_cookie_valid
 import app.models.schedule
 
@@ -63,6 +63,7 @@ app.include_router(sessions.router, prefix='/api/sessions', tags=['sessions'])
 app.include_router(schedules.router, prefix='/api/schedules', tags=['schedules'])
 app.include_router(insights.router, prefix='/api/insights', tags=['insights'])
 app.include_router(exports.router, prefix='/api/exports', tags=['exports'])
+app.include_router(settings.router, prefix='/api/settings', tags=['settings'])
 
 if not _static_dir:
     @app.get('/')

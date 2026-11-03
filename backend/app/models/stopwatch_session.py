@@ -12,6 +12,9 @@ class StopwatchSession(Base):
     notes = Column(String(500), nullable=True)
     start_time = Column(DateTime, nullable=True)  # When the session started (actual)
     end_time = Column(DateTime, nullable=True)  # When the session ended (actual)
+    pomodoro_work_intervals = Column(Integer, nullable=True)
+    pomodoro_breaks = Column(Integer, nullable=True)
+    pomodoro_break_seconds = Column(Float, nullable=True)
     created_at = Column(DateTime, default=utcnow)
     updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 

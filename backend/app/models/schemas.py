@@ -81,6 +81,16 @@ class StopwatchSessionBase(BaseModel):
     notes: Optional[str] = None
     start_time: Optional[UTCDateTime] = None
     end_time: Optional[UTCDateTime] = None
+    pomodoro_work_intervals: Optional[int] = Field(default=None, ge=1)
+    pomodoro_breaks: Optional[int] = Field(default=None, ge=0)
+    pomodoro_break_seconds: Optional[float] = Field(default=None, ge=0)
+
+    @model_validator(mode="after")
+    def check_pomodoro_summary(self):
+        summary = (self.pomodoro_work_intervals, self.pomodoro_breaks, self.pomodoro_break_seconds)
+        if any(v is None for v in summary) and any(v is not None for v in summary):
+            raise ValueError("pomodoro summary fields must be all set or all null")
+        return self
 
 def _check_new_activity_name(task_id: Optional[int], new_activity_name: Optional[str]) -> None:
     if new_activity_name is None:
@@ -124,6 +134,18 @@ class StopwatchSession(StopwatchSessionBase):
 class StopwatchSessionWithTask(StopwatchSession):
     task: Optional[Task] = None
 
+    class Config:
+        from_attributes = True
+
+
+# Pomodoro settings schemas
+class PomodoroSettingsBase(BaseModel):
+    work_minutes: int = Field(ge=1, le=180)
+    break_minutes: int = Field(ge=1, le=180)
+    long_break_minutes: int = Field(ge=1, le=180)
+    long_break_every: int = Field(ge=1, le=12)
+
+class PomodoroSettings(PomodoroSettingsBase):
     class Config:
         from_attributes = True
 
