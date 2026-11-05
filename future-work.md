@@ -297,3 +297,26 @@ typical work interval and typical break, per run and per Activity across runs.
 - Should Pomodoro history inform Strategies or the planning coach (for example, splitting a
   long Activity into intervals on the Schedule)?
 - Migrating Build 2c's summary fields into whatever replaces them.
+
+## Reminder options per user
+
+**Raised:** 2026-11-04, Build 2c gate (U13).
+
+Build 2c's reminder is fixed. The phone posts one ordinary notification on the "Pomodoro
+reminders" channel, with the phone's default sound and vibration and normal priority, so no
+pop-up. The web shows a browser notification (when permission is granted) and plays a 0.3 s
+880 Hz beep at low volume. The user found the web chime short and would like a longer one. Other
+users may prefer it short, or want their own tone, so it should be a setting, not a new default.
+
+**Questions to settle**
+
+- Which options: chime length or tone, a custom sound, vibration on or off, a pop-up notification
+  (higher channel importance) on the phone, an in-app banner or flashing display when an
+  interval ends?
+- Per user or per device? A setting on the server fits the multi-user work above (one set per account).
+  Phone sound and vibration are partly owned by Android's channel settings, which the app can
+  only set once per channel.
+- Phone tone changes are native (a channel's sound is fixed when it is created), so they need
+  an APK build and probably a new channel id.
+- Should the "Recording" notification's countdown text round up like the in-app display (B58)?
+  That is also native, so it fits the same build.

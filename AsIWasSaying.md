@@ -1,8 +1,19 @@
 # Standing Orders — Build 2c
 
-Current as of 2026-10-29. Read this, then `prd.md`.
+Current as of 2026-11-04. Read this, then `prd.md`.
 
 ## 0. Pick up here
+
+**Build 2c is complete (2026-11-04).** The loop did B47–B55. U11 passed cold (343/343). U12
+deployed and rebuilt the preview APK only: the development build was skipped on purpose,
+because the "(Dev)" app is unused. Rebuild it with `eas build --profile development --platform
+android` when needed. U13 passed after three fixes found at the gate, all deployed (last
+a96a67e): B56 (the React Compiler froze the phone's Pomodoro display; mobile Jest now runs the
+compiler, see GOTCHAS), B57 (ask for notification permission on Start), and B58 (countdown
+rounds up; web tone unlocked on Start). Mobile 354, web 187, backend 301. Not pushed. Next: archive
+`prd.md` as `docs/prd-build2c-completed.md` when the next build is designed. Candidates: the
+multi-user phase (D51), the AI planning coach, reminder options per user (future-work.md), and
+Python 3.12.
 
 **Build 2b is complete (2026-10-25)**: U9 and U10 passed; PRD archived at
 `docs/prd-build2b-completed.md`. **Build 2c is designed (2026-10-29)** and written as `prd.md`

@@ -2014,3 +2014,15 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Files changed:** mobile/src/app/(tabs)/index.tsx, mobile/src/timer/store.ts, mobile/src/__tests__/StopwatchScreen.test.tsx, mobile/src/__tests__/timerStore.test.tsx, frontend/src/components/Stopwatch.tsx, frontend/src/__tests__/Stopwatch.test.tsx, prd.md, progress.md
 - **Verification:** new tests red first (mobile 4, web 2). Then mobile cold 354/354, tsc, and export pass. Web `npx vitest run` 187/187 and tsc pass.
 - **Gotchas:** web `passTime(ms)` in Stopwatch.test sets the clock to `now + ms - 1000` before advancing 1 s, so steps under 1000 ms move the clock backwards. Use steps of 1 s or more. The Kotlin notification text still floors the countdown. Fix it with the next native change.
+
+## U13 (third pass, after B58)
+- **Date:** 2026-11-04
+- **Results:** Countdown correct on both clients (B58). Phone reminder: notification with the default sound. That matches what was built (D84 as an ordinary notification). The web tone works; the machine's volume had been at 0. Step 5: the phone run survives a force-close (web passed earlier), so step 5 passes on both. Step 3: no buttons seen on the ongoing notification. The user was told they show only when it is expanded, and is deciding whether the buttons are needed.
+- **Decision (2026-11-04):** keep the reminder as built. Phone vibration depends on the phone's own settings. Reminder customisation (chime length, own tones, vibration, pop-up) goes to future-work.md, "Reminder options per user".
+
+## U13. Build 2c gate — PASSED
+- **Date:** 2026-11-04
+- **Status:** DONE
+- **Results:** 1 lengths sync: pass. 2 reminder and `+m:ss over`: pass after B56 and B58 (the phone shows a notification with the default sound, as built; the web tone works). 3 notification buttons: Pause/Resume and Start break/Start work, with the second break a Long break, and the app matches: pass (buttons show when the notification is expanded). 4 finish and save: pass. 5 survives a restart: pass on both clients. 6 delete confirm and "Couldn't load"/Retry: pass. The Offline text check was dropped on the device, because the persisted cache serves the list (covered by B47 tests).
+- **Fixes found during the gate:** B56, B57, B58 (all deployed, last a96a67e).
+- **Build 2c is complete.** Follow-up: reminder options per user are in future-work.md.

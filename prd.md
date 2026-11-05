@@ -421,7 +421,7 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
   - [x] The standalone app shows the Stopwatch | Pomodoro switch
 
 ### U13. USER — Build 2c gate
-- **Status:** USER
+- **Status:** DONE
 - **Description:** On the phone (standalone app) and on the web app:
   1. Settings/Options: change the lengths to 1 / 1 / 2, long break every 2; the other client
      shows the same values.
@@ -438,4 +438,4 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
      "Couldn't load" and Retry. Restore the token.
   Set the lengths back to 25 / 5 / 15 / 4. Record results in `progress.md`.
 - **Acceptance Criteria:**
-  - [ ] All six pass on both clients where they apply; any failure recorded with the task it reopens
+  - [x] All six pass on both clients where they apply; any failure recorded with the task it reopens
