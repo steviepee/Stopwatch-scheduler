@@ -56,6 +56,23 @@
   "jest": {
     "preset": "jest-expo",
     "resolver": "react-native-worklets/jest/resolver.js",
+    "testTimeout": 20000,
+    "transform": {
+      "\\.[jt]sx?$": [
+        "babel-jest",
+        {
+          "presets": [
+            "babel-preset-expo"
+          ],
+          "caller": {
+            "name": "metro",
+            "bundler": "metro",
+            "platform": "ios",
+            "supportsReactCompiler": true
+          }
+        }
+      ]
+    },
     "setupFiles": [
       "<rootDir>/jest.setup.ts"
     ]

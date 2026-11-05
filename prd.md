@@ -358,8 +358,36 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
 - **Acceptance Criteria:**
   - [x] All B55.tests pass; web tsc clean; `npm run build` succeeds
 
+### B56 — Mobile: the Pomodoro display follows the clock (found in U13)
+- **Status:** DONE
+- **Description:** U13 step 2 found the Pomodoro phase time frozen on the phone. It showed 0:59
+  after Start and only moved when the run itself changed (Pause, the reminder). The cause is the
+  React Compiler (`app.json` `experiments.reactCompiler`). It memoized `phaseView(run, clocks)`
+  and `canFinish` on `run` alone, so the 1 s tick re-rendered with cached values. Jest never ran
+  the compiler, so the suite passed. Fix: the tick stores `now` (`clocks.mono()`) in state, and
+  the view reads the clock through it. The mobile Jest transform now runs babel-preset-expo with
+  `supportsReactCompiler: true`, so tests see the compiled code, and `testTimeout` is 20 s
+  because a cold compile with the compiler pushed the first test in six files past 5 s.
+  Tests and impl were done in one session, not by the loop.
+- **Acceptance Criteria:**
+  - [x] Test: each tick moves the remaining time, before and after a pause
+  - [x] Test: `canFinish` turns true once work has ticked, with no other change to the run
+  - [x] The existing reminder test fails on the old code with the compiler on and passes on the fix
+  - [x] Cold `npx jest --ci` (after `--clearCache`) 348/348; tsc and export pass
+
+### B57 — Mobile: ask for the notification permission on Start (found in U13)
+- **Status:** DONE
+- **Description:** Mobile never called `requestNotificationPermission`, so a fresh install on
+  Android 13+ would show neither the ongoing notification nor the reminder. Both start
+  functions in `timer/store.ts` (stopwatch and Pomodoro) now ask. The OS only prompts while the
+  permission is undecided, and a denial does not stop the timer. This was not the cause of
+  U13's missing reminder: the user's phone already had notifications on.
+- **Acceptance Criteria:**
+  - [x] Test: stopwatch Start and Pomodoro Start each ask once and run, even when denied
+  - [x] Test: pause, resume and a phase switch do not ask
+
 ### U12. USER — Ship, and rebuild the phone app for the new native code
-- **Status:** USER
+- **Status:** DONE
 - **Description:** After the loop finishes. B52 changed native code, so the phone needs new
   APKs; phone updates only reach builds with the same native fingerprint. In an Ubuntu tab:
   ```bash
@@ -373,9 +401,9 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
   Install both from the links EAS prints (open each on the phone, tap Install/Update). Then in
   the "(Dev)" app's dev menu, switch the **Tools button** back on (D89).
 - **Acceptance Criteria:**
-  - [ ] `curl -s -o /dev/null -w "%{http_code}\n" https://api.stopwatchscheduler.app/api/settings/pomodoro` prints `401` (route exists, gate on)
-  - [ ] Both apps installed; the standalone app lists Activities and Recordings
-  - [ ] The standalone app shows the Stopwatch | Pomodoro switch
+  - [x] `curl -s -o /dev/null -w "%{http_code}\n" https://api.stopwatchscheduler.app/api/settings/pomodoro` prints `401` (route exists, gate on)
+  - [x] Both apps installed (preview only; development build skipped by choice); the standalone app lists Activities and Recordings
+  - [x] The standalone app shows the Stopwatch | Pomodoro switch
 
 ### U13. USER — Build 2c gate
 - **Status:** USER

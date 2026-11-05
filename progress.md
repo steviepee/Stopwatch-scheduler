@@ -1969,3 +1969,36 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Date:** 2026-11-03
 - **Status:** DONE
 - **Summary:** Run after the loop rather than before it. Metro stopped, `npx jest --ci --clearCache`, then a cold `npx jest --ci`: exit 0, 18/18 suites, 343/343 tests, 28.5 s. The earlier cold-run failures did not recur.
+
+## U12. Ship, and rebuild the phone app for the new native code
+- **Date:** 2026-11-03
+- **Status:** DONE
+- **Summary:** `./deploy.sh` at c6ee65f: image `ghcr.io/steviepee/stopwatch-scheduler:c6ee65f` on Azure (entrypoint runs `alembic upgrade head`, so B48's migration is live), and an update published to the preview channel (Android runtime `79f63178`). The curl check on `/api/settings/pomodoro` returned 401. The user rebuilt and installed the preview APK. B52's Kotlin compiled, Activities and Recordings load, and the Stopwatch | Pomodoro switch shows. The development build was skipped on purpose because the "(Dev)" app is unused, so D89's Tools-button step doesn't apply. Rebuild it with `eas build --profile development --platform android` when it's needed again.
+
+## U13 (partial). Build 2c gate, first pass
+- **Date:** 2026-11-04
+- **Status:** IN PROGRESS
+- **Results:**
+  1. Lengths sync: pass.
+  2. Reminder: **no reminder seen** on the phone. The display reached `+0:00 over`, which only re-renders through the JS reminder branch, so `notifyPhaseDue` was called. Notifications are on for the app. Still open, see below.
+  2a. Found **B56**: the phone's Pomodoro display froze at 0:59 (React Compiler memoization).
+  3. Notification buttons: not checked accurately while the display was frozen. Redo after B56 ships.
+  4. Finish and save: pass.
+  5. Survives a restart: web pass (Pomodoro and the plain stopwatch). Phone not yet tested.
+  6. Delete confirm: not reported. Offline: the cached Activities list still showed with Wi-Fi and data off. That is correct, because the persisted query cache serves it. The "Offline" text needs no cache, and clearing app data also wipes the token, so the on-device check was dropped and the B47 tests cover it. Bad token → "Couldn't load" and Retry: pass.
+- **Open:** the missing reminder. Next pass: check whether the app has a "Pomodoro reminders" notification category (it exists only once `postReminder` has run) and whether it is set to Alert or Silent.
+
+## B56. Mobile: the Pomodoro display follows the clock
+- **Date:** 2026-11-04
+- **Status:** DONE
+- **Summary:** In `usePomodoro`, the 1 s tick now does `setNow(clocks.mono())` instead of bumping a counter. `store()` also sets `now`. `phaseView` and `canFinish` read `{ wall, mono: () => now }`. Compiling `store.ts` with babel-preset-expo and `supportsReactCompiler: true` showed the old code guarded `phaseView` with `$[15] !== run`. The new code keys on `now`. The mobile Jest config now overrides the `\.[jt]sx?$` transform: babel-jest with `babel-preset-expo` and a metro caller (`platform: ios`, matching jest-expo) with `supportsReactCompiler: true`. `testTimeout: 20000` was added.
+- **Files changed:** mobile/src/timer/store.ts, mobile/src/__tests__/timerStore.test.tsx, mobile/package.json, prd.md, progress.md
+- **Verification:** with the compiler on and the old code: 1 failure warm (the existing reminder test) plus 6 cold timeouts. The new tests failed with the frozen values (1500000, false). After the fix, from `mobile/`: `npx jest --ci --clearCache`, then `npx jest --ci` 348/348 cold. `npx tsc --noEmit` exited 0. `npx expo export --platform android` succeeded.
+- **Gotchas:** any value derived from a clock during render is cached by the React Compiler unless the clock reading is state. `calendar.tsx:535-540` (the now-line) has the same pattern and was left alone.
+
+## B57. Mobile: ask for the notification permission on Start
+- **Date:** 2026-11-04
+- **Status:** DONE
+- **Summary:** `useTimer.start` and `usePomodoro.start` call `void requestNotificationPermission()` after starting. The native function already existed (B52) but nothing called it.
+- **Files changed:** mobile/src/timer/store.ts, mobile/src/__tests__/timerStore.test.tsx
+- **Verification:** 2 new tests red before, green after. Included in the 348/348 cold run above.

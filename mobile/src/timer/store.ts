@@ -9,6 +9,7 @@ import {
   drainActions,
   elapsedRealtime,
   notifyPhaseDue,
+  requestNotificationPermission,
   startForegroundService,
   stopForegroundService,
 } from './native';
@@ -127,6 +128,7 @@ export function useTimer() {
     const next = core.start(state, clocks);
     apply(next);
     syncService(next);
+    void requestNotificationPermission();
   }, [state, apply]);
 
   const pause = useCallback(() => {
@@ -197,12 +199,13 @@ function syncRunService(run: PomodoroState | null): void {
 export function usePomodoro() {
   const [run, setRun] = useState<PomodoroState | null>(null);
   const [hydrated, setHydrated] = useState(false);
-  const [, setTick] = useState(0);
+  const [now, setNow] = useState(() => clocks.mono());
   const runRef = useRef<PomodoroState | null>(null);
 
   const store = useCallback((next: PomodoroState | null) => {
     runRef.current = next;
     setRun(next);
+    setNow(clocks.mono());
     persistRun(next);
   }, []);
 
@@ -259,7 +262,7 @@ export function usePomodoro() {
         notifyPhaseDue(current.phase);
         store(pomodoro.markReminded(current));
       } else {
-        setTick((tick) => tick + 1);
+        setNow(clocks.mono());
       }
     }, 1000);
     return () => clearInterval(id);
@@ -268,6 +271,7 @@ export function usePomodoro() {
   const start = useCallback(
     (config: PomodoroConfig, activity: PomodoroActivity) => {
       apply(pomodoro.startRun(config, activity, clocks));
+      void requestNotificationPermission();
     },
     [apply]
   );
@@ -292,7 +296,9 @@ export function usePomodoro() {
     return result;
   }, [apply]);
 
-  const view = run ? pomodoro.phaseView(run, clocks) : null;
+  // Read the clock through `now` so the React Compiler re-derives the view on each tick.
+  const at: Clocks = { wall: clocks.wall, mono: () => now };
+  const view = run ? pomodoro.phaseView(run, at) : null;
   const activity: PomodoroActivity | null = run
     ? run.taskId !== undefined
       ? { taskId: run.taskId }
@@ -306,7 +312,7 @@ export function usePomodoro() {
     remainingMs: view ? view.remainingMs : 0,
     overMs: view ? view.overMs : 0,
     totalWorkMs: run ? run.workMs + (run.phase === 'work' && view ? view.elapsedMs : 0) : 0,
-    canFinish: run ? pomodoro.canFinish(run, clocks) : false,
+    canFinish: run ? pomodoro.canFinish(run, at) : false,
     activity,
     start,
     pause,

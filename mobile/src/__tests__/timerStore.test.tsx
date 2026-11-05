@@ -18,6 +18,7 @@ jest.mock('../timer/native', () => ({
   stopForegroundService: () => mockStopService(),
   notifyPhaseDue: (phase: string) => mockNotifyPhaseDue(phase),
   drainActions: () => mockDrainActions(),
+  requestNotificationPermission: () => mockRequestPermission(),
   addTimerActionListener: (listener: () => void) => {
     mockActionListeners.push(listener);
     return {
@@ -49,6 +50,7 @@ const mockNotifyPhaseDue = jest.fn((phase: string) => {});
 const mockDrainActions = jest.fn(
   (): { action: 'pause' | 'resume' | 'switch'; atElapsedMs: number }[] => []
 );
+const mockRequestPermission = jest.fn(async () => true);
 
 async function mountTimer() {
   const view = await renderHook(() => useTimer());
@@ -63,12 +65,54 @@ beforeEach(async () => {
   mockNotifyPhaseDue.mockClear();
   mockDrainActions.mockReset();
   mockDrainActions.mockReturnValue([]);
+  mockRequestPermission.mockClear();
   mockActionListeners.length = 0;
   await AsyncStorage.clear();
 });
 
 afterEach(() => {
   jest.useRealTimers();
+});
+
+// B57: Android 13+ shows no notification until the app asks. Each start asks; the OS only
+// prompts while the permission is undecided, and a denial does not stop the timer.
+describe('starting asks for the notification permission', () => {
+  it('the stopwatch start asks once and runs', async () => {
+    const view = await mountTimer();
+    expect(mockRequestPermission).not.toHaveBeenCalled();
+    await act(async () => view.result.current.start());
+    expect(mockRequestPermission).toHaveBeenCalledTimes(1);
+    expect(view.result.current.status).toBe('running');
+  });
+
+  it('a Pomodoro start asks once and runs, even when denied', async () => {
+    mockRequestPermission.mockResolvedValueOnce(false);
+    const view = await mountPomodoro();
+    expect(mockRequestPermission).not.toHaveBeenCalled();
+    await act(async () =>
+      view.result.current.start(
+        { workMinutes: 25, breakMinutes: 5, longBreakMinutes: 15, longBreakEvery: 4 },
+        { taskId: 7 }
+      )
+    );
+    expect(mockRequestPermission).toHaveBeenCalledTimes(1);
+    expect(view.result.current.status).toBe('running');
+  });
+
+  it('pause, resume and a phase switch do not ask', async () => {
+    const view = await mountPomodoro();
+    await act(async () =>
+      view.result.current.start(
+        { workMinutes: 25, breakMinutes: 5, longBreakMinutes: 15, longBreakEvery: 4 },
+        { taskId: 7 }
+      )
+    );
+    mockRequestPermission.mockClear();
+    await act(async () => view.result.current.pause());
+    await act(async () => view.result.current.resume());
+    await act(async () => view.result.current.switchPhase());
+    expect(mockRequestPermission).not.toHaveBeenCalled();
+  });
 });
 
 describe('useTimer transitions', () => {
@@ -487,6 +531,48 @@ describe('usePomodoro reminder', () => {
     });
     expect(mockNotifyPhaseDue).toHaveBeenCalledTimes(2);
     expect(mockNotifyPhaseDue).toHaveBeenLastCalledWith('break');
+  });
+
+  // B56: under the React Compiler the view must follow the clock on every tick, not only
+  // when the run changes. The suite runs with the compiler on (package.json jest transform).
+  it('each tick moves the remaining time, before and after a pause', async () => {
+    const view = await mountPomodoro();
+    jest.useFakeTimers();
+    await act(async () => view.result.current.start(CONFIG, { taskId: 7 }));
+    expect(view.result.current.remainingMs).toBe(25 * MIN);
+
+    for (const expected of [25 * MIN - 1_000, 25 * MIN - 2_000]) {
+      mockClock.mono += 1_000;
+      await act(async () => {
+        jest.advanceTimersByTime(1_000);
+      });
+      expect(view.result.current.remainingMs).toBe(expected);
+    }
+
+    await act(async () => view.result.current.pause());
+    mockClock.mono += 30_000;
+    await act(async () => view.result.current.resume());
+    expect(view.result.current.remainingMs).toBe(25 * MIN - 2_000);
+
+    mockClock.mono += 1_000;
+    await act(async () => {
+      jest.advanceTimersByTime(1_000);
+    });
+    expect(view.result.current.remainingMs).toBe(25 * MIN - 3_000);
+  });
+
+  it('canFinish turns true once work has ticked, with no other change to the run', async () => {
+    const view = await mountPomodoro();
+    jest.useFakeTimers();
+    await act(async () => view.result.current.start(CONFIG, { taskId: 7 }));
+    expect(view.result.current.canFinish).toBe(false);
+
+    mockClock.mono += 1_000;
+    await act(async () => {
+      jest.advanceTimersByTime(1_000);
+    });
+    expect(view.result.current.canFinish).toBe(true);
+    expect(view.result.current.totalWorkMs).toBe(1_000);
   });
 });
 

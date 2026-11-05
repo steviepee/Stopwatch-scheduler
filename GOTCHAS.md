@@ -650,3 +650,21 @@ Build 2c) — gives a new fingerprint, so the installed APK silently ignores the
 and `development` too), then deploy again. If unsure whether a change is native, compare
 `npx expo-updates fingerprint:generate` from `mobile/` before and after it.
 
+
+## Phone screen freezes on a value that tests say updates (React Compiler)
+
+**Symptom:** a live value on the phone, such as the Pomodoro phase time, shows one reading and
+only moves when something else changes (Pause, a phase switch). Every Jest test passes. Found
+in U13 (B56).
+
+**Cause:** `app.json` turns on `experiments.reactCompiler`. The compiler memoizes anything
+computed during render on the inputs it can see. A clock read through a module-level function
+(`clocks.mono()`, `Date.now()`) is invisible to it, so the value is cached on the other inputs.
+A bare "bump a counter" tick re-renders, but the result is still cached.
+
+**Fix:** put the clock reading in state (`setNow(clocks.mono())` on the tick) and derive from
+that. Since B56 the mobile Jest transform runs the compiler (`supportsReactCompiler: true` in
+`mobile/package.json`), so tests see this now. To inspect what the compiler made of one file,
+transform it with `@babel/core` + `babel-preset-expo` and a metro caller that has
+`supportsReactCompiler: true`, then look for `$[n] !== x` guards. Changing the jest config does not
+change the native fingerprint.
