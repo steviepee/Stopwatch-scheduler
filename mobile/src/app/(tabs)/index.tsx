@@ -227,7 +227,7 @@ export default function StopwatchScreen() {
           <Text testID="pomodoro-phase-time" style={styles.elapsed}>
             {run.overMs > 0
               ? `+${formatElapsed(run.overMs)} over`
-              : `${formatElapsed(run.remainingMs)} left`}
+              : `${formatElapsed(Math.ceil(run.remainingMs / 1000) * 1000)} left`}
           </Text>
           <Text style={styles.textMuted}>
             {runActivityName ? `${runActivityName} · work ` : 'Work '}

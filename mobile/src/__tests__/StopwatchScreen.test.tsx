@@ -568,6 +568,23 @@ describe('Pomodoro mode switch (B51, D86)', () => {
     expect(screen.getByTestId('pomodoro-phase')).toBeTruthy();
   });
 
+  // B58: time left rounds up, so 60 s shows 1:00 and any part-second shows the whole second.
+  it.each([
+    [60_000, '1:00 left'],
+    [59_001, '1:00 left'],
+    [58_999, '0:59 left'],
+    [58_000, '0:58 left'],
+    [1, '0:01 left'],
+  ])('time left %d ms reads %s', async (remainingMs, text) => {
+    mockedUseTimer.mockReturnValue(timerMock({ status: 'idle' }));
+    mockedUsePomodoro.mockReturnValue(
+      pomodoroMock({ status: 'running', activity: { taskId: GYM.id }, remainingMs })
+    );
+    await renderScreen();
+
+    expect(screen.getByTestId('pomodoro-phase-time')).toHaveTextContent(text);
+  });
+
   it('every Pomodoro button has a hit area of at least 44', async () => {
     mockedUseTimer.mockReturnValue(timerMock({ status: 'idle' }));
     mockedUsePomodoro.mockReturnValue(

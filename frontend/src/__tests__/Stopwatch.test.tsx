@@ -419,6 +419,7 @@ function stubAudio() {
   });
   const oscillatorStart = vi.fn();
   const constructed = vi.fn();
+  const resumed = vi.fn();
   class MockAudioContext {
     currentTime = 0;
     destination = {};
@@ -441,6 +442,7 @@ function stubAudio() {
       return { gain: param(), connect: vi.fn((node: unknown) => node), disconnect: vi.fn() };
     }
     resume() {
+      resumed();
       return Promise.resolve();
     }
     close() {
@@ -448,7 +450,7 @@ function stubAudio() {
     }
   }
   vi.stubGlobal('AudioContext', MockAudioContext);
-  return { constructed, oscillatorStart };
+  return { constructed, oscillatorStart, resumed };
 }
 
 function renderCard(onSaveSession = vi.fn()) {
@@ -632,6 +634,19 @@ describe('Pomodoro on the stopwatch card (B55)', () => {
       expect(screen.getByTestId('pomodoro-phase-time')).toHaveTextContent('24:00 left');
     });
 
+    // B58: time left rounds up, so a part-second still shows the whole second
+    // (60 s → 1:00, then 0:59 as soon as any time has passed, never straight to 0:58).
+    it('time left rounds up to the whole second', async () => {
+      getPomodoro.mockResolvedValue({ ...SERVER_SETTINGS, work_minutes: 1 });
+      renderCard();
+      await startRunOn();
+
+      await passTime(1_250);
+      expect(screen.getByTestId('pomodoro-phase-time')).toHaveTextContent('0:59 left');
+      await passTime(1_500);
+      expect(screen.getByTestId('pomodoro-phase-time')).toHaveTextContent('0:58 left');
+    });
+
     it('Start break / Start work move through the phases; the 4th break is a Long break', async () => {
       renderCard();
       await startRunOn();
@@ -686,6 +701,20 @@ describe('Pomodoro on the stopwatch card (B55)', () => {
       await passTime(26 * MIN);
       expect(notification).not.toHaveBeenCalled();
       expect(screen.getByTestId('pomodoro-phase-time')).toHaveTextContent('+1:00 over');
+    });
+
+    // B58: browsers start an AudioContext made outside a user gesture suspended, so a tone
+    // built at reminder time is silent. Start (a click) creates and resumes it; the reminder
+    // reuses it.
+    it('Start unlocks the audio, and the reminder plays on that same context', async () => {
+      renderCard();
+      await startRunOn();
+      expect(audio.constructed).toHaveBeenCalledTimes(1);
+      expect(audio.resumed).toHaveBeenCalled();
+
+      await passTime(26 * MIN);
+      expect(audio.oscillatorStart).toHaveBeenCalledTimes(1);
+      expect(audio.constructed).toHaveBeenCalledTimes(1);
     });
 
     it('works without the Notification API at all', async () => {

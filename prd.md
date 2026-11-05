@@ -386,6 +386,21 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
   - [x] Test: stopwatch Start and Pomodoro Start each ask once and run, even when denied
   - [x] Test: pause, resume and a phase switch do not ask
 
+### B58 — Both clients: countdown rounds up; web tone unlocked on Start (found in U13)
+- **Status:** DONE
+- **Description:** After B56 the phone countdown went 1:00 → 0:58. The time left was floored,
+  so a tick landing just after the 1 s boundary read 58.99 s as 0:58. Time left now rounds up on
+  both clients, and the phone's tick is 250 ms like the web's. The web reminder made no sound
+  in U13. The tone's `AudioContext` was created at reminder time, and browsers can start
+  one made without a click suspended. `pomodoro-start` now creates and resumes it, and the
+  reminder reuses it. The native notification's own countdown text still floors. That is
+  Kotlin, so it waits for the next APK build.
+- **Acceptance Criteria:**
+  - [x] Test (mobile screen): 60000 / 59001 → 1:00, 58999 → 0:59, 58000 → 0:58, 1 → 0:01
+  - [x] Test (mobile store): the view refreshes within 250 ms
+  - [x] Test (web): 1.25 s in → 0:59, 2.75 s in → 0:58; Start creates and resumes one AudioContext, and the reminder plays on it
+  - [x] Mobile cold 354/354, tsc, export; web 187/187, tsc
+
 ### U12. USER — Ship, and rebuild the phone app for the new native code
 - **Status:** DONE
 - **Description:** After the loop finishes. B52 changed native code, so the phone needs new

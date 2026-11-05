@@ -561,6 +561,19 @@ describe('usePomodoro reminder', () => {
     expect(view.result.current.remainingMs).toBe(25 * MIN - 3_000);
   });
 
+  // B58: a 250 ms tick, so one slow tick cannot hold a stale second on screen for long.
+  it('the view refreshes within 250 ms', async () => {
+    const view = await mountPomodoro();
+    jest.useFakeTimers();
+    await act(async () => view.result.current.start(CONFIG, { taskId: 7 }));
+
+    mockClock.mono += 250;
+    await act(async () => {
+      jest.advanceTimersByTime(250);
+    });
+    expect(view.result.current.remainingMs).toBe(25 * MIN - 250);
+  });
+
   it('canFinish turns true once work has ticked, with no other change to the run', async () => {
     const view = await mountPomodoro();
     jest.useFakeTimers();

@@ -2002,3 +2002,15 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Summary:** `useTimer.start` and `usePomodoro.start` call `void requestNotificationPermission()` after starting. The native function already existed (B52) but nothing called it.
 - **Files changed:** mobile/src/timer/store.ts, mobile/src/__tests__/timerStore.test.tsx
 - **Verification:** 2 new tests red before, green after. Included in the 348/348 cold run above.
+
+## U13 (second pass, after B56/B57)
+- **Date:** 2026-11-04
+- **Results:** Phone display now counts, but went 1:00 → 0:58 and sometimes stalled for the first seconds (→ B58). Phone reminder now appears in the notification shade. Whether it sounds or vibrates (D84) is not yet confirmed. Web: no reminder at all, neither notification nor tone (→ B58 tone fix; browser notification permission not yet checked).
+
+## B58. Countdown rounds up; web tone unlocked on Start
+- **Date:** 2026-11-04
+- **Status:** DONE
+- **Summary:** Mobile `(tabs)/index.tsx` shows `formatElapsed(ceil(remainingMs/1000)*1000)`, and the `usePomodoro` tick is 250 ms. Web `formatMinSec(ms, roundUp)` is used with `true` for time left. Web `handleRunStart` creates and resumes an `AudioContext` held in `audioRef`. `playReminder` reuses it (creating one only if none exists, such as a run restored after a reload) and no longer closes it after each tone.
+- **Files changed:** mobile/src/app/(tabs)/index.tsx, mobile/src/timer/store.ts, mobile/src/__tests__/StopwatchScreen.test.tsx, mobile/src/__tests__/timerStore.test.tsx, frontend/src/components/Stopwatch.tsx, frontend/src/__tests__/Stopwatch.test.tsx, prd.md, progress.md
+- **Verification:** new tests red first (mobile 4, web 2). Then mobile cold 354/354, tsc, and export pass. Web `npx vitest run` 187/187 and tsc pass.
+- **Gotchas:** web `passTime(ms)` in Stopwatch.test sets the clock to `now + ms - 1000` before advancing 1 s, so steps under 1000 ms move the clock backwards. Use steps of 1 s or more. The Kotlin notification text still floors the countdown. Fix it with the next native change.

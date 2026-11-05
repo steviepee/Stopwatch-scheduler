@@ -264,7 +264,7 @@ export function usePomodoro() {
       } else {
         setNow(clocks.mono());
       }
-    }, 1000);
+    }, 250);
     return () => clearInterval(id);
   }, [run, store]);
 

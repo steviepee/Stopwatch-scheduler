@@ -33,26 +33,26 @@ const loadRun = (): PomodoroState | null => {
   }
 };
 
-const formatMinSec = (ms: number) => {
-  const totalSeconds = Math.floor(ms / 1000);
+const formatMinSec = (ms: number, roundUp = false) => {
+  const totalSeconds = roundUp ? Math.ceil(ms / 1000) : Math.floor(ms / 1000);
   return `${Math.floor(totalSeconds / 60)}:${(totalSeconds % 60).toString().padStart(2, '0')}`;
 };
 
-const playReminder = (phase: PomodoroPhase) => {
+const playReminder = (phase: PomodoroPhase, audio: { current: AudioContext | null }) => {
   if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
     new Notification(phase === 'work' ? 'Time for a break' : 'Time to get back to work', {
       body: `${PHASE_LABELS[phase]} target reached`,
     });
   }
   if (typeof AudioContext !== 'undefined') {
-    const ctx = new AudioContext();
+    const ctx = audio.current ?? (audio.current = new AudioContext());
+    void ctx.resume();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.frequency.value = 880;
     gain.gain.value = 0.1;
     osc.connect(gain);
     gain.connect(ctx.destination);
-    osc.onended = () => ctx.close();
     osc.start();
     osc.stop(ctx.currentTime + 0.3);
   }
@@ -82,6 +82,7 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession, onModalCha
   const [finished, setFinished] = useState<FinishedPomodoro | null>(null);
   const [, setTick] = useState(0);
   const runRef = useRef(run);
+  const audioRef = useRef<AudioContext | null>(null);
   runRef.current = run;
 
   const persistRun = (next: PomodoroState | null) => {
@@ -97,7 +98,7 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession, onModalCha
     const id = window.setInterval(() => {
       const current = runRef.current;
       if (current && reminderDue(current)) {
-        playReminder(current.phase);
+        playReminder(current.phase, audioRef);
         persistRun(markReminded(current));
       }
       setTick((t) => t + 1);
@@ -129,6 +130,11 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession, onModalCha
   const handleRunStart = () => {
     if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
       Notification.requestPermission();
+    }
+    // A click may start audio; a context made later without one can stay suspended (silent).
+    if (typeof AudioContext !== 'undefined') {
+      audioRef.current ??= new AudioContext();
+      void audioRef.current.resume();
     }
     const activity =
       pickerChoice === '__new__' ? { newActivityName: pickerNewName.trim() } : { taskId: Number(pickerChoice) };
@@ -260,7 +266,7 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession, onModalCha
                 {PHASE_LABELS[view.phase]}
               </div>
               <div data-testid="pomodoro-phase-time" className="text-5xl font-mono drop-shadow-lg my-2">
-                {view.overMs > 0 ? `+${formatMinSec(view.overMs)} over` : `${formatMinSec(view.remainingMs)} left`}
+                {view.overMs > 0 ? `+${formatMinSec(view.overMs)} over` : `${formatMinSec(view.remainingMs, true)} left`}
               </div>
               <div data-testid="pomodoro-total-work" className="text-sm text-white/70">
                 Total work {formatMinSec(totalWorkMs(run))}
