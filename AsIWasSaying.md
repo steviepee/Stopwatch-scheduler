@@ -1,6 +1,6 @@
 # Standing Orders — Build 2c
 
-Current as of 2026-11-04. Read this, then `prd.md`.
+Current as of 2026-11-05. Read this, then `prd.md`.
 
 ## 0. Pick up here
 
@@ -10,13 +10,20 @@ because the "(Dev)" app is unused. Rebuild it with `eas build --profile developm
 android` when needed. U13 passed after three fixes found at the gate, all deployed (last
 a96a67e): B56 (the React Compiler froze the phone's Pomodoro display; mobile Jest now runs the
 compiler, see GOTCHAS), B57 (ask for notification permission on Start), and B58 (countdown
-rounds up; web tone unlocked on Start). Mobile 354, web 187, backend 301. Not pushed. Next: archive
-`prd.md` as `docs/prd-build2c-completed.md` when the next build is designed. Candidates: the
-multi-user phase (D51), the AI planning coach, and reminder options per user (future-work.md).
+rounds up; web tone unlocked on Start). Mobile 354, web 187, backend 301. Pushed to origin/main.
 
-**Python 3.12 (2026-11-05):** done locally. Python 3.12 is from the deadsnakes PPA (system
+**Python 3.12 (2026-11-05):** done and live. Python 3.12 is from the deadsnakes PPA (system
 `python3` stays 3.10), `backend/venv` is 3.12, and the Dockerfile uses `python:3.12-slim`.
-Backend tests pass 301/301. Deployed as c3cb226 (revision 0000009, healthy).
+Backend tests pass 301/301. Deployed as c3cb226 (revision 0000009, healthy). The user confirmed
+their data loads through it.
+
+**NEXT: the AI planning coach design session.** It is a grill-with-docs session: the user
+types `/grill-with-docs` (Claude cannot start it; it loads the `grilling` and
+`domain-modeling` skills). The starting material is the "AI planning coach" section of
+`future-work.md`, `roadmap.md` (rules now, AI later), and `CONTEXT.md`. At the start of that
+design, archive `prd.md` as `docs/prd-build2c-completed.md`, then write the new PRD with
+decisions numbered from D92 and tasks from B59. Multi-user (D51) comes after the coach, and
+reminder options per user fit after multi-user.
 
 **Build 2b is complete (2026-10-25)**: U9 and U10 passed; PRD archived at
 `docs/prd-build2b-completed.md`. **Build 2c is designed (2026-10-29)** and written as `prd.md`
