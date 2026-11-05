@@ -2029,7 +2029,7 @@ Each iteration appends its results here so the next session knows what worked, w
 
 ## Python 3.12 upgrade (backend venv and image)
 - **Date:** 2026-11-05
-- **Status:** DONE locally; deploy pending
+- **Status:** DONE. Deployed c3cb226 on 2026-11-05: revision stopwatch-api--0000009 is healthy, alembic connected to the live MySQL, uvicorn started, health 200 and auth gate 401
 - **Summary:** Installed Python 3.12.16 from the deadsnakes PPA, beside the system 3.10 (`python3` is still 3.10). Verify first: a throwaway 3.12 venv installed the pinned `requirements.txt` from wheels only (no source builds) and passed 301/301. The only new warnings on 3.12 were the three test-side `datetime.utcnow()` calls. They now use `app.database.utcnow()`, which is naive UTC like before, and the unused `datetime` imports are gone. Warnings then matched 3.10 (269, nearly all httpx's `app` shortcut via Starlette's TestClient). `import app.main` on 3.12 no longer shows google.api_core's "non-supported Python" FutureWarning. Then `backend/venv` was rebuilt on 3.12 (301/301), the Dockerfile moved to `python:3.12-slim`, and the README says 3.12. The local image built, and `import app.main` (with a dummy `API_TOKEN`) and `alembic --help` passed inside it.
 - **Files changed:** Dockerfile, README.md, backend/tests/test_credential_refresh.py, backend/tests/test_credential_store.py, progress.md, AsIWasSaying.md
 - **Gotchas:** the old 3.10 venv was moved out of the repo, because `deploy.sh` refuses an untracked `backend/venv310`. Python 3.10 is still installed, so `python3.10 -m venv` can rebuild it if ever needed.

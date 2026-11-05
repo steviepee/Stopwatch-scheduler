@@ -16,7 +16,7 @@ multi-user phase (D51), the AI planning coach, and reminder options per user (fu
 
 **Python 3.12 (2026-11-05):** done locally. Python 3.12 is from the deadsnakes PPA (system
 `python3` stays 3.10), `backend/venv` is 3.12, and the Dockerfile uses `python:3.12-slim`.
-Backend tests pass 301/301. Ships with the next `./deploy.sh`.
+Backend tests pass 301/301. Deployed as c3cb226 (revision 0000009, healthy).
 
 **Build 2b is complete (2026-10-25)**: U9 and U10 passed; PRD archived at
 `docs/prd-build2b-completed.md`. **Build 2c is designed (2026-10-29)** and written as `prd.md`
