@@ -12,7 +12,7 @@
 """
 import builtins
 import json
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 import sqlalchemy as sa
@@ -21,6 +21,7 @@ from google.oauth2.credentials import Credentials
 from sqlalchemy.orm import sessionmaker
 from unittest.mock import patch
 
+from app.database import utcnow
 from app.services.google_calendar import GoogleCalendarService
 
 _ENGINE = sa.create_engine('sqlite:///./test.db', connect_args={'check_same_thread': False})
@@ -38,7 +39,7 @@ def _fake_creds(expiry_delta=timedelta(hours=1)):
         client_id='fake-client-id',
         client_secret='fake-client-secret',
         scopes=GoogleCalendarService.SCOPES,
-        expiry=datetime.utcnow() + expiry_delta,
+        expiry=utcnow() + expiry_delta,
     )
 
 
@@ -100,7 +101,7 @@ def test_refresh_on_use_saves_refreshed_token(key):
 
     def do_refresh(self, _request):
         self.token = 'fake-refreshed-access'
-        self.expiry = datetime.utcnow() + timedelta(hours=1)
+        self.expiry = utcnow() + timedelta(hours=1)
 
     with patch.object(Credentials, 'refresh', do_refresh):
         svc = _new_service()

@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 
+from app.database import utcnow
 from app.services.google_calendar import GoogleCalendarService
 
 
@@ -51,7 +52,6 @@ def test_failed_refresh_reports_unauthenticated(service):
 
 
 def _store_fake_creds(monkeypatch, expiry_delta):
-    from datetime import datetime
     from google.oauth2.credentials import Credentials
     from cryptography.fernet import Fernet
     from sqlalchemy import create_engine
@@ -68,7 +68,7 @@ def _store_fake_creds(monkeypatch, expiry_delta):
         token_uri="https://oauth2.googleapis.com/token",
         client_id="fake-client-id",
         client_secret="fake-client-secret",
-        expiry=datetime.utcnow() + expiry_delta,
+        expiry=utcnow() + expiry_delta,
     )
     svc._save_credentials()
 

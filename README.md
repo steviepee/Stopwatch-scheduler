@@ -28,7 +28,7 @@ A full-stack application that tracks task completion times and automatically syn
 ## Prerequisites
 
 - Node.js (v18 or higher)
-- Python 3.10 or higher
+- Python 3.12 or higher
 - MySQL 8.0 or higher
 - Google Cloud account (for Calendar API)
 
