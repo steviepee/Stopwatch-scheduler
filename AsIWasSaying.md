@@ -22,11 +22,13 @@ day (D92–D121), tasks B59–B67 with B68 on HOLD, USER steps U14–U16. Build 
 at `docs/prd-build2c-completed.md`. `CONTEXT.md` gained Coach, Coaching conversation,
 Proposal, Coach note, Goal, Intended length, Start reminder. `future-work.md` gained week
 planning (Build 3b), Goals, a Coach tab, the note accuracy check, cost per user, and native
-Start reminders. Committed and pushed as 3355c6c. **Next: U14**, not done as of 2026-11-05 end of session
-(check its acceptance items first) (Anthropic workspace with a $10 limit, API key, `pip install
-anthropic` pinned in `requirements.txt`, key in `.env` and as a Container Apps secret), then the
-loop from B59. U15 after B63 (deploy, first real conversation, the Google link check that
-decides B68). Start reminders go through Google Calendar, so no APK build is expected.
+Start reminders. Committed and pushed as 3355c6c. **U14 (2026-11-06):** steps 1–3 done (workspace with
+$10 limit, key, `anthropic==2.6.0` pinned); step 4, the Azure secret, is being done by the user
+in the portal. **D122 added:** a Coach rehearsal (U17) on the user's subscription before B60,
+producing `backend/app/prompts/coach_system.md`. B60–B67 are `HOLD (until U17)`.
+**Next:** run the loop for B59 only (`--max 2`), then U17 in a Claude Code session, then flip
+B60–B67 to PENDING and run the loop. U15 after B63. Start reminders go through Google
+Calendar, so no APK build is expected.
 
 **Build 2b is complete (2026-10-25)**: U9 and U10 passed; PRD archived at
 `docs/prd-build2b-completed.md`. **Build 2c is designed (2026-10-29)** and written as `prd.md`

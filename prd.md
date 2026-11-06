@@ -14,7 +14,8 @@ Calendar; and full usage metrics captured for every Coaching conversation while 
 tests it. Designed with the user on 2026-11-05. Both clients. Single-user (D51). Week planning
 is Build 3b; Goals come after (D98).
 
-**Order:** U14 (key, spend limit, SDK install) before the loop. Backend B59 → B63, then U15
+**Order:** U14 (key, spend limit, SDK install) before the loop. B59, then U17 (Coach rehearsal,
+D122) before B60; B60–B67 stay HOLD until U17 is done, then go PENDING. Backend B60 → B63, then U15
 (deploy, first real conversation, link check). Phone B64 → B65, web B66 → B67. Then U16 (ship
 and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
 
@@ -55,6 +56,7 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
 | D119 | Pushback | When a request exceeds what history supports, the Coach says so once with the numbers, then plans what the user chooses |
 | D120 | Testing | The model client is faked in every loop test; no suite calls Anthropic. Real conversations only in USER steps: one early check after the first route works, and the final gate |
 | D121 | Defaults (confirmed at the end of the design) | The Coach plans today or a future date only. Coach notes are on by default. Without Google authorization the Coach plans with no Existing events and says so in its first reply. Offline, "Plan with Coach" is disabled with a message; nothing is queued. One effort level for the whole conversation (`COACH_EFFORT`, default `medium`), since changing effort mid-conversation throws away the prompt cache. No ADR |
+| D122 | Coach rehearsal | Before B60, the Coach's behaviour is worked out in Claude Code on the user's subscription (U17): a draft system prompt played against a snapshot of real data, revised until the user is satisfied. The result is `backend/app/prompts/coach_system.md`, which B60 uses as the system prompt word for word. No API spend until U15 |
 
 ## Rules for this PRD
 
@@ -117,8 +119,8 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
      `az containerapp list -g rg-stopwatch --query "[].name" -o tsv` prints the app name.
   5. Commit `requirements.txt`.
 - **Acceptance Criteria:**
-  - [ ] The workspace shows a $10 monthly limit
-  - [ ] `import anthropic` works in `backend/venv`; `requirements.txt` pins it
+  - [x] The workspace shows a $10 monthly limit
+  - [x] `import anthropic` works in `backend/venv`; `requirements.txt` pins it (`anthropic==2.6.0`)
   - [ ] `az containerapp show -g rg-stopwatch -n <app name> --query "properties.template.containers[0].env[?name=='ANTHROPIC_API_KEY']"` lists the secretref
 
 ### B59.tests — Backend: Coach tables, settings, Coach notes, Intended length
@@ -175,8 +177,32 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
 - **Acceptance Criteria:**
   - [ ] All B59.tests pass; full suite passes
 
+### U17. USER — Coach rehearsal (before B60)
+- **Status:** USER
+- **Description:** D122. In a Claude Code session in this repo, on the subscription; no API key
+  used. Claude:
+  1. Pulls a snapshot of real data from the live API with the bearer token in `backend/.env`:
+     Activities with averages, medians, Quadrants and Intended lengths; tomorrow's Schedule;
+     Peak hours; the last 14 days of Recordings as Activity, duration, date only. Into the
+     scratchpad, not the repo.
+  2. Drafts `backend/app/prompts/coach_system.md`: what the Coach asks first, how it reads a
+     chaotic day, its tone, when it pushes back (D119), when it suggests a Coach note, how it
+     fits a new skill's sittings (D99, D100), the turn rules (D102), and when to call
+     `propose_plan` and `suggest_note`.
+  3. Plays the Coach from that file against the snapshot while the user plans real days.
+     Cases to cover: an ordinary day; a packed day with Existing events; tango at 30 minutes a
+     sitting (a new Activity); a request far over recorded history; a day where a note is worth
+     saving; reaching the 6-message cap.
+  4. Revises the file after each round until the user is satisfied, and records the rough
+     size of system prompt plus context in `progress.md`.
+  Then set B60–B67 from `HOLD (until U17)` to `PENDING`, commit, and run the loop.
+- **Acceptance Criteria:**
+  - [ ] `backend/app/prompts/coach_system.md` exists and the user has signed it off
+  - [ ] All six cases rehearsed; prompt size recorded
+  - [ ] B60–B67 set to PENDING
+
 ### B60.tests — Backend: the Coaching conversation engine
-- **Status:** PENDING
+- **Status:** HOLD (until U17)
 - **Description:** D93, D95, D99, D100, D102, D105, D115, D116, D118, D119, D121. Add
   `backend/tests/test_coach_conversation.py`; `call_model` is monkeypatched throughout.
 - **Contract:**
@@ -213,8 +239,9 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
     call includes an instruction that it must propose now. After a Proposal, each message counts
     as a `revision_turn`; a 4th revision → 409 `revision limit reached`. A message to a
     conversation that is not `open` → 409.
-  - **Pushback** (D119) and the Goal behaviour (D99) are system-prompt instructions; a test
-    asserts the prompt contains them (not model behaviour).
+  - **System prompt** (D122): read from `backend/app/prompts/coach_system.md` (written in U17),
+    unchanged; the context follows it. Pushback (D119) and the Goal behaviour (D99) live in that
+    file; a test asserts the system sent equals the file's text followed by the context.
   - **Metrics:** every model call writes a `coach_calls` row with the response's usage fields,
     `stop_reason`, measured `latency_ms`, and `cost_usd`. A model error (SDK exception) → 502 with
     a short message, a `coach_calls` row with `stop_reason = "error"`, and no stored assistant
@@ -230,7 +257,7 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [ ] Test: stored `content` replays byte-for-byte as the next call's earlier messages (append-only)
 
 ### B60.impl — Backend: the Coaching conversation engine
-- **Status:** PENDING
+- **Status:** HOLD (until U17)
 - **Description:** Implement to the contract: `services/coach_model.py` (the only `anthropic`
   import; load the `claude-api` skill first), `services/coach_context.py`,
   `services/coach_plan.py`, and the routes in `routers/coach.py`. Reuse the peak-hours
@@ -240,7 +267,7 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [ ] All B60.tests pass; full suite passes
 
 ### B61.tests — Backend: accept, reject, start over, rating, history
-- **Status:** PENDING
+- **Status:** HOLD (until U17)
 - **Description:** D94, D100, D104, D106, D108, D117. Extend `test_coach_conversation.py`.
 - **Contract:**
   - `POST /api/coach/conversations/{id}/accept`: requires `open` and a Proposal (else 409).
@@ -265,14 +292,14 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [ ] Test: list and detail totals equal the sum of the call rows; usage counts only that month
 
 ### B61.impl — Backend: accept, reject, start over, rating, history
-- **Status:** PENDING
+- **Status:** HOLD (until U17)
 - **Description:** Implement to the contract. Factor the placement code in `routers/schedules.py`
   into a function both routes call, without changing its behaviour.
 - **Acceptance Criteria:**
   - [ ] All B61.tests pass; full suite passes
 
 ### B62.tests — Backend: Start reminders on pushed events
-- **Status:** PENDING
+- **Status:** HOLD (until U17)
 - **Description:** D109, D110, D112, D113, D114. Extend the Google push tests with the calendar
   service faked as they already are.
 - **Contract:**
@@ -292,13 +319,13 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [ ] Test: a stale item's patch body includes reminders and description; changing the setting alone makes no Google call
 
 ### B62.impl — Backend: Start reminders on pushed events
-- **Status:** PENDING
+- **Status:** HOLD (until U17)
 - **Description:** Implement to the contract in `services/google_calendar.py` and the push route.
 - **Acceptance Criteria:**
   - [ ] All B62.tests pass; full suite passes
 
 ### B63.tests — Backend: the metrics script
-- **Status:** PENDING
+- **Status:** HOLD (until U17)
 - **Description:** D106. Add `backend/tests/test_coach_metrics_script.py` for
   `backend/scripts/coach_metrics.py`, a script run as
   `./venv/bin/python scripts/coach_metrics.py [--since YYYY-MM-DD] [--csv PATH]`. It reads the
@@ -318,7 +345,7 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [ ] Test: `--csv` writes both files with a header and one row per record
 
 ### B63.impl — Backend: the metrics script
-- **Status:** PENDING
+- **Status:** HOLD (until U17)
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
   - [ ] All B63.tests pass; full suite passes
@@ -349,7 +376,7 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [ ] Link check recorded in `progress.md`. If **Phone:** was not tappable, B68 goes from HOLD to PENDING before the client tasks run
 
 ### B64.tests — Mobile: Start links, Intended length, Coach settings and usage
-- **Status:** PENDING
+- **Status:** HOLD (until U17)
 - **Description:** D101, D104, D106–D110, D113, D121.
 - **Contract:**
   - **Start link:** opening the app with `?start=<task_id>` (Expo Router search param on the
@@ -373,13 +400,13 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [ ] Test: usage shows the month's totals; detail renders the call rows
 
 ### B64.impl — Mobile: Start links, Intended length, Coach settings and usage
-- **Status:** PENDING
+- **Status:** HOLD (until U17)
 - **Description:** Implement to the contract; add the API methods to `src/services/api.ts`.
 - **Acceptance Criteria:**
   - [ ] All B64.tests pass; mobile suite, tsc, and export pass
 
 ### B65.tests — Mobile: the Coach screen
-- **Status:** PENDING
+- **Status:** HOLD (until U17)
 - **Description:** D94, D100, D101, D103, D111, D117, D118, D121.
 - **Contract:**
   - The calendar day view (`(tabs)/calendar.tsx`) shows **Plan with Coach** for today and future
@@ -401,13 +428,13 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [ ] Test: a 409 shows its message
 
 ### B65.impl — Mobile: the Coach screen
-- **Status:** PENDING
+- **Status:** HOLD (until U17)
 - **Description:** Implement to the contract as a new route (`src/app/coach/[date].tsx`).
 - **Acceptance Criteria:**
   - [ ] All B65.tests pass; mobile suite, tsc, and export pass
 
 ### B66.tests — Web: Start links, Intended length, Coach settings and usage
-- **Status:** PENDING
+- **Status:** HOLD (until U17)
 - **Description:** B64's contract on the web: `?start=<task_id>` on page load selects the
   Activity in `Stopwatch.tsx` without starting it and removes the param from the URL; Intended
   length on the Activity edit form (`TaskDetailModal.tsx`); the three Settings sections in
@@ -417,13 +444,13 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [ ] Web suite, tsc, and build pass
 
 ### B66.impl — Web: Start links, Intended length, Coach settings and usage
-- **Status:** PENDING
+- **Status:** HOLD (until U17)
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
   - [ ] All B66.tests pass; web suite, tsc, and build pass
 
 ### B67.tests — Web: the Coach screen
-- **Status:** PENDING
+- **Status:** HOLD (until U17)
 - **Description:** B65's contract on the web: **Plan with Coach** in `CalendarView.tsx`'s day
   view opens a full-screen Coach panel for that date, with the same states and actions.
 - **Acceptance Criteria:**
@@ -431,7 +458,7 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [ ] Web suite, tsc, and build pass
 
 ### B67.impl — Web: the Coach screen
-- **Status:** PENDING
+- **Status:** HOLD (until U17)
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
   - [ ] All B67.tests pass; web suite, tsc, and build pass
