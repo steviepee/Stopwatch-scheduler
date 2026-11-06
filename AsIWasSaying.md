@@ -22,7 +22,8 @@ day (D92–D121), tasks B59–B67 with B68 on HOLD, USER steps U14–U16. Build 
 at `docs/prd-build2c-completed.md`. `CONTEXT.md` gained Coach, Coaching conversation,
 Proposal, Coach note, Goal, Intended length, Start reminder. `future-work.md` gained week
 planning (Build 3b), Goals, a Coach tab, the note accuracy check, cost per user, and native
-Start reminders. **Next: U14** (Anthropic workspace with a $10 limit, API key, `pip install
+Start reminders. Committed and pushed as 3355c6c. **Next: U14**, not done as of 2026-11-05 end of session
+(check its acceptance items first) (Anthropic workspace with a $10 limit, API key, `pip install
 anthropic` pinned in `requirements.txt`, key in `.env` and as a Container Apps secret), then the
 loop from B59. U15 after B63 (deploy, first real conversation, the Google link check that
 decides B68). Start reminders go through Google Calendar, so no APK build is expected.
