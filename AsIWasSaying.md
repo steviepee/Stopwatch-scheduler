@@ -17,13 +17,15 @@ rounds up; web tone unlocked on Start). Mobile 354, web 187, backend 301. Pushed
 Backend tests pass 301/301. Deployed as c3cb226 (revision 0000009, healthy). The user confirmed
 their data loads through it.
 
-**NEXT: the AI planning coach design session.** It is a grill-with-docs session: the user
-types `/grill-with-docs` (Claude cannot start it; it loads the `grilling` and
-`domain-modeling` skills). The starting material is the "AI planning coach" section of
-`future-work.md`, `roadmap.md` (rules now, AI later), and `CONTEXT.md`. At the start of that
-design, archive `prd.md` as `docs/prd-build2c-completed.md`, then write the new PRD with
-decisions numbered from D92 and tasks from B59. Multi-user (D51) comes after the coach, and
-reminder options per user fit after multi-user.
+**Build 3a is designed (2026-11-05)** and written as `prd.md`: the AI planning coach for one
+day (D92–D121), tasks B59–B67 with B68 on HOLD, USER steps U14–U16. Build 2c's PRD is archived
+at `docs/prd-build2c-completed.md`. `CONTEXT.md` gained Coach, Coaching conversation,
+Proposal, Coach note, Goal, Intended length, Start reminder. `future-work.md` gained week
+planning (Build 3b), Goals, a Coach tab, the note accuracy check, cost per user, and native
+Start reminders. **Next: U14** (Anthropic workspace with a $10 limit, API key, `pip install
+anthropic` pinned in `requirements.txt`, key in `.env` and as a Container Apps secret), then the
+loop from B59. U15 after B63 (deploy, first real conversation, the Google link check that
+decides B68). Start reminders go through Google Calendar, so no APK build is expected.
 
 **Build 2b is complete (2026-10-25)**: U9 and U10 passed; PRD archived at
 `docs/prd-build2b-completed.md`. **Build 2c is designed (2026-10-29)** and written as `prd.md`

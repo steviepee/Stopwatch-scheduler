@@ -1,60 +1,86 @@
-# Stopwatch Scheduler — PRD: Build 2c (Remake Phase 5, continued)
+# Stopwatch Scheduler — PRD: Build 3a, the AI planning coach (day)
 
 ## Overview
 Discrete tasks for the Ralph loop. Run with `./ralph.sh`. One task per session, in order. Mark
-tasks DONE when complete; add failure notes if a task fails. Build 2b is archived at
-`docs/prd-build2b-completed.md` (D66–D79); earlier builds and phases are in `docs/`.
-Vocabulary is in `CONTEXT.md` (Pomodoro run, Work interval, Break added for this build).
+tasks DONE when complete; add failure notes if a task fails. Build 2c is archived at
+`docs/prd-build2c-completed.md` (D80–D91); earlier builds and phases are in `docs/`.
+Vocabulary is in `CONTEXT.md` (Coach, Coaching conversation, Proposal, Coach note, Goal,
+Intended length, Start reminder added for this build).
 
-**What Build 2c is:** a Pomodoro mode on both clients, and a timer notification on the phone
-that can be acted on with the screen locked; plus the follow-ups found during Build 2b. A
-Pomodoro run paces breaks, keeps the user on one Activity, and records the work pattern; it
-saves as one Recording of the total work time with a summary of its intervals. Designed with
-the user on 2026-10-25/29. Both clients. Single-user (D51). Replaces the B23/B24 HOLD stubs.
+**What Build 3a is:** a Coach that plans one day in a short conversation and answers with a
+Proposal of timed Blocks the user accepts or rejects whole; Coach notes the user approves;
+an Intended length for Activities with no history; Start reminders delivered by Google
+Calendar; and full usage metrics captured for every Coaching conversation while the user
+tests it. Designed with the user on 2026-11-05. Both clients. Single-user (D51). Week planning
+is Build 3b; Goals come after (D98).
 
-**Order (D91):** U11 (cold-run check) before the loop. B47 (follow-ups, app code only) ships
-early by `deploy.sh`. B48 (server) before the clients. Phone: B49 core → B50 Settings → B51
-screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, both builds) and U13
-(the gate).
+**Order:** U14 (key, spend limit, SDK install) before the loop. Backend B59 → B63, then U15
+(deploy, first real conversation, link check). Phone B64 → B65, web B66 → B67. Then U16 (ship
+and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
 
 **Statuses:** `PENDING` is the loop's. `USER` is the user's, by hand; the loop never picks it.
+`HOLD` is not picked either.
 
-## Decisions (2026-10-29)
+## Decisions (2026-11-05)
 
 | # | Decision | Answer |
 |---|---|---|
-| D80 | Pomodoro's purpose | **Pacing, focus, and measurement.** It reminds you to break, keeps you on one Activity, and records the work pattern for later reference |
-| D81 | What a run saves | **One Recording per Pomodoro run.** Duration = total work time, so it feeds the Activity's average like any Recording. It also carries a summary: work interval count, break count, total break seconds. The Recordings list shows "Pomodoro · N × avg Xm work · avg break Ym". Per-Activity rollups and a separate recording structure are future work |
-| D82 | Activity | **Chosen before Start, required**: an existing Activity or "+ New Activity". The Recording's name defaults to the Activity's name |
-| D83 | Interval lengths | **Defaults 25 / 5 / 15, long break after every 4 Work intervals; all four editable in Settings and stored on the server**, shared by both clients |
-| D84 | Switching | **Every switch waits for the user's tap.** A length is a target, not a cutoff: the current interval keeps counting past it. When it is reached, **one reminder** (phone: sound and vibration; web: browser notification and a short sound), then the display shows **"+m:ss over"** |
-| D85 | Pause, Finish, Reset | **Pause** freezes the current interval; paused time is neither work nor break. **Finish** ends the run from any interval: an open Work interval counts, an open Break is dropped; it opens the save sheet with the Activity filled in, and is disabled until some work is logged. **Reset** discards the run, confirming first if any work is logged |
-| D86 | Entry | **A Stopwatch \| Pomodoro switch** on the phone's timer screen and the web stopwatch card, locked while anything is running. A run lives on one device |
-| D87 | Surviving restarts | **A Pomodoro run survives an app restart (phone) and a reload (web).** The web stopwatch is brought up to the phone's level: it too survives a reload |
-| D88 | Phone notification | **Pause/Resume on the notification** for any recording; a paused recording keeps its notification. During a run it also shows the interval, the time left or over, and **Start break / Start work**. Taps are recorded natively and applied by the app when it next runs |
-| D89 | Follow-ups | Mobile Recording long-press **asks before deleting**. Activities shows **"Offline"** only when the device is offline; any other load failure shows **"Couldn't load"** and **Retry**. URL scheme **`stopwatchscheduler`**. The dev-only Settings-gear nudge goes; the Expo Tools button is switched back on |
-| D90 | Cold-run check | **A USER setup step before the loop** (U11), not a loop task |
-| D91 | Order | Follow-ups → server → phone (core, Settings, screens, native) → web → one rebuild → gate |
+| D92 | Planning horizon | One day per Coaching conversation in this build. Week planning follows; then user-set horizons toward a dated aim (learn tango in six weeks, Salesforce before an interview in three). The long-term point is fitting new-skill learning into a busy or chaotic schedule |
+| D93 | Conversation shape | Chat with a hard turn cap; the Coach must propose by the cap |
+| D94 | Where a Proposal lands | Accept or reject whole. Accept appends its Schedule Items to the date's Schedule through the existing append path; further edits happen on the calendar. No automatic push to Google |
+| D95 | Model | Claude Sonnet 5.5 through the Anthropic API; model id in an env var; key as a Container Apps secret. User accepts that Activity and day data go to Anthropic. Recording notes are never sent |
+| D96 | Coach vs Strategy | The Coach is not a Strategy. It may call Strategies |
+| D97 | Cost guard | Anthropic console workspace spend limit, $10/month. No in-app cap until multi-user |
+| D98 | Build sequence | Build 3a plans a day; Build 3b plans a week; both before multi-user (D51). Goals come after |
+| D99 | Goal | Term defined now, nothing stored in 3a. A Goal mentioned in conversation only shapes that day's Proposal |
+| D100 | New Activities in a Proposal | Allowed, marked new, created on accept with no history. The user chooses how long one sitting is meant to be (see open items) |
+| D101 | Coach notes | Suggested by the Coach, saved only on the user's approval, listed in Settings for edit and delete, sent with every conversation |
+| D102 | Turn rules | Up to 6 user messages before the Coach must propose; then up to 3 revision messages, each replacing the Proposal; then accept, reject, or start over |
+| D103 | Entry point | "Plan with Coach" on the calendar day view, both clients, opening a full-screen conversation for that date. A Coach tab comes later (future-work) |
+| D104 | Conversation storage | Every Coaching conversation is stored with its messages, per-call usage, cost, and outcome, kept indefinitely while single-user. Per-conversation metrics are viewable by the user |
+| D105 | Coach context | All Activities (average, median, Quadrant, recording count); the date's Schedule Items and Existing events; Peak hours; approved Coach notes; last 14 days of Recordings as Activity, duration, date only |
+| D106 | Metrics capture | Automatic: the backend writes a usage row per model call and an outcome row per Coaching conversation. Read through `backend/scripts/coach_metrics.py` (totals, per-conversation table, `--csv`) and Settings > Coach usage (per-conversation detail) |
+| D107 | Coach notes, scope | Built in 3a with an on/off setting from the start (off: no suggestions, none sent). Each note stores when it was saved and last confirmed, for a later "still accurate?" check (future-work) |
+| D108 | Intended length | New Activity field set by the user; the Coach asks for it for any new Activity in a Proposal, and it is editable on the Activity. Seeds placements until Recordings exist |
+| D109 | Start reminders | Every Scheduled Block gets a reminder N minutes before it starts (default 5), with an on/off setting. Tapping through opens the Stopwatch with that Activity selected, not started. User will judge notification load in practice |
+| D110 | Reminder delivery | Through Google Calendar, not native code: each Exported Block's event gets a popup reminder override at N minutes and a description with two links, web app and phone app, each opening the Stopwatch with the Activity selected. No device detection. Expected to ship over the air with no APK rebuild |
+| D111 | Accept then push | The Proposal's accept confirmation offers a "Push day" button. Pushing stays the user's choice |
+| D112 | Reminders off | Pushed events fall back to the user's Google default reminders (today's behaviour), not silence |
+| D113 | Setting changes | Apply to Blocks pushed or changed afterwards; no bulk re-update. Settings says so |
+| D114 | Link fallback | An early USER phone check taps both links from a real Google notification. If the app link is not tappable, it is replaced by an `https://` page on the server with one "Open in app" button. If that also fails, start reminders move to native notifications (the original plan, needs an APK build). All Exported Blocks get reminders and links, whatever placed them |
+| D115 | Proposal times | Proposal items carry start times and land as Blocks. The server validates fit against the day, Existing events, and existing Blocks with the deterministic slot code, and returns clashes to the Coach to fix before the user sees the Proposal |
+| D116 | Frog | The Coach may mark a Frog only on a day without one; an existing Frog is kept |
+| D117 | Unfinished conversations | "Plan with Coach" on a date resumes its open conversation; "Start over" marks it abandoned |
+| D118 | Replies | No streaming in 3a; a "Coach is thinking…" state, then the full reply. Streaming reconsidered in 3b if latency feels bad |
+| D119 | Pushback | When a request exceeds what history supports, the Coach says so once with the numbers, then plans what the user chooses |
+| D120 | Testing | The model client is faked in every loop test; no suite calls Anthropic. Real conversations only in USER steps: one early check after the first route works, and the final gate |
+| D121 | Defaults (confirmed at the end of the design) | The Coach plans today or a future date only. Coach notes are on by default. Without Google authorization the Coach plans with no Existing events and says so in its first reply. Offline, "Plan with Coach" is disabled with a message; nothing is queued. One effort level for the whole conversation (`COACH_EFFORT`, default `medium`), since changing effort mid-conversation throws away the prompt cache. No ADR |
 
 ## Rules for this PRD
 
 - **Tests first** (D20). Every code task is a `N.tests` / `N.impl` pair. The `.impl` session
   must not edit the `.tests` file except to add fixtures or mocks; if an assertion is wrong,
   mark BLOCKED and say why.
-- **The loop never touches Azure, GitHub's registry, DNS, EAS, or live MySQL.** It never runs
-  `deploy.sh`, `eas build` or `eas update`.
-- **Schema changes go through Alembic**; `backend/tests/test_migrations.py` must pass. Build 2c
-  has one migration (B48). `docker-entrypoint.sh` runs `alembic upgrade head` on deploy.
-- **No dependency changes.** Kotlin may use what `timer-native`'s `build.gradle` already
-  provides (AndroidX core/NotificationCompat).
-- **Native code cannot be compiled here** (no Android SDK; `expo export` bundles JS only).
-  Keep Kotlin changes small and mirror the existing service's idioms; B52 is verified on device
-  in U12/U13. JS behaviour around it is tested through mocks of `modules/timer-native`.
+- **No real model calls in any test** (D120). All model access goes through one function,
+  `app/services/coach_model.py: call_model(system, messages, tools) -> response`, and tests
+  monkeypatch it with canned responses shaped like the Anthropic SDK's `Message` (content
+  blocks, `stop_reason`, `usage`). Nothing else imports `anthropic`.
+- **Calling Claude:** the `.impl` session for B60 loads the `claude-api` skill before writing
+  `coach_model.py` and follows it. Model id from `COACH_MODEL` (default `claude-sonnet-5-5`),
+  effort from `COACH_EFFORT` (default `medium`), key from `ANTHROPIC_API_KEY`. Forced
+  `tool_choice` returns a 400 on Sonnet 5.5: use `auto` with `strict: true` tools and say in the
+  system prompt when a tool must be used. Keep the conversation append-only (never edit earlier
+  messages) and cache the stable prefix (system prompt, tools).
+- **The loop never touches Azure, GitHub's registry, DNS, EAS, live MySQL, or the Anthropic
+  console.** It never runs `deploy.sh`, `eas build` or `eas update`.
+- **No dependency changes** beyond `anthropic`, which U14 installs. No native code in this build.
+- **Schema changes go through Alembic** on top of `66350d60caf3`; `test_migrations.py` must pass.
+  Build 3a has one migration (B59).
 - **The D13 parity fixture is frozen.** No Strategy changes.
-- **Forward-compat** (`PROMPT.md`): keep DB access in the `db.query(Model)` idiom; nothing that
-  blocks an owner column later (the settings row is one row now, one per owner later).
-- **Product names** in UI and new code: Activity, Recording, Pomodoro run, Work interval,
-  Break. Not "session" for a run.
+- **Forward-compat** (`PROMPT.md`): `db.query(Model)` idiom; the settings rows are one row now,
+  one per owner later; Coach tables hang off conversations so one owner column covers them.
+- **Product names** in UI and new code: Coach, Coaching conversation, Proposal, Coach note,
+  Intended length, Start reminder. Never "session" for a Coaching conversation.
 - **Acceptance**
   - Backend: `cd backend && ./venv/bin/python -m pytest tests/`
   - Mobile, from `mobile/`: `npx jest --ci`, `npx tsc --noEmit`, `npx expo export --platform android`
@@ -65,377 +91,383 @@ screens → B52 native. Web: B53 → B54 → B55. Then U12 (one APK rebuild, bot
 
 ## Tasks
 
-### U11. USER — Settle the mobile suite on a cold run
-- **Status:** DONE
-- **Description:** Before the loop. Every Ralph iteration runs the mobile suite cold, and it once
-  reported 9 failures cold that passed warm. In an Ubuntu tab, with Metro stopped:
-  ```bash
-  cd /root/Stopwatch-scheduler/mobile
-  npx jest --ci --clearCache
-  npx jest --ci > /tmp/jest-cold.txt 2>&1; echo "exit $?"; tail -5 /tmp/jest-cold.txt
-  ```
-  `exit 0` with every suite passed → done. Anything else: send the tail to Claude before
-  starting the loop.
+### U14. USER — Anthropic key, spend limit, and the SDK
+- **Status:** USER
+- **Description:** Before the loop. The loop cannot install dependencies (D30) or touch the
+  console.
+  1. Sign in at https://platform.claude.com, create a workspace named `stopwatch-coach`, and
+     set its **spend limit to $10/month** (D97). Create an API key in that workspace.
+  2. Install the SDK and pin it. In an Ubuntu tab:
+     ```bash
+     cd /root/Stopwatch-scheduler/backend
+     ./venv/bin/pip install anthropic
+     ./venv/bin/pip show anthropic | grep Version      # note the version
+     echo "anthropic==<that version>" >> requirements.txt
+     ./venv/bin/python -c "import anthropic; print('ok')"
+     ```
+  3. Local key, for U15's first real conversation (`backend/.env` is gitignored):
+     ```bash
+     echo "ANTHROPIC_API_KEY=<the key>" >> /root/Stopwatch-scheduler/backend/.env
+     ```
+  4. Azure secret, so the deployed backend has it (memory: azure-account; names as in Phase 6):
+     ```bash
+     az containerapp secret set -g rg-stopwatch -n <app name> --secrets anthropic-api-key=<the key>
+     az containerapp update -g rg-stopwatch -n <app name> --set-env-vars ANTHROPIC_API_KEY=secretref:anthropic-api-key
+     ```
+     `az containerapp list -g rg-stopwatch --query "[].name" -o tsv` prints the app name.
+  5. Commit `requirements.txt`.
 - **Acceptance Criteria:**
-  - [x] A cold run exits 0, or its failures are fixed or recorded before the loop starts
+  - [ ] The workspace shows a $10 monthly limit
+  - [ ] `import anthropic` works in `backend/venv`; `requirements.txt` pins it
+  - [ ] `az containerapp show -g rg-stopwatch -n <app name> --query "properties.template.containers[0].env[?name=='ANTHROPIC_API_KEY']"` lists the secretref
 
-### B47.tests — Mobile: follow-ups (delete confirm, load errors, gear nudge)
-- **Status:** DONE
-- **Description:** D89. Extend `RecordingsScreen.test.tsx` and `ActivitiesScreen.test.tsx`.
+### B59.tests — Backend: Coach tables, settings, Coach notes, Intended length
+- **Status:** PENDING
+- **Description:** D101, D104, D106–D109, D112, D121. Add `backend/tests/test_coach_data.py`.
 - **Contract:**
-  - **Recording delete:** a long press on a Recording row calls `Alert.alert` with title
-    `Delete Recording`, message `Delete "<name>"? This cannot be undone.` and buttons `Cancel`
-    (style `cancel`) and `Delete` (style `destructive`). Only `Delete` calls
-    `sessionAPI.delete`. Same pattern as `calendar.tsx`'s alerts.
-  - **Activities load failure:** when the `['tasks']` query errors and
-    `onlineManager.isOnline()` is false → `Offline — showing nothing` (unchanged text). When it
-    errors and the device is online → `Couldn't load Activities` (testID `activities-error`)
-    and a `Retry` button (testID `activities-retry`) that refetches. Other screens have no
-    whole-screen load error; their mutation errors are unchanged.
-  - **Gear nudge:** `(tabs)/_layout.tsx` uses `spacing.xs` for the header gear's right margin
-    in all builds (no `__DEV__` branch).
+  - **Migration:** one Alembic revision on `66350d60caf3` adding the tables below and
+    `tasks.intended_length` (nullable float, seconds). Downgrade drops them.
+  - **`coach_conversations`:** `id`, `target_date` (date), `tz_offset` (int minutes, JS
+    `getTimezoneOffset` convention), `status` (`open` | `accepted` | `rejected` | `abandoned`),
+    `model`, `effort`, `user_turns` (int, 0), `revision_turns` (int, 0), `proposal` (JSON text,
+    nullable: the current Proposal), `proposed_count` (int, nullable), `accepted_count` (int,
+    nullable), `accepted_items` (JSON text, nullable: a snapshot of each accepted Schedule Item's
+    `id`, `task_id`, `scheduled_time`, `estimated_duration`), `rating` (`up` | `down`, nullable),
+    `created_at`, `updated_at`, `closed_at` (nullable).
+  - **`coach_messages`:** `id`, `conversation_id` (FK, cascade), `role` (`user` | `assistant`),
+    `content` (JSON text: the exact content blocks sent or received, so the history replays
+    unchanged), `visible_text` (text shown in the chat, nullable for pure tool turns),
+    `created_at`.
+  - **`coach_calls`** (one row per model call, D106): `id`, `conversation_id` (FK, cascade),
+    `turn_index`, `model`, `effort`, `input_tokens`, `cache_creation_input_tokens`,
+    `cache_read_input_tokens`, `output_tokens`, `stop_reason`, `latency_ms`, `cost_usd` (float),
+    `created_at`.
+  - **`coach_notes`:** `id`, `text` (1–300 chars), `created_at`, `confirmed_at` (set on create and
+    on every edit).
+  - **`coach_settings`** (one row): `notes_enabled` (default true). **`reminder_settings`** (one
+    row): `enabled` (default true), `minutes_before` (default 5, integer 1–120).
+  - **Routes** (all behind the credential gate):
+    - `GET`/`PUT /api/settings/coach` and `GET`/`PUT /api/settings/reminders`, same pattern as
+      `/api/settings/pomodoro` (row created with defaults on first GET; out-of-range → 422).
+    - `GET /api/coach/notes` (oldest first), `POST /api/coach/notes {text}`,
+      `PUT /api/coach/notes/{id} {text}` (updates `confirmed_at`), `DELETE /api/coach/notes/{id}`.
+      Empty or over-300 text → 422; unknown id → 404.
+  - **Intended length:** `TaskCreate`/`TaskUpdate`/`Task` gain optional `intended_length`
+    (seconds, > 0 and ≤ 12 h, or null). `POST /api/schedules/days/{date}/items` with no
+    `estimated_duration` seeds from `average_duration` if the Activity has Recordings, else
+    `intended_length`, else 600.
+  - **Cost:** `app/services/coach_cost.py: cost_usd(model, usage) -> float` from a price table in
+    that file (per million tokens: `claude-sonnet-5-5` input 2.00, output 10.00, cache read 0.20,
+    cache write 2.50; `claude-opus-5-5` input 4.00, output 20.00, cache read 0.20, cache write
+    5.00). Unknown model → 0.0 and a logged warning, never an error.
 - **Acceptance Criteria:**
-  - [x] Test: long press opens the alert; Cancel deletes nothing; Delete calls `sessionAPI.delete` with the id
-  - [x] Test: query error while offline → the Offline text; while online → `activities-error` and Retry refetches
-  - [x] Test: `_layout.tsx` contains no `__DEV__` (read the file as text)
+  - [ ] Test: settings GETs return the defaults; PUTs persist; `minutes_before` 0 or 121 → 422
+  - [ ] Test: note create, list order, edit moves `confirmed_at`, delete; 301-char text → 422
+  - [ ] Test: placing an Activity with no Recordings and `intended_length` 1800 seeds 1800; with Recordings seeds the average; with neither seeds 600
+  - [ ] Test: `cost_usd` for a known usage on each model matches a hand-computed value; unknown model → 0.0
+  - [ ] Test: deleting a conversation row cascades its messages and calls
+  - [ ] `test_migrations.py` passes with the new revision
 
-### B47.impl — Mobile: follow-ups (delete confirm, load errors, gear nudge)
-- **Status:** DONE
-- **Description:** Implement to the contract. App code only, so it reaches the phone through
-  `deploy.sh` without a rebuild.
+### B59.impl — Backend: Coach tables, settings, Coach notes, Intended length
+- **Status:** PENDING
+- **Description:** Implement to the contract: models, schemas, the migration, routes in
+  `routers/settings.py` and a new `routers/coach.py` mounted at `/api/coach`.
 - **Acceptance Criteria:**
-  - [x] All B47.tests pass; mobile suite, tsc, and export pass
+  - [ ] All B59.tests pass; full suite passes
 
-### B48.tests — Backend: Pomodoro settings and the Pomodoro summary on Recordings
-- **Status:** DONE
-- **Description:** D81, D83. Add `backend/tests/test_pomodoro.py`.
+### B60.tests — Backend: the Coaching conversation engine
+- **Status:** PENDING
+- **Description:** D93, D95, D99, D100, D102, D105, D115, D116, D118, D119, D121. Add
+  `backend/tests/test_coach_conversation.py`; `call_model` is monkeypatched throughout.
 - **Contract:**
-  - **Settings:** new model `PomodoroSettings` (table `pomodoro_settings`, one row) with
-    `work_minutes` (default 25), `break_minutes` (5), `long_break_minutes` (15),
-    `long_break_every` (4). `GET /api/settings/pomodoro` returns the row, creating it with the
-    defaults if absent. `PUT /api/settings/pomodoro` takes all four; each minutes value is an
-    integer 1–180 and `long_break_every` 1–12, else 422. Behind the credential gate like every
-    other route.
-  - **Recording summary:** `stopwatch_sessions` gains nullable `pomodoro_work_intervals`,
-    `pomodoro_breaks` (integers) and `pomodoro_break_seconds` (float). In
-    `StopwatchSessionBase`, all three are optional and travel together: all null, or all set
-    with `pomodoro_work_intervals >= 1`, `pomodoro_breaks >= 0`,
-    `pomodoro_break_seconds >= 0`; otherwise 422. Create returns them; list and get include
-    them. A Pomodoro Recording otherwise behaves exactly as any Recording (Time Log, average,
-    `new_activity_name`).
-  - **Migration:** one Alembic revision on top of `b8c9d0e1f2a3` adding the table and the three
-    columns; downgrade drops them.
+  - **Open or resume:** `POST /api/coach/conversations {target_date, tz_offset}`. A date before
+    today in that offset → 422. If an `open` conversation exists for the date, return it
+    unchanged (no model call). Otherwise create one and make the first model call, whose reply
+    is the Coach's opening question. Response: the conversation with its visible messages,
+    current Proposal, and status.
+  - **Context** (D105), built server-side into the system prompt or the first user content,
+    never from the client: every Activity (id, name, average, median, Quadrant, recording count,
+    Intended length); the date's Schedule Items (name, start, duration, Frog); Existing events
+    for the date if Google is authorized (else a line saying it is not, which the Coach mentions
+    in its opening); Peak hours; Coach notes if `notes_enabled`; and the last 14 days of
+    Recordings as `(Activity name, duration, local date)` only, never Recording names or notes.
+    A test captures the `call_model` arguments and asserts these are present and that a
+    Recording's `notes` and `name` strings are absent.
+  - **Tools** offered to the model (`strict: true`):
+    - `propose_plan {items: [{task_id | null, new_activity_name | null, start (local HH:MM),
+      duration_minutes, is_frog}], summary}`. Exactly one of `task_id` / `new_activity_name`.
+    - `suggest_note {text}`, offered only when `notes_enabled`.
+  - **Proposal validation** (D115, D116), deterministic, in `app/services/coach_plan.py`: every
+    item lies inside the target date in local time; no two items overlap; none overlaps an
+    existing Scheduled Item or Existing event; `task_id` exists; a new Activity has an
+    `intended_length` given by the user (the Coach asks; the tool carries it as
+    `duration_minutes`); at most one `is_frog`, and none if the day already has a Frog. Clashes
+    go back as an `is_error` tool result listing each problem, and the model tries again, up to
+    2 retries; after that the reply says it could not fit the plan and no Proposal is stored.
+  - **Messages:** `POST /api/coach/conversations/{id}/messages {text}` (1–2000 chars). Runs the
+    model loop (at most 4 calls per user message) and returns the updated conversation. A valid
+    `propose_plan` replaces the stored Proposal. A `suggest_note` comes back as a pending
+    suggestion on the response (`note_suggestion`), not saved (the client posts it to
+    `/api/coach/notes` if the user approves).
+  - **Turn rules** (D102): `user_turns` counts user messages before the first Proposal; at 6 the
+    call includes an instruction that it must propose now. After a Proposal, each message counts
+    as a `revision_turn`; a 4th revision → 409 `revision limit reached`. A message to a
+    conversation that is not `open` → 409.
+  - **Pushback** (D119) and the Goal behaviour (D99) are system-prompt instructions; a test
+    asserts the prompt contains them (not model behaviour).
+  - **Metrics:** every model call writes a `coach_calls` row with the response's usage fields,
+    `stop_reason`, measured `latency_ms`, and `cost_usd`. A model error (SDK exception) → 502 with
+    a short message, a `coach_calls` row with `stop_reason = "error"`, and no stored assistant
+    message.
 - **Acceptance Criteria:**
-  - [x] Test: GET on an empty table returns 25/5/15/4; PUT then GET returns the new values
-  - [x] Test: PUT with 0, 181, a missing field, or `long_break_every: 13` → 422
-  - [x] Test: create a Recording with all three summary fields and an Activity → returned as sent; the Activity's average includes the duration
-  - [x] Test: only some summary fields, or `pomodoro_work_intervals: 0` → 422
-  - [x] Test: a plain Recording returns the three fields as null
-  - [x] `test_migrations.py` passes with the new revision
+  - [ ] Test: open creates and calls once; reopening the same date returns the same id with no call; a past date → 422
+  - [ ] Test: the context contains each listed piece and no Recording notes or names; notes absent when `notes_enabled` is false, and so is `suggest_note`
+  - [ ] Test: an overlapping Proposal gets an `is_error` tool result naming the clash, and the corrected one is stored
+  - [ ] Test: three bad Proposals in a row → no Proposal stored, reply says it could not fit
+  - [ ] Test: Frog refused on a day that has one; two Frogs refused
+  - [ ] Test: the 6th user message carries the must-propose instruction; a 4th revision → 409
+  - [ ] Test: each call writes one `coach_calls` row with tokens and cost; an SDK exception → 502 and an error row
+  - [ ] Test: stored `content` replays byte-for-byte as the next call's earlier messages (append-only)
 
-### B48.impl — Backend: Pomodoro settings and the Pomodoro summary on Recordings
-- **Status:** DONE
-- **Description:** Implement to the contract: model, schemas, a `routers/settings.py` mounted at
-  `/api/settings`, and the migration.
+### B60.impl — Backend: the Coaching conversation engine
+- **Status:** PENDING
+- **Description:** Implement to the contract: `services/coach_model.py` (the only `anthropic`
+  import; load the `claude-api` skill first), `services/coach_context.py`,
+  `services/coach_plan.py`, and the routes in `routers/coach.py`. Reuse the peak-hours
+  computation from `routers/insights.py` and the median from the existing Activity stats rather
+  than re-deriving them; move a helper into a service if needed.
 - **Acceptance Criteria:**
-  - [x] All B48.tests pass; full suite passes
+  - [ ] All B60.tests pass; full suite passes
 
-### B49.tests — Mobile: Pomodoro run core
-- **Status:** DONE
-- **Description:** D84, D85, D87. Add `mobile/src/__tests__/pomodoroCore.test.ts` for a new pure
-  module `mobile/src/timer/pomodoro.ts`, in the style of `core.ts` (no React, no I/O; every
-  function takes `Clocks` or an explicit monotonic `at`).
+### B61.tests — Backend: accept, reject, start over, rating, history
+- **Status:** PENDING
+- **Description:** D94, D100, D104, D106, D108, D117. Extend `test_coach_conversation.py`.
 - **Contract:**
-  - `PomodoroConfig = { workMinutes, breakMinutes, longBreakMinutes, longBreakEvery }`.
-  - `PomodoroState`: `status` (`running` | `paused`), `phase` (`work` | `break` | `longBreak`),
-    the current phase's monotonic start and accumulated ms (as `core.ts` does), `workMs`
-    (closed Work intervals), `breakMs` (closed Breaks), `workIntervals`, `breaks`, the run's
-    `wallStart`, `taskId` or `newActivityName`, and `config`.
-  - `startRun(config, activity, clocks)` → running, phase `work`.
-  - `switchPhase(state, at)`: from work → closes the Work interval (adds its ms, `workIntervals
-    + 1`) and enters `longBreak` when `workIntervals % longBreakEvery === 0`, else `break`; from
-    a break → closes it (adds its ms, `breaks + 1`) and enters `work`. Allowed while paused
-    (the paused interval closes at its accumulated time).
-  - `pauseRun(state, at)` / `resumeRun(state, at)`: as `core.ts`'s pause and resume, on the
-    current phase.
-  - `phaseView(state, clocks)` → `{ phase, elapsedMs, targetMs, remainingMs, overMs }`: target
-    from `config` for the phase; `remainingMs = max(0, target - elapsed)`; `overMs = max(0,
-    elapsed - target)`.
-  - `reminderDue(state, clocks)`: true once the current phase's elapsed reaches its target;
-    `markReminded(state)` records it so it is due once per phase.
-  - `finishRun(state, clocks)` → `FinishedRecording` fields plus `pomodoroWorkIntervals`,
-    `pomodoroBreaks`, `pomodoroBreakSeconds`. An open Work interval counts (and increments
-    `workIntervals`); an open Break is dropped. `durationSeconds` = total work. `canFinish`
-    is true only when total work > 0.
-  - `applyActions(state, actions)`: applies native notification actions (`pause` | `resume` |
-    `switch`, each with `atElapsedMs`) in order, using each action's own monotonic time.
-  - Restore after a reboot (monotonic clock went backwards) follows `core.restore`: the
-    current phase's elapsed comes from the wall clock and the Recording is flagged as a clock
-    jump.
+  - `POST /api/coach/conversations/{id}/accept`: requires `open` and a Proposal (else 409).
+    In one transaction: create each new Activity with its `intended_length`; place every item on
+    the date's Schedule through the same code as `POST /api/schedules/days/{date}/items` with its
+    start time, duration and Frog, after re-running the B60 validation against the day as it
+    is now (a clash → 409 naming it, nothing placed); set `status = accepted`, `accepted_count`, `accepted_items`
+    snapshot, `closed_at`. Nothing is pushed to Google. Returns the date's Schedule. A new
+    Activity whose name already exists (case-insensitive) uses the existing one.
+  - `POST /{id}/reject` → `rejected`; `POST /{id}/start-over` → marks it `abandoned` and returns a
+    fresh conversation for the same date (one model call). Both 409 unless `open`.
+  - `PUT /{id}/rating {rating: "up" | "down" | null}` on any closed conversation.
+  - `GET /api/coach/conversations` → newest first, each with date, status, turns, call count,
+    total tokens (each kind), total cost, accepted/proposed counts, rating. `GET /{id}` → the
+    same plus visible messages, Proposal, and every `coach_calls` row.
+  - `GET /api/coach/usage?month=YYYY-MM` → conversations, accepted, total cost for that month
+    (default current UTC month).
 - **Acceptance Criteria:**
-  - [x] Test: work 27 min then switch → `workIntervals` 1, phase `break`; the 4th switch from work enters `longBreak` with `longBreakEvery: 4`
-  - [x] Test: paused time counts toward neither work nor break
-  - [x] Test: `phaseView` at 30 min of a 25-min Work interval → remaining 0, over 5 min; `reminderDue` true once, false after `markReminded` until the next phase
-  - [x] Test: finish during work counts the open interval; finish during a Break drops it; `canFinish` false with no work
-  - [x] Test: `applyActions` with pause/resume/switch at given times matches calling the functions directly
-  - [x] Test: restore after a reboot keeps closed totals and flags a clock jump
+  - [ ] Test: accept places timed items, creates the new Activity with its Intended length, keeps an existing Frog, pushes nothing, and stores the snapshot
+  - [ ] Test: accept twice → 409; reject then message → 409
+  - [ ] Test: start over leaves the old one `abandoned` and opens a new one for the date
+  - [ ] Test: list and detail totals equal the sum of the call rows; usage counts only that month
 
-### B49.impl — Mobile: Pomodoro run core
-- **Status:** DONE
-- **Description:** Implement `mobile/src/timer/pomodoro.ts` to the contract. Add
-  `pomodoro_work_intervals`, `pomodoro_breaks`, `pomodoro_break_seconds` (optional) to
-  `StopwatchSession` and `StopwatchSessionCreate` in `mobile/src/types`, and a
-  `settingsAPI.getPomodoro` / `updatePomodoro` pair in `services/api.ts`.
+### B61.impl — Backend: accept, reject, start over, rating, history
+- **Status:** PENDING
+- **Description:** Implement to the contract. Factor the placement code in `routers/schedules.py`
+  into a function both routes call, without changing its behaviour.
 - **Acceptance Criteria:**
-  - [x] All B49.tests pass; mobile suite, tsc, and export pass
+  - [ ] All B61.tests pass; full suite passes
 
-### B50.tests — Mobile: Pomodoro lengths in Settings
-- **Status:** DONE
-- **Description:** D83. Extend `SettingsScreen.test.tsx`.
-- **Contract:** A **Pomodoro** section in `app/settings.tsx` with four number fields (testIDs
-  `pomodoro-work`, `pomodoro-break`, `pomodoro-long-break`, `pomodoro-long-every`) loaded from
-  `settingsAPI.getPomodoro` and a **Save** button (`pomodoro-save`) that sends all four. Values
-  outside 1–180 (1–12 for the count) disable Save and show the range under the field. A failed
-  load shows the defaults greyed with "Couldn't load", and Save stays disabled.
-- **Acceptance Criteria:**
-  - [x] Test: fields show the server's values; Save sends the edited four
-  - [x] Test: 0 or 181 disables Save and shows the range
-  - [x] Test: load failure → defaults, "Couldn't load", Save disabled
-
-### B50.impl — Mobile: Pomodoro lengths in Settings
-- **Status:** DONE
-- **Description:** Implement to the contract with a react-query query on `['settings',
-  'pomodoro']`.
-- **Acceptance Criteria:**
-  - [x] All B50.tests pass; mobile suite, tsc, and export pass
-
-### B51.tests — Mobile: Pomodoro on the timer screen
-- **Status:** DONE
-- **Description:** D81, D82, D84–D87. Extend `StopwatchScreen.test.tsx`, `timerStore.test.tsx`
-  and `RecordingsScreen.test.tsx`.
+### B62.tests — Backend: Start reminders on pushed events
+- **Status:** PENDING
+- **Description:** D109, D110, D112, D113, D114. Extend the Google push tests with the calendar
+  service faked as they already are.
 - **Contract:**
-  - A `Stopwatch | Pomodoro` switch (testIDs `mode-stopwatch`, `mode-pomodoro`) above the
-    timer, disabled while the stopwatch or a run is not idle.
-  - **Start in Pomodoro mode** opens an Activity picker (existing Activities and "+ New
-    Activity" with a name field; no "None"). Start is disabled until one is chosen. The run
-    starts with the server's Pomodoro settings (defaults if they cannot be loaded).
-  - **While running:** the phase label (`Work` / `Break` / `Long break`), the current
-    interval's time left or `+m:ss over` (testID `pomodoro-phase-time`), the run's total work,
-    and buttons `Pause`/`Resume`, `Start break`/`Start work` (testID `pomodoro-switch`),
-    `Finish` (disabled with no work), `Reset`.
-  - **Reminder:** when `reminderDue`, the store calls a native `notifyPhaseDue(phase)` once
-    (see B52) and marks it reminded. Mocked here.
-  - **Finish** opens the existing save sheet with the Activity preselected and the name
-    defaulting to it; saving sends duration = total work and the three `pomodoro_*` fields,
-    through `useCreateSession` (so an offline save queues it).
-  - **Reset** with work logged asks `Discard this Pomodoro run?` (Cancel / Discard).
-  - **Persistence:** the run is stored under its own AsyncStorage key and restored on mount,
-    as the stopwatch is; on restore and whenever the app becomes active, the store drains
-    native actions (B52's `drainActions`, mocked) and applies them with `applyActions`.
-  - **Recordings list:** a Recording with `pomodoro_work_intervals` shows
-    `Pomodoro · N × avg Xm work · avg break Ym` under its name (avg break omitted when
-    `pomodoro_breaks` is 0).
+  - `create_event` and `update_event` take the reminder settings and an Activity id. With
+    reminders **on**, the event body carries `reminders: {useDefault: false, overrides:
+    [{method: "popup", minutes: <minutes_before>}]}`; **off** → `reminders: {useDefault: true}`.
+  - The description carries both links and one line of text:
+    `Start the stopwatch when you begin.\nWeb: <PUBLIC_WEB_URL>/?start=<task_id>\nPhone: stopwatchscheduler://?start=<task_id>`.
+    `PUBLIC_WEB_URL` env, default `https://api.stopwatchscheduler.app`. An item with no Activity
+    gets the text and the web root only.
+  - Applies to every create and every stale update in Push day (D113): an update patches
+    reminders and description as well as times. Nothing re-updates events when the setting
+    changes.
 - **Acceptance Criteria:**
-  - [x] Test: the mode switch is disabled while the stopwatch runs
-  - [x] Test: Start is disabled until an Activity is chosen; "None" is not offered
-  - [x] Test: Start break / Start work move through the phases; the 4th break is a Long break
-  - [x] Test: past the target, `pomodoro-phase-time` shows `+m:ss over` and `notifyPhaseDue` is called once
-  - [x] Test: Finish sends total work and the three fields with the chosen Activity
-  - [x] Test: Reset with work asks; Cancel keeps the run
-  - [x] Test: a stored run restores on mount and queued native actions are applied
-  - [x] Test: the Recordings row shows the Pomodoro summary line
+  - [ ] Test: push with reminders on → override at the stored minutes; off → `useDefault: true`
+  - [ ] Test: description contains both links with the item's `task_id`; no-Activity item has no `?start=`
+  - [ ] Test: a stale item's patch body includes reminders and description; changing the setting alone makes no Google call
 
-### B51.impl — Mobile: Pomodoro on the timer screen
-- **Status:** DONE
-- **Description:** Implement to the contract in `(tabs)/index.tsx` and a `usePomodoro` hook
-  beside `useTimer` in `timer/store.ts`. Add the JS side of B52's API to
-  `TimerNative.types.ts` and `timer/native.ts` as optional calls (no-ops when the native module
-  is absent or older), so this task does not depend on the rebuild.
+### B62.impl — Backend: Start reminders on pushed events
+- **Status:** PENDING
+- **Description:** Implement to the contract in `services/google_calendar.py` and the push route.
 - **Acceptance Criteria:**
-  - [x] All B51.tests pass; mobile suite, tsc, and export pass
+  - [ ] All B62.tests pass; full suite passes
 
-### B52.tests — Mobile: notification actions and the Pomodoro notification
-- **Status:** DONE
-- **Description:** D84, D88, D89 (scheme). Extend `native.test.ts`, `timerStore.test.tsx` and
-  `appConfig.test.ts`. The Kotlin itself is checked on device (U12, U13).
-- **Contract (the native API, in `TimerNative.types.ts`):**
-  - `startForegroundService(startedAtElapsedMs, options?)` where `options` is
-    `{ paused?: boolean, pomodoro?: { phase, phaseStartedAtElapsedMs, phaseAccumulatedMs,
-    targetMs } }`. Called again whenever the timer's state changes (start, pause, resume,
-    phase switch); it updates the one notification.
-  - `stopForegroundService()` only on Reset and Finish/Save. **Pause no longer stops the
-    service**: a paused recording keeps its notification, reading `Paused · m:ss` with a
-    `Resume` button.
-  - `drainActions(): { action: 'pause' | 'resume' | 'switch', atElapsedMs: number }[]` returns
-    and clears the actions tapped on the notification, in order.
-  - `notifyPhaseDue(phase)` posts the one-time reminder.
-  - An `onTimerAction` event fires when the app is running; the store drains on it.
-- **Contract (Kotlin, implement in B52.impl):** the service keeps the timer's anchors in its
-  intent extras and updates its own notification every second as now. Actions are
-  `NotificationCompat` buttons with `PendingIntent.getService` (immutable): the service applies
-  pause/resume/switch to its own display at once, appends `{action, elapsedRealtime}` to a
-  `SharedPreferences` list, and emits `onTimerAction` if the module is loaded. During a run the
-  text is `Work · 12:34 left` or `Work · +3:10 over`; on reaching the target the service posts
-  the reminder itself on a second channel (`pomodoro-reminder`, default importance, sound and
-  vibration) once per phase, so it fires with the screen locked. `notifyPhaseDue` posts the
-  same reminder when the app is in front.
-  - `app.json` `scheme` becomes `stopwatchscheduler`.
+### B63.tests — Backend: the metrics script
+- **Status:** PENDING
+- **Description:** D106. Add `backend/tests/test_coach_metrics_script.py` for
+  `backend/scripts/coach_metrics.py`, a script run as
+  `./venv/bin/python scripts/coach_metrics.py [--since YYYY-MM-DD] [--csv PATH]`. It reads the
+  database through `app.database` like the app does.
+- **Contract:**
+  - Prints totals (conversations by status, calls, tokens of each kind, cost, average cost per
+    conversation and per **accepted** conversation, average turns to first Proposal, average
+    latency) then one row per conversation.
+  - Per conversation, derived at run time from `accepted_items`: **kept** (item still exists
+    with the same start and duration), **edited** (exists, start or duration changed),
+    **deleted** (gone), and **recorded** (a Recording of that Activity on that local date).
+  - `--csv PATH` writes two files, `PATH-conversations.csv` and `PATH-calls.csv`, every column
+    of both tables plus the derived counts.
+  - The core is a function `build_report(db, since) -> dict` the test calls directly.
 - **Acceptance Criteria:**
-  - [x] Test: pause calls `startForegroundService` with `paused: true` and does not stop the service; reset and finish stop it
-  - [x] Test: during a run, each phase switch re-calls `startForegroundService` with the new `pomodoro` options
-  - [x] Test: an `onTimerAction` event drains and applies the actions; the displayed state matches
-  - [x] Test: with the native module absent, every call is a no-op and the timer still works
-  - [x] Test: `app.json` scheme is `stopwatchscheduler` for both variants
+  - [ ] Test: fixtures with an accepted, a rejected, and an abandoned conversation give the right totals and per-conversation derived counts
+  - [ ] Test: `--csv` writes both files with a header and one row per record
 
-### B52.impl — Mobile: notification actions and the Pomodoro notification
-- **Status:** DONE
-- **Description:** Implement the JS to the contract and the Kotlin in
-  `modules/timer-native/android/` (`TimerNativeModule.kt`, `TimerForegroundService.kt`;
-  `ios/` untouched beyond stubs that keep it compiling). Change the scheme. This changes the
-  native fingerprint: nothing after it reaches the phone until U12.
-- **Acceptance Criteria:**
-  - [x] All B52.tests pass; mobile suite, tsc, and export pass
-  - [x] Kotlin reviewed against the existing service: same imports style, immutable PendingIntents, no new dependencies
-
-### B53.tests — Web: the stopwatch survives a reload
-- **Status:** DONE
-- **Description:** D87. Extend `Stopwatch.test.tsx`.
-- **Contract:** `useStopwatch` keeps time from timestamps, not by counting 10 ms ticks: running
-  state is `{ startedAt, accumulatedMs }` and elapsed is `accumulatedMs + (Date.now() -
-  startedAt)`, so a throttled background tab stays accurate. The state is saved to
-  `localStorage` (`stopwatch.state`) on start, pause and reset, and restored on mount, running
-  or paused. The save modal's `start_time` survives too.
-- **Acceptance Criteria:**
-  - [x] Test: with fake timers and a mocked `Date.now`, elapsed follows the clock, not the tick count
-  - [x] Test: unmount while running and remount → still running with the elapsed time intact
-  - [x] Test: reset clears the stored state
-
-### B53.impl — Web: the stopwatch survives a reload
-- **Status:** DONE
-- **Description:** Implement to the contract in `hooks/useStopwatch.ts` and `Stopwatch.tsx`.
-- **Acceptance Criteria:**
-  - [x] All B53.tests pass; web tsc clean; `npm run build` succeeds
-
-### B54.tests — Web: Pomodoro lengths in Options
-- **Status:** DONE
-- **Description:** D83. Extend or add `OptionsPage` tests.
-- **Contract:** As B50, in `OptionsPage.tsx`: a Pomodoro section with the four fields
-  (`data-testid` as B50's testIDs), Save sending all four via `settingsAPI.updatePomodoro`, the
-  same ranges and load-failure behaviour. Add `settingsAPI` and the `pomodoro_*` fields to
-  `frontend/src/services/api.ts` and `frontend/src/types`.
-- **Acceptance Criteria:**
-  - [x] Test: fields show the server's values; Save sends the edited four
-  - [x] Test: out-of-range disables Save; load failure → defaults, Save disabled
-
-### B54.impl — Web: Pomodoro lengths in Options
-- **Status:** DONE
+### B63.impl — Backend: the metrics script
+- **Status:** PENDING
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
-  - [x] All B54.tests pass; web tsc clean; `npm run build` succeeds
+  - [ ] All B63.tests pass; full suite passes
 
-### B55.tests — Web: Pomodoro on the stopwatch card
-- **Status:** DONE
-- **Description:** D81, D82, D84–D87. Extend `Stopwatch.test.tsx` and `SessionList.test.tsx`.
-- **Contract:** A pure `frontend/src/utils/pomodoro.ts` with B49's functions and rules (copy and
-  adapt; there is no shared package; `Date.now()` is the clock). On the stopwatch card, B51's
-  behaviour: the mode switch, the required Activity before Start, the phase display, Start
-  break / Start work, Pause/Resume, Finish into the existing save modal with the Activity
-  preselected and the three fields sent, Reset with confirmation, and the summary line in the
-  Recordings list. **Reminder:** once per phase, a browser `Notification` (permission requested
-  on the first run's Start; skipped silently if denied) and a short tone through `AudioContext`.
-  **Persistence:** the run is saved to `localStorage` (`pomodoro.state`) and restored on mount.
+### U15. USER — Deploy the backend, first real conversation, link check
+- **Status:** USER
+- **Description:** D114, D120. After B63.
+  1. Commit, then `./deploy.sh` (runs the B59 migration).
+  2. First real conversation, against production:
+     ```bash
+     cd /root/Stopwatch-scheduler/backend && set -a && . ./.env && set +a
+     H="Authorization: Bearer $API_TOKEN"; U=https://api.stopwatchscheduler.app/api/coach
+     D=$(date -d tomorrow +%F)
+     curl -s -X POST -H "$H" -H 'Content-Type: application/json' -d "{\"target_date\":\"$D\",\"tz_offset\":360}" $U/conversations/ | python3 -m json.tool
+     # note the id, then answer its question:
+     curl -s -X POST -H "$H" -H 'Content-Type: application/json' -d '{"text":"Two hours of focus work, a run, and I want to start learning tango, 30 minutes a sitting."}' $U/conversations/<id>/messages | python3 -m json.tool
+     ```
+     (`tz_offset` 360 is US Central standard time.) Keep answering until a Proposal appears.
+     Then `curl -s -H "$H" $U/usage` and compare its cost with the Anthropic console's usage
+     page; they should agree within a cent or two.
+  3. Reject it (`curl -X POST -H "$H" $U/conversations/<id>/reject`).
+  4. **Link check:** on the phone's calendar for tomorrow, place any Activity at a time 10+
+     minutes ahead, Push day. When Google's notification fires 5 minutes before, open the event
+     and tap **Phone:**, then **Web:**. Write down whether each link was tappable (opening the
+     right screen is checked in U16).
 - **Acceptance Criteria:**
-  - [x] Test: `utils/pomodoro.ts` passes the same cases as B49 (phases, long break, pause, finish rules)
-  - [x] Test: Start is disabled until an Activity is chosen; the mode switch is locked while running
-  - [x] Test: past the target, `+m:ss over` shows and `Notification` is constructed once
-  - [x] Test: Finish sends total work and the three fields
-  - [x] Test: a stored run restores on remount
-  - [x] Test: `SessionList` shows the Pomodoro summary line
+  - [ ] A real conversation reaches a Proposal; `GET /api/coach/conversations/<id>` lists its calls with tokens and cost
+  - [ ] Link check recorded in `progress.md`. If **Phone:** was not tappable, B68 goes from HOLD to PENDING before the client tasks run
 
-### B55.impl — Web: Pomodoro on the stopwatch card
-- **Status:** DONE
+### B64.tests — Mobile: Start links, Intended length, Coach settings and usage
+- **Status:** PENDING
+- **Description:** D101, D104, D106–D110, D113, D121.
+- **Contract:**
+  - **Start link:** opening the app with `?start=<task_id>` (Expo Router search param on the
+    Stopwatch tab, `(tabs)/index.tsx`) selects that Activity for the next recording, does not
+    start the timer, and clears the param. Unknown id or a running timer → ignored.
+  - **Intended length:** `activity/[id].tsx` gains an "Intended length" minutes field (empty =
+    none), saved with `intended_length` in seconds. Any client-side seeding of a placement
+    duration follows average → Intended length → 10 min.
+  - **Settings** gains three sections:
+    - **Coach notes:** a switch bound to `notes_enabled`, then the note list with edit and
+      delete (delete asks first, like Recording delete).
+    - **Start reminders:** a switch bound to `enabled` and a minutes field (1–120), with the
+      text `Applies to Blocks pushed or changed from now on.`
+    - **Coach usage:** this month's conversations and cost from `/api/coach/usage`, and a list
+      of conversations (date, status, cost) opening a read-only detail: messages, Proposal,
+      and a table of calls (tokens of each kind, latency, cost).
+- **Acceptance Criteria:**
+  - [ ] Test: the `start` param selects the Activity without starting; ignored while running or for an unknown id
+  - [ ] Test: Intended length saves in seconds and clears to null
+  - [ ] Test: each setting round-trips through its API mock; note delete confirms first
+  - [ ] Test: usage shows the month's totals; detail renders the call rows
+
+### B64.impl — Mobile: Start links, Intended length, Coach settings and usage
+- **Status:** PENDING
+- **Description:** Implement to the contract; add the API methods to `src/services/api.ts`.
+- **Acceptance Criteria:**
+  - [ ] All B64.tests pass; mobile suite, tsc, and export pass
+
+### B65.tests — Mobile: the Coach screen
+- **Status:** PENDING
+- **Description:** D94, D100, D101, D103, D111, D117, D118, D121.
+- **Contract:**
+  - The calendar day view (`(tabs)/calendar.tsx`) shows **Plan with Coach** for today and future
+    dates only; offline it is disabled with `You're offline — the Coach needs a connection.`
+  - It opens a full-screen Coach screen for that date, which calls open-or-resume and shows the
+    messages. While a reply is pending: `Coach is thinking…` and the input disabled.
+  - A Proposal shows as a list of items (time, name, length, Frog, a **New** tag on new
+    Activities) with **Accept** and **Reject**. A note suggestion shows `Save this note?` with
+    the text and Yes / No; Yes posts it.
+  - **Accept** → the date's Blocks refresh, and a confirmation offers **Push day** (the existing
+    push) and thumbs up / down (rating). **Start over** in the header asks first, then calls
+    start-over. A 409 revision-limit response shows its message and leaves Accept / Reject /
+    Start over usable.
+- **Acceptance Criteria:**
+  - [ ] Test: button hidden for past dates; disabled offline with the message
+  - [ ] Test: open-or-resume on mount; thinking state disables input
+  - [ ] Test: Proposal renders with the New tag; Accept refreshes the day and shows Push day and rating
+  - [ ] Test: note suggestion Yes posts it, No posts nothing; Start over confirms first
+  - [ ] Test: a 409 shows its message
+
+### B65.impl — Mobile: the Coach screen
+- **Status:** PENDING
+- **Description:** Implement to the contract as a new route (`src/app/coach/[date].tsx`).
+- **Acceptance Criteria:**
+  - [ ] All B65.tests pass; mobile suite, tsc, and export pass
+
+### B66.tests — Web: Start links, Intended length, Coach settings and usage
+- **Status:** PENDING
+- **Description:** B64's contract on the web: `?start=<task_id>` on page load selects the
+  Activity in `Stopwatch.tsx` without starting it and removes the param from the URL; Intended
+  length on the Activity edit form (`TaskDetailModal.tsx`); the three Settings sections in
+  `OptionsPage.tsx`.
+- **Acceptance Criteria:**
+  - [ ] Tests mirroring B64's four
+  - [ ] Web suite, tsc, and build pass
+
+### B66.impl — Web: Start links, Intended length, Coach settings and usage
+- **Status:** PENDING
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
-  - [x] All B55.tests pass; web tsc clean; `npm run build` succeeds
+  - [ ] All B66.tests pass; web suite, tsc, and build pass
 
-### B56 — Mobile: the Pomodoro display follows the clock (found in U13)
-- **Status:** DONE
-- **Description:** U13 step 2 found the Pomodoro phase time frozen on the phone. It showed 0:59
-  after Start and only moved when the run itself changed (Pause, the reminder). The cause is the
-  React Compiler (`app.json` `experiments.reactCompiler`). It memoized `phaseView(run, clocks)`
-  and `canFinish` on `run` alone, so the 1 s tick re-rendered with cached values. Jest never ran
-  the compiler, so the suite passed. Fix: the tick stores `now` (`clocks.mono()`) in state, and
-  the view reads the clock through it. The mobile Jest transform now runs babel-preset-expo with
-  `supportsReactCompiler: true`, so tests see the compiled code, and `testTimeout` is 20 s
-  because a cold compile with the compiler pushed the first test in six files past 5 s.
-  Tests and impl were done in one session, not by the loop.
+### B67.tests — Web: the Coach screen
+- **Status:** PENDING
+- **Description:** B65's contract on the web: **Plan with Coach** in `CalendarView.tsx`'s day
+  view opens a full-screen Coach panel for that date, with the same states and actions.
 - **Acceptance Criteria:**
-  - [x] Test: each tick moves the remaining time, before and after a pause
-  - [x] Test: `canFinish` turns true once work has ticked, with no other change to the run
-  - [x] The existing reminder test fails on the old code with the compiler on and passes on the fix
-  - [x] Cold `npx jest --ci` (after `--clearCache`) 348/348; tsc and export pass
+  - [ ] Tests mirroring B65's five
+  - [ ] Web suite, tsc, and build pass
 
-### B57 — Mobile: ask for the notification permission on Start (found in U13)
-- **Status:** DONE
-- **Description:** Mobile never called `requestNotificationPermission`, so a fresh install on
-  Android 13+ would show neither the ongoing notification nor the reminder. Both start
-  functions in `timer/store.ts` (stopwatch and Pomodoro) now ask. The OS only prompts while the
-  permission is undecided, and a denial does not stop the timer. This was not the cause of
-  U13's missing reminder: the user's phone already had notifications on.
+### B67.impl — Web: the Coach screen
+- **Status:** PENDING
+- **Description:** Implement to the contract.
 - **Acceptance Criteria:**
-  - [x] Test: stopwatch Start and Pomodoro Start each ask once and run, even when denied
-  - [x] Test: pause, resume and a phase switch do not ask
+  - [ ] All B67.tests pass; web suite, tsc, and build pass
 
-### B58 — Both clients: countdown rounds up; web tone unlocked on Start (found in U13)
-- **Status:** DONE
-- **Description:** After B56 the phone countdown went 1:00 → 0:58. The time left was floored,
-  so a tick landing just after the 1 s boundary read 58.99 s as 0:58. Time left now rounds up on
-  both clients, and the phone's tick is 250 ms like the web's. The web reminder made no sound
-  in U13. The tone's `AudioContext` was created at reminder time, and browsers can start
-  one made without a click suspended. `pomodoro-start` now creates and resumes it, and the
-  reminder reuses it. The native notification's own countdown text still floors. That is
-  Kotlin, so it waits for the next APK build.
+### B68 — Backend: "Open in app" page (only if U15's link check fails)
+- **Status:** HOLD
+- **Description:** D114 fallback. `GET /open?start=<task_id>` (exempt from the credential gate,
+  no data in the page) serves a tiny HTML page with one **Open in app** button linking to
+  `stopwatchscheduler://?start=<task_id>` and a smaller **Use the web app** link. B62's
+  **Phone:** line points to `<PUBLIC_WEB_URL>/open?start=<task_id>` instead. `task_id` must be
+  an integer (else 422), and is the only thing written into the page. If this page's button is
+  also not tappable on the phone, Start reminders move to native notifications (an APK build),
+  which needs its own design pass.
 - **Acceptance Criteria:**
-  - [x] Test (mobile screen): 60000 / 59001 → 1:00, 58999 → 0:59, 58000 → 0:58, 1 → 0:01
-  - [x] Test (mobile store): the view refreshes within 250 ms
-  - [x] Test (web): 1.25 s in → 0:59, 2.75 s in → 0:58; Start creates and resumes one AudioContext, and the reminder plays on it
-  - [x] Mobile cold 354/354, tsc, export; web 187/187, tsc
+  - [ ] Test: integer id → 200 HTML with both links; non-integer → 422; reachable without the token
+  - [ ] B62 tests updated for the new Phone line; full suite passes
 
-### U12. USER — Ship, and rebuild the phone app for the new native code
-- **Status:** DONE
-- **Description:** After the loop finishes. B52 changed native code, so the phone needs new
-  APKs; phone updates only reach builds with the same native fingerprint. In an Ubuntu tab:
-  ```bash
-  cd /root/Stopwatch-scheduler
-  git status --short            # must be empty; commit first
-  ./deploy.sh                   # backend (runs the B48 migration) + web + phone update
-  cd mobile
-  eas build --profile preview --platform android
-  eas build --profile development --platform android
-  ```
-  Install both from the links EAS prints (open each on the phone, tap Install/Update). Then in
-  the "(Dev)" app's dev menu, switch the **Tools button** back on (D89).
+### U16. USER — Ship and Build 3a gate
+- **Status:** USER
+- **Description:** Commit, then `./deploy.sh` (backend, web, and the phone's over-the-air
+  update; no APK build). On the phone (standalone app) and the web app:
+  1. Settings: Coach notes on, Start reminders on at 5, Coach usage shows U15's conversation.
+  2. On tomorrow's day view, **Plan with Coach**. Include a new Activity (the Coach asks its
+     sitting length) and ask for more focus time than you've ever recorded: the Coach says so
+     once, with numbers, then plans what you choose. Approve one suggested note.
+  3. Close the app mid-conversation, reopen Plan with Coach: it resumes. Try one revision.
+  4. Accept: timed Blocks appear around existing ones and Google events, the new Activity is in
+     the Bank with its Intended length, an existing Frog is untouched. Push day from the
+     confirmation; rate it.
+  5. When the Start reminder fires, tap each link: the Stopwatch opens with that Activity
+     selected and not started, on each client.
+  6. Start over on another date; the old conversation shows `abandoned` in Coach usage.
+  7. Coach usage in the app agrees with the Anthropic console's usage page within a few
+     cents. Run `scripts/coach_metrics.py --csv` once against local MySQL to see the report
+     shape (the real data is on Azure; pointing `DB_*` there needs your IP on the server's
+     firewall).
+  Record results in `progress.md`.
 - **Acceptance Criteria:**
-  - [x] `curl -s -o /dev/null -w "%{http_code}\n" https://api.stopwatchscheduler.app/api/settings/pomodoro` prints `401` (route exists, gate on)
-  - [x] Both apps installed (preview only; development build skipped by choice); the standalone app lists Activities and Recordings
-  - [x] The standalone app shows the Stopwatch | Pomodoro switch
-
-### U13. USER — Build 2c gate
-- **Status:** DONE
-- **Description:** On the phone (standalone app) and on the web app:
-  1. Settings/Options: change the lengths to 1 / 1 / 2, long break every 2; the other client
-     shows the same values.
-  2. Start a Pomodoro run on a chosen Activity. Let the first Work interval pass its minute:
-     one reminder, then `+m:ss over`. On the phone, do this **with the screen locked**.
-  3. From the phone's **notification**: Pause, Resume, Start break, Start work. Open the app;
-     it matches. The second break is a Long break.
-  4. Finish during a Break; save. The Recording's duration is the work only, the summary line
-     is right, and the Activity's average moved.
-  5. Reload the web page mid-run (and force-close the phone app mid-run): the run continues.
-     Same for the plain web stopwatch.
-  6. Long-press a Recording on the phone: it asks first. Turn Wi-Fi and data off and open
-     Activities with a cold cache: "Offline"; back online with a bad token in Settings:
-     "Couldn't load" and Retry. Restore the token.
-  Set the lengths back to 25 / 5 / 15 / 4. Record results in `progress.md`.
-- **Acceptance Criteria:**
-  - [x] All six pass on both clients where they apply; any failure recorded with the task it reopens
+  - [ ] All seven pass on both clients where they apply; any failure recorded with the task it reopens

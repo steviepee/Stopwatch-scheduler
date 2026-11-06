@@ -13,6 +13,10 @@ the product name wins in prose, UI, and new code.
 A named, repeatable thing you do, with a running average and median duration learned from its recordings.
 _Avoid_: Task (the code name — `Task` model, `/api/tasks`), job, item
 
+**Intended length**:
+How long the user means one sitting of an Activity to last, set by the user. It seeds new placements only until the Activity has Recordings, then the average takes over. It never feeds the average.
+_Avoid_: Default duration, target length
+
 **Recording**:
 One run of an Activity, saved with a name and a duration: timed by the stopwatch, or entered by hand when the duration is already known. The unit of truth: attaching a Recording to an Activity is what teaches the Activity how long it takes.
 _Avoid_: Session, stopwatch session (the code name — `StopwatchSession`, `/api/sessions`)
@@ -49,14 +53,14 @@ The plan for one calendar date: the Activities laid out on that day, each with a
 _Avoid_: Plan, day plan, timeline (the code uses `timeline` for the rendered list inside a schedule)
 
 **Schedule Item**:
-One placement of an Activity within a Schedule, with its own estimated duration and position. Its duration is seeded from the Activity's average (10 minutes if the Activity has no history), can be changed for that placement alone, and never feeds back into the Activity.
+One placement of an Activity within a Schedule, with its own estimated duration and position. Its duration is seeded from the Activity's average, or its Intended length if it has no history, or 10 minutes if it has neither, can be changed for that placement alone, and never feeds back into the Activity.
 
 **Regimen**:
 A Schedule saved without a date so it can be applied again to any future day.
 _Avoid_: Template, routine
 
 **Strategy**:
-A deterministic rule for ordering the Activities in a Schedule. Named entries in the strategy registry; an AI planner would be one more entry.
+A deterministic rule for ordering the Activities in a Schedule. Named entries in the strategy registry. The Coach is not a Strategy, though it may use them.
 _Avoid_: Algorithm, generator, mode
 
 **Frog**:
@@ -70,6 +74,28 @@ _Avoid_: Priority level, tier
 **Peak hours**:
 The hours of the day in which recorded work has historically happened most, aggregated from Recordings and Time Logs.
 _Avoid_: Peak energy (the lesson's term; the app measures when work happened, not energy)
+
+### Coaching
+
+**Coach**:
+The conversational planner that asks what a day needs, what energy and commitments look like, and what is realistic given how long things actually take, then answers with a Proposal. It converses and judges rather than applying a fixed rule.
+_Avoid_: AI Strategy, AI planner, assistant, chatbot
+
+**Coaching conversation**:
+One bounded exchange with the Coach about one date, ending in a Proposal or abandoned.
+_Avoid_: Chat, session (Session is the code name for a Recording)
+
+**Proposal**:
+The Coach's suggested Schedule Items for a date, each with a start time that fits around the day's Existing events and Blocks. The user accepts or rejects it whole; accepting adds its items to that date's Schedule, after which they are ordinary Schedule Items with no tie to the Coach. Nothing in a Proposal is Exported until the user pushes the day.
+_Avoid_: Draft, plan, suggestion
+
+**Coach note**:
+A short fact about the user that the Coach suggested and the user approved, carried into every later Coaching conversation. Visible, editable, and deletable by the user; never saved without approval.
+_Avoid_: Memory, profile, preference
+
+**Goal**:
+Something the user wants to be able to do by a deadline, such as learning to tango before a wedding in six weeks, which the Coach turns into practice spread across the days before it. Not yet built.
+_Avoid_: Target, objective, project
 
 ### Calendar
 
@@ -87,6 +113,10 @@ _Avoid_: Tray, palette, unscheduled list
 **Block**:
 A Scheduled Schedule Item as drawn on the calendar.
 _Avoid_: Event (reserved for Google Calendar), slot
+
+**Start reminder**:
+A notification shortly before a Block begins, reminding the user to start the stopwatch on its Activity so the time is recorded. Delivered by Google Calendar, so only Exported Blocks have one.
+_Avoid_: Alert, nudge, Pomodoro reminder (that is the interval-end chime)
 
 **Existing event**:
 A Google Calendar event imported for a date so a Strategy can schedule around it.

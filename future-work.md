@@ -250,6 +250,9 @@ per-user credentials and their encryption keys exist.
 
 ## AI planning coach
 
+**Status (2026-11-05):** designed as Build 3a (`prd.md`, D92–D121): day planning only.
+The entries below hold what was deferred from it.
+
 **Raised:** 2026-10-12, at the start of the Build 2b design. Wanted after Build 2b's features
 land, and before multi-user so the user is its only user while it is tuned.
 
@@ -320,3 +323,71 @@ users may prefer it short, or want their own tone, so it should be a setting, no
   an APK build and probably a new channel id.
 - Should the "Recording" notification's countdown text round up like the in-app display (B58)?
   That is also native, so it fits the same build.
+
+---
+
+## Coach: week planning (Build 3b)
+
+**Raised:** 2026-11-05, Build 3a design (D92, D98). Next after 3a, before multi-user.
+
+The Coach plans a whole week in one Coaching conversation: one Proposal spread across up to
+seven Schedules. Mostly a change of horizon once the day works: context for seven dates, a
+Proposal whose items carry a date, validation per date, accept writing to several Schedules.
+
+**Questions to settle**
+
+- One Proposal for the week, accepted whole, or a day at a time?
+- Does it overlap with the per-week list of needed Activities above, or replace it?
+- Streaming replies (D118 deferred it), if 3a's latency feels slow.
+
+## Coach: Goals and user-set horizons
+
+**Raised:** 2026-11-05, Build 3a design (D92, D99). After week planning.
+
+A Goal is something to be able to do by a deadline: tango before a sister's wedding in six
+weeks, Salesforce before an interview in three. The Coach turns it into practice sittings
+spread across the days before the deadline, around a busy or chaotic schedule. This is the
+long-term point of the Coach. In 3a a Goal can only be mentioned in conversation; nothing is
+stored.
+
+**Questions to settle**
+
+- What a Goal stores: name, deadline, total practice wanted, sitting length, linked Activities?
+- How progress is measured: Recordings of the linked Activities, or self-report?
+- What happens when the plan falls behind: the Coach re-spreads, or asks?
+- Horizon set by the user (a month, "until the 20th") versus derived from the deadline.
+
+## Coach: a Coach tab
+
+**Raised:** 2026-11-05, Build 3a design (D103). The user wants both entry points eventually;
+3a has only "Plan with Coach" on the day view. A tab fits week and Goal planning, which are
+not tied to one date. Changes D29's four tabs.
+
+## Coach notes: "is this still accurate?"
+
+**Raised:** 2026-11-05, Build 3a design (D107). Notes already store `created_at` and
+`confirmed_at` for this.
+
+After some time a note may be stale ("Tuesdays are chaos" after a job change), and a stale
+note quietly makes plans worse. The Coach would ask whether old notes still hold.
+
+**Questions to settle**
+
+- How old before asking: a fixed age, or a user setting?
+- Asked inside a Coaching conversation, or as a review list in Settings?
+- One question per note, or all stale notes at once?
+
+## Coach: cost per user
+
+**Raised:** 2026-11-05, Build 3a design (D97). 3a relies on the Anthropic console's $10/month
+workspace limit. With other users: a per-user monthly cap enforced by the server, what the
+owner is willing to spend on showing the app, and whether users pay. 3a's metrics
+(`coach_calls`, `scripts/coach_metrics.py`) are the evidence: cost per accepted plan, turns to
+a Proposal, and whether Sonnet is enough.
+
+## Start reminders: native notifications
+
+**Raised:** 2026-11-05, Build 3a design (D110, D114). Only if Google Calendar's reminder links
+fail on the phone (B68 is the first fallback). Native scheduled notifications would also
+cover Blocks that are never pushed to Google, at the cost of Kotlin work and an APK build per
+change. Web reminders would only work while the tab is open.
