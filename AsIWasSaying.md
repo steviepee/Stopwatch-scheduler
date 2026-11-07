@@ -23,8 +23,8 @@ at `docs/prd-build2c-completed.md`. `CONTEXT.md` gained Coach, Coaching conversa
 Proposal, Coach note, Goal, Intended length, Start reminder. `future-work.md` gained week
 planning (Build 3b), Goals, a Coach tab, the note accuracy check, cost per user, and native
 Start reminders. Committed and pushed as 3355c6c. **U14 (2026-11-06):** steps 1–3 done (workspace with
-$10 limit, key, `anthropic==2.6.0` pinned); step 4, the Azure secret, is being done by the user
-in the portal. **D122 added:** a Coach rehearsal (U17) on the user's subscription before B60,
+$10 limit, key, `anthropic==2.6.0` pinned); step 4 done in the portal (secret `anthropic-api-key`,
+env `ANTHROPIC_API_KEY`, revision 0000010 healthy). U14 DONE. **D122 added:** a Coach rehearsal (U17) on the user's subscription before B60,
 producing `backend/app/prompts/coach_system.md`. B60–B67 are `HOLD (until U17)`.
 **Next:** run the loop for B59 only (`--max 2`), then U17 in a Claude Code session, then flip
 B60–B67 to PENDING and run the loop. U15 after B63. Start reminders go through Google

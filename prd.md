@@ -94,7 +94,7 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
 ## Tasks
 
 ### U14. USER — Anthropic key, spend limit, and the SDK
-- **Status:** USER
+- **Status:** DONE
 - **Description:** Before the loop. The loop cannot install dependencies (D30) or touch the
   console.
   1. Sign in at https://platform.claude.com, create a workspace named `stopwatch-coach`, and
@@ -121,7 +121,7 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
 - **Acceptance Criteria:**
   - [x] The workspace shows a $10 monthly limit
   - [x] `import anthropic` works in `backend/venv`; `requirements.txt` pins it (`anthropic==2.6.0`)
-  - [ ] `az containerapp show -g rg-stopwatch -n <app name> --query "properties.template.containers[0].env[?name=='ANTHROPIC_API_KEY']"` lists the secretref
+  - [x] `az containerapp show -g rg-stopwatch -n <app name> --query "properties.template.containers[0].env[?name=='ANTHROPIC_API_KEY']"` lists the secretref
 
 ### B59.tests — Backend: Coach tables, settings, Coach notes, Intended length
 - **Status:** PENDING
