@@ -171,11 +171,11 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [x] `test_migrations.py` passes with the new revision
 
 ### B59.impl — Backend: Coach tables, settings, Coach notes, Intended length
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract: models, schemas, the migration, routes in
   `routers/settings.py` and a new `routers/coach.py` mounted at `/api/coach`.
 - **Acceptance Criteria:**
-  - [ ] All B59.tests pass; full suite passes
+  - [x] All B59.tests pass; full suite passes
 
 ### U17. USER — Coach rehearsal (before B60)
 - **Status:** USER

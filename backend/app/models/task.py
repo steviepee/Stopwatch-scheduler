@@ -11,6 +11,7 @@ class Task(Base):
     total_recordings = Column(Integer, default=0)
     is_urgent = Column(Boolean, nullable=False, default=False)
     is_important = Column(Boolean, nullable=False, default=False)
+    intended_length = Column(Float, nullable=True)  # in seconds
     created_at = Column(DateTime, default=utcnow)
     updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 

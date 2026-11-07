@@ -2047,3 +2047,17 @@ Each iteration appends its results here so the next session knows what worked, w
   - `cost_usd` must treat a None cache count as 0.
   - Import the new model module in `alembic/env.py` and make sure `app.main` reaches it.
   - The `claude-api` skill failed to load in this session, so the price table in the cost tests comes from the PRD and was not checked against current published prices. B60.impl loads that skill anyway and should compare.
+
+## B59.impl. Backend: Coach tables, settings, Coach notes, Intended length
+- **Date:** 2026-11-06
+- **Status:** DONE
+- **Summary:** Added the six Coach tables and `tasks.intended_length` (revision `4f7a1c9e2b6d` on `66350d60caf3`), both settings routes, Coach note routes at `/api/coach/notes`, `cost_usd`, and the Intended length seed on placement. The test file was not edited.
+- **Files changed:** backend/app/models/coach.py, backend/app/models/task.py, backend/app/models/schemas.py, backend/app/routers/coach.py, backend/app/routers/settings.py, backend/app/routers/tasks.py, backend/app/routers/schedules.py, backend/app/main.py, backend/app/services/coach_cost.py, backend/alembic/env.py, backend/alembic/versions/4f7a1c9e2b6d_add_coach_tables_and_intended_length.py, prd.md, progress.md
+- **Verification:** (python3 subprocess) `pytest tests/` from `backend/`: 362 passed, including `test_coach_data.py` and `test_migrations.py`. SQLite only: the migration has not run against MySQL. It first reaches MySQL at the next deploy.
+- **Gotchas:**
+  - `./venv/bin/alembic` and direct `./venv/bin/python -m pytest` both needed approval in this session, so the revision was written by hand instead of with `--autogenerate`. `test_upgrade_produces_no_diff` confirms it matches the models, but runs with `compare_type: False`, so column types are not compared there.
+  - `coach_messages.content` and `coach_conversations.proposal` are `Text`, 64 KB on MySQL. If B60 puts the whole Coach context in a stored message, check its size against that limit; U17 records the rough size. Going over it needs a new revision.
+  - `coach_calls` cache counts and `stop_reason` are nullable because the SDK can return None for them; `input_tokens`, `output_tokens`, `latency_ms` and `cost_usd` are required.
+  - The settings helper is now `_get_or_create(db, model)`, with `_update(db, model, settings)` shared by the three PUT routes.
+  - The seed is `average_duration or intended_length or 600`, so an Activity whose Recordings average exactly 0 also falls through to Intended length.
+  - Next is U17 (USER). B60-B67 stay HOLD, so the loop has no PENDING task until U17 is done.

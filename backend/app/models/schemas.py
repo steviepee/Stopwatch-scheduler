@@ -31,11 +31,13 @@ class TaskBase(BaseModel):
 class TaskCreate(TaskBase):
     is_urgent: bool = False
     is_important: bool = False
+    intended_length: Optional[float] = Field(default=None, gt=0, le=43200)
 
 class TaskUpdate(BaseModel):
     name: Optional[str] = None
     is_urgent: Optional[bool] = None
     is_important: Optional[bool] = None
+    intended_length: Optional[float] = Field(default=None, gt=0, le=43200)
 
 class Task(TaskBase):
     id: int
@@ -43,6 +45,7 @@ class Task(TaskBase):
     total_recordings: int
     is_urgent: bool
     is_important: bool
+    intended_length: Optional[float] = None
     created_at: UTCDateTime
     updated_at: UTCDateTime
 
@@ -146,6 +149,35 @@ class PomodoroSettingsBase(BaseModel):
     long_break_every: int = Field(ge=1, le=12)
 
 class PomodoroSettings(PomodoroSettingsBase):
+    class Config:
+        from_attributes = True
+
+
+class CoachSettingsBase(BaseModel):
+    notes_enabled: bool
+
+class CoachSettings(CoachSettingsBase):
+    class Config:
+        from_attributes = True
+
+
+class ReminderSettingsBase(BaseModel):
+    enabled: bool
+    minutes_before: int = Field(ge=1, le=120)
+
+class ReminderSettings(ReminderSettingsBase):
+    class Config:
+        from_attributes = True
+
+
+class CoachNoteBase(BaseModel):
+    text: str = Field(min_length=1, max_length=300)
+
+class CoachNote(CoachNoteBase):
+    id: int
+    created_at: UTCDateTime
+    confirmed_at: UTCDateTime
+
     class Config:
         from_attributes = True
 

@@ -204,7 +204,7 @@ def place_item(
 
     estimated_duration = item.estimated_duration
     if estimated_duration is None:
-        estimated_duration = task.average_duration or 600
+        estimated_duration = task.average_duration or task.intended_length or 600
 
     db_schedule = _day_schedule(db, target_date)
     db_item = ScheduleItem(
