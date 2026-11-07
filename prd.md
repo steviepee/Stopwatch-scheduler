@@ -124,7 +124,7 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [x] `az containerapp show -g rg-stopwatch -n <app name> --query "properties.template.containers[0].env[?name=='ANTHROPIC_API_KEY']"` lists the secretref
 
 ### B59.tests — Backend: Coach tables, settings, Coach notes, Intended length
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D101, D104, D106–D109, D112, D121. Add `backend/tests/test_coach_data.py`.
 - **Contract:**
   - **Migration:** one Alembic revision on `66350d60caf3` adding the tables below and
@@ -163,12 +163,12 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
     cache write 2.50; `claude-opus-5-5` input 4.00, output 20.00, cache read 0.20, cache write
     5.00). Unknown model → 0.0 and a logged warning, never an error.
 - **Acceptance Criteria:**
-  - [ ] Test: settings GETs return the defaults; PUTs persist; `minutes_before` 0 or 121 → 422
-  - [ ] Test: note create, list order, edit moves `confirmed_at`, delete; 301-char text → 422
-  - [ ] Test: placing an Activity with no Recordings and `intended_length` 1800 seeds 1800; with Recordings seeds the average; with neither seeds 600
-  - [ ] Test: `cost_usd` for a known usage on each model matches a hand-computed value; unknown model → 0.0
-  - [ ] Test: deleting a conversation row cascades its messages and calls
-  - [ ] `test_migrations.py` passes with the new revision
+  - [x] Test: settings GETs return the defaults; PUTs persist; `minutes_before` 0 or 121 → 422
+  - [x] Test: note create, list order, edit moves `confirmed_at`, delete; 301-char text → 422
+  - [x] Test: placing an Activity with no Recordings and `intended_length` 1800 seeds 1800; with Recordings seeds the average; with neither seeds 600
+  - [x] Test: `cost_usd` for a known usage on each model matches a hand-computed value; unknown model → 0.0
+  - [x] Test: deleting a conversation row cascades its messages and calls
+  - [x] `test_migrations.py` passes with the new revision
 
 ### B59.impl — Backend: Coach tables, settings, Coach notes, Intended length
 - **Status:** PENDING

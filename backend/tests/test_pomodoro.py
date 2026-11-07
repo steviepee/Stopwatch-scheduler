@@ -241,7 +241,7 @@ def test_migration_adds_and_drops_table_and_columns(tmp_path):
         assert key in session_cols
         assert session_cols[key]["nullable"] is True
 
-    command.downgrade(cfg, "-1")
+    command.downgrade(cfg, "22e35c64707d")
     engine.dispose()
     insp = sa.inspect(sa.create_engine(db_url))
     assert "pomodoro_settings" not in insp.get_table_names()

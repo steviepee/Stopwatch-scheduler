@@ -2033,3 +2033,17 @@ Each iteration appends its results here so the next session knows what worked, w
 - **Summary:** Installed Python 3.12.16 from the deadsnakes PPA, beside the system 3.10 (`python3` is still 3.10). Verify first: a throwaway 3.12 venv installed the pinned `requirements.txt` from wheels only (no source builds) and passed 301/301. The only new warnings on 3.12 were the three test-side `datetime.utcnow()` calls. They now use `app.database.utcnow()`, which is naive UTC like before, and the unused `datetime` imports are gone. Warnings then matched 3.10 (269, nearly all httpx's `app` shortcut via Starlette's TestClient). `import app.main` on 3.12 no longer shows google.api_core's "non-supported Python" FutureWarning. Then `backend/venv` was rebuilt on 3.12 (301/301), the Dockerfile moved to `python:3.12-slim`, and the README says 3.12. The local image built, and `import app.main` (with a dummy `API_TOKEN`) and `alembic --help` passed inside it.
 - **Files changed:** Dockerfile, README.md, backend/tests/test_credential_refresh.py, backend/tests/test_credential_store.py, progress.md, AsIWasSaying.md
 - **Gotchas:** the old 3.10 venv was moved out of the repo, because `deploy.sh` refuses an untracked `backend/venv310`. Python 3.10 is still installed, so `python3.10 -m venv` can rebuild it if ever needed.
+
+## B59.tests. Backend: Coach tables, settings, Coach notes, Intended length
+- **Date:** 2026-11-06
+- **Status:** DONE
+- **Summary:** Added `backend/tests/test_coach_data.py` (61 tests, choices the PRD leaves open are in its header): both settings routes, Coach notes, the credential gate, Intended length on Activities and as a placement seed, `cost_usd`, conversation defaults and cascade, and the migration up and down. Pinned the downgrade in `test_pomodoro.py` to `22e35c64707d`, because its `-1` breaks as soon as any revision lands on top of Pomodoro.
+- **Files changed:** backend/tests/test_coach_data.py, backend/tests/test_pomodoro.py, prd.md, progress.md
+- **Verification:** (python3 subprocess) `pytest tests/` from `backend/`: 48 failed, 314 passed. All 48 failures are in `test_coach_data.py`, as expected before impl. The 13 new tests that pass already do so vacuously or as guards (401 gate, 404 on unknown note id, seed average, seed 600, explicit duration, downgrade). Against a throwaway reference built in `/tmp/b59ref` (nothing from it is in the repo): 362/362, including `test_migrations.py` with the new revision.
+- **Gotchas:**
+  - Names the tests pin: `app/models/coach.py` with `CoachConversation`, `CoachMessage`, `CoachCall`; `app/services/coach_cost.py`; table names exactly as in the PRD. `CoachNote`, `CoachSettings` and the reminder settings model are reached only through routes and raw SQL on the table names.
+  - The cascade needs both: an ORM relationship with `cascade="all, delete-orphan"` (SQLite does not enforce foreign keys in tests, so the ORM delete test needs it) and `ondelete="CASCADE"` on both foreign keys (a migration test reads it).
+  - `update_task` uses `is not None` checks. `intended_length` must use `model_fields_set`, or an explicit null cannot clear it.
+  - `cost_usd` must treat a None cache count as 0.
+  - Import the new model module in `alembic/env.py` and make sure `app.main` reaches it.
+  - The `claude-api` skill failed to load in this session, so the price table in the cost tests comes from the PRD and was not checked against current published prices. B60.impl loads that skill anyway and should compare.
