@@ -7,6 +7,7 @@ from googleapiclient.errors import HttpError
 from app.database import get_db
 from app.models.schedule import Schedule, ScheduleItem
 from app.models.task import Task
+from app.models.coach import ReminderSettings
 from app.models import schemas
 from app.services.strategies import STRATEGY_REGISTRY, _build_timeline, _build_timeline_avoiding
 from app.services.google_calendar import GoogleCalendarService
@@ -309,6 +310,8 @@ def push_schedule_to_calendar(schedule_id: int, db: Session = Depends(get_db)):
     if not calendar_service.is_authenticated():
         raise HTTPException(status_code=401, detail="Not authenticated with Google Calendar")
 
+    reminder_settings = db.query(ReminderSettings).first() or ReminderSettings(enabled=True, minutes_before=5)
+
     try:
         for item in db_schedule.items:
             if item.calendar_event_id is not None:
@@ -316,7 +319,9 @@ def push_schedule_to_calendar(schedule_id: int, db: Session = Depends(get_db)):
                     calendar_service.update_event(
                         item.calendar_event_id,
                         item.scheduled_time.isoformat(),
-                        item.estimated_duration
+                        item.estimated_duration,
+                        reminder_settings=reminder_settings,
+                        task_id=item.task_id
                     )
                     item.calendar_stale = False
                 continue
@@ -327,7 +332,9 @@ def push_schedule_to_calendar(schedule_id: int, db: Session = Depends(get_db)):
             event = calendar_service.create_event(
                 task_name=title,
                 duration_seconds=item.estimated_duration,
-                start_time=item.scheduled_time.isoformat()
+                start_time=item.scheduled_time.isoformat(),
+                reminder_settings=reminder_settings,
+                task_id=item.task_id
             )
             item.calendar_event_id = event.get('id')
 

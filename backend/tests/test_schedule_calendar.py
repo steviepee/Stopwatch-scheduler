@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 from datetime import datetime, timezone
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, ANY
 
 from app.routers.schedules import calendar_service
 
@@ -39,7 +39,9 @@ def test_post_creates_one_event_per_scheduled_item_and_persists_id(client):
     mocked_create.assert_called_once_with(
         task_name="Write report",
         duration_seconds=600.0,
-        start_time="2026-09-08T09:00:00"
+        start_time="2026-09-08T09:00:00",
+        reminder_settings=ANY,
+        task_id=None
     )
 
     body = r.json()
@@ -200,7 +202,8 @@ def test_push_day_patches_stale_creates_new_touches_nothing_else_and_clears_flag
         ("evt-resized", "2026-09-08T10:00:00", 1200.0),
     ]
     g["create_event"].assert_called_once_with(
-        task_name="New", duration_seconds=300.0, start_time="2026-09-08T13:00:00"
+        task_name="New", duration_seconds=300.0, start_time="2026-09-08T13:00:00",
+        reminder_settings=ANY, task_id=None
     )
     assert not g["delete"].called
     assert not g["insert"].called

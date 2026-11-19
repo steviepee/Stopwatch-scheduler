@@ -2147,3 +2147,14 @@ Each iteration appends its results here so the next session knows what worked, w
   - The description and links go on every pushed event, even when reminders are off.
   - The existing tests still call `update_event("evt-1", start, 900)` positionally, and `calendar_auth.py` calls `create_event(task_name=, duration_seconds=, start_time=)`. So the new parameters need defaults, or that old route has to pass them. Its bodies aren't tested here.
   - The full suite takes about 2 minutes, so give the subprocess call a long timeout or run it in the background.
+
+## B62.impl. Backend: Start reminders on pushed events
+- **Date:** 2026-11-19
+- **Status:** DONE
+- **Summary:** `create_event`/`update_event` take optional `reminder_settings` and `task_id`; when settings are given, a `_start_fields` helper adds `reminders` (popup override at `minutes_before`, or `{useDefault: True}` when off) and the start-link `description` (`PUBLIC_WEB_URL` read at call time). The push route loads the `reminder_settings` row (defaults on/5 if none) and passes it plus `item.task_id` to every create and stale update.
+- **Files changed:** backend/app/services/google_calendar.py, backend/app/routers/schedules.py, backend/tests/test_schedule_calendar.py, prd.md, progress.md
+- **Verification:** (python3 subprocess) `pytest tests/` from `backend/`: 457 passed.
+- **Gotchas:**
+  - A previous iteration left this implementation uncommitted in the working tree; it was reviewed, an unused settings lookup in the remove route was dropped, and it was finished here.
+  - Two pre-B62 tests in `test_schedule_calendar.py` used `assert_called_once_with` on `create_event` with the old signature. They now also expect `reminder_settings=ANY, task_id=None`. Any future change to `create_event`'s call in the push route must update them too.
+  - The new params default to `None`, so `calendar_auth.py`'s `create_event` call (no reminders/description) is unchanged.

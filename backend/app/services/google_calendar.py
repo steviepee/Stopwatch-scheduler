@@ -218,7 +218,23 @@ class GoogleCalendarService:
         local = dt - timedelta(minutes=tz_offset)
         return local.strftime("%Y-%m-%d")
 
-    def create_event(self, task_name: str, duration_seconds: float, start_time: str = None):
+    @staticmethod
+    def _start_fields(reminder_settings, task_id):
+        """Start reminder and Stopwatch links for a pushed Block (D109, D110, D112)"""
+        if reminder_settings.enabled:
+            reminders = {'useDefault': False, 'overrides': [{'method': 'popup', 'minutes': reminder_settings.minutes_before}]}
+        else:
+            reminders = {'useDefault': True}
+        web = os.getenv("PUBLIC_WEB_URL", "https://api.stopwatchscheduler.app")
+        description = "Start the stopwatch when you begin."
+        if task_id is None:
+            description += f"\nWeb: {web}"
+        else:
+            description += f"\nWeb: {web}/?start={task_id}\nPhone: stopwatchscheduler://?start={task_id}"
+        return {'reminders': reminders, 'description': description}
+
+    def create_event(self, task_name: str, duration_seconds: float, start_time: str = None,
+                     reminder_settings=None, task_id: int = None):
         """Create a calendar event"""
         if not self.is_authenticated():
             raise Exception("Not authenticated with Google Calendar")
@@ -245,11 +261,14 @@ class GoogleCalendarService:
                 'timeZone': 'UTC',
             },
         }
+        if reminder_settings is not None:
+            event.update(self._start_fields(reminder_settings, task_id))
 
         created_event = self.service.events().insert(calendarId='primary', body=event).execute()
         return created_event
 
-    def update_event(self, event_id: str, start_time: str, duration_seconds: float):
+    def update_event(self, event_id: str, start_time: str, duration_seconds: float,
+                     reminder_settings=None, task_id: int = None):
         """Move or resize an event: patch its start and end"""
         if not self.is_authenticated():
             raise Exception("Not authenticated with Google Calendar")
@@ -269,5 +288,7 @@ class GoogleCalendarService:
                 'timeZone': 'UTC',
             },
         }
+        if reminder_settings is not None:
+            body.update(self._start_fields(reminder_settings, task_id))
 
         return self.service.events().patch(calendarId='primary', eventId=event_id, body=body).execute()

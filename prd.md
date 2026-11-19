@@ -365,10 +365,10 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [x] Test: a stale item's patch body includes reminders and description; changing the setting alone makes no Google call
 
 ### B62.impl — Backend: Start reminders on pushed events
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract in `services/google_calendar.py` and the push route.
 - **Acceptance Criteria:**
-  - [ ] All B62.tests pass; full suite passes
+  - [x] All B62.tests pass; full suite passes
 
 ### B63.tests — Backend: the metrics script
 - **Status:** PENDING
