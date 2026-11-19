@@ -345,7 +345,7 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [x] All B61.tests pass; full suite passes
 
 ### B62.tests — Backend: Start reminders on pushed events
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D109, D110, D112, D113, D114. Extend the Google push tests with the calendar
   service faked as they already are.
 - **Contract:**
@@ -360,9 +360,9 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
     reminders and description as well as times. Nothing re-updates events when the setting
     changes.
 - **Acceptance Criteria:**
-  - [ ] Test: push with reminders on → override at the stored minutes; off → `useDefault: true`
-  - [ ] Test: description contains both links with the item's `task_id`; no-Activity item has no `?start=`
-  - [ ] Test: a stale item's patch body includes reminders and description; changing the setting alone makes no Google call
+  - [x] Test: push with reminders on → override at the stored minutes; off → `useDefault: true`
+  - [x] Test: description contains both links with the item's `task_id`; no-Activity item has no `?start=`
+  - [x] Test: a stale item's patch body includes reminders and description; changing the setting alone makes no Google call
 
 ### B62.impl — Backend: Start reminders on pushed events
 - **Status:** PENDING

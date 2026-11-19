@@ -694,3 +694,241 @@ def test_remove_from_google_only_on_stale_items_clears_every_id_and_flag(client)
     assert not g["update_event"].called
     items = client.get(f"/api/schedules/{sid}").json()["items"]
     assert [(i["calendar_event_id"], i["calendar_stale"]) for i in items] == [(None, False), (None, False)]
+
+
+# --- Start reminders and Stopwatch links on pushed events (B62: D109, D110, D112, D113) ---
+#
+# These tests let the real create_event/update_event run and fake only the Google client
+# (`calendar_service.service`), so they pin the event body Google receives, not the
+# signature the route uses to pass the settings and Activity id. Choices pinned here that
+# the PRD leaves open:
+#   - PUBLIC_WEB_URL is read from the environment at call time (monkeypatch.setenv works).
+#   - With no reminder_settings row, the defaults apply (on, 5 minutes).
+#   - Reminders off is exactly {"useDefault": True}, with no overrides key.
+#   - The no-Activity description is the text line then "Web: <PUBLIC_WEB_URL>" with no
+#     query and no Phone line; a trailing slash on the web root is allowed.
+
+REMINDERS_URL = "/api/settings/reminders"
+START_TEXT = "Start the stopwatch when you begin."
+DEFAULT_WEB = "https://api.stopwatchscheduler.app"
+
+
+@contextmanager
+def _google_body():
+    """Google's client faked; create_event and update_event run for real.
+    insert(...).execute() hands out evt-1, evt-2, ... in call order."""
+    mock_service = MagicMock()
+    events = mock_service.events.return_value
+    counter = {"n": 0}
+
+    def insert(*args, **kwargs):
+        counter["n"] += 1
+        request = MagicMock()
+        request.execute.return_value = {"id": f"evt-{counter['n']}"}
+        return request
+
+    events.insert.side_effect = insert
+    with patch.object(calendar_service, "is_authenticated", return_value=True), \
+         patch.object(calendar_service, "service", mock_service):
+        yield {"insert": events.insert, "patch": events.patch, "delete": events.delete}
+
+
+def _bodies(mock):
+    return [c.kwargs["body"] for c in mock.call_args_list]
+
+
+def _activity(client, name="Tango"):
+    r = client.post("/api/tasks/", json={"name": name})
+    assert r.status_code == 200
+    return r.json()["id"]
+
+
+def _set_reminders(client, enabled, minutes_before):
+    r = client.put(REMINDERS_URL, json={"enabled": enabled, "minutes_before": minutes_before})
+    assert r.status_code == 200
+
+
+def _push(client, items):
+    sched = client.post("/api/schedules/", json={"target_date": DAY, "items": items}).json()
+    r = client.post(f"/api/schedules/{sched['id']}/calendar")
+    assert r.status_code == 200
+    return r.json()
+
+
+def _links(web, task_id):
+    return f"{START_TEXT}\nWeb: {web}/?start={task_id}\nPhone: stopwatchscheduler://?start={task_id}"
+
+
+def test_push_with_reminders_on_by_default_overrides_at_five_minutes(client, monkeypatch):
+    monkeypatch.delenv("PUBLIC_WEB_URL", raising=False)
+    tid = _activity(client)
+    with _google_body() as g:
+        _push(client, [{"task_id": tid, "estimated_duration": 600.0, "scheduled_time": T9}])
+
+    [body] = _bodies(g["insert"])
+    assert body["reminders"] == {"useDefault": False, "overrides": [{"method": "popup", "minutes": 5}]}
+
+
+def test_push_with_reminders_on_uses_the_stored_minutes(client):
+    _set_reminders(client, True, 15)
+    tid = _activity(client)
+    with _google_body() as g:
+        _push(client, [
+            {"task_id": tid, "estimated_duration": 600.0, "scheduled_time": T9},
+            {"custom_name": "Write", "estimated_duration": 600.0, "scheduled_time": T10},
+        ])
+
+    bodies = _bodies(g["insert"])
+    assert len(bodies) == 2
+    for body in bodies:
+        assert body["reminders"] == {"useDefault": False, "overrides": [{"method": "popup", "minutes": 15}]}
+
+
+def test_push_with_reminders_off_falls_back_to_google_defaults(client):
+    _set_reminders(client, False, 15)
+    tid = _activity(client)
+    with _google_body() as g:
+        _push(client, [
+            {"task_id": tid, "estimated_duration": 600.0, "scheduled_time": T9},
+            {"custom_name": "Write", "estimated_duration": 600.0, "scheduled_time": T10},
+        ])
+
+    bodies = _bodies(g["insert"])
+    assert len(bodies) == 2
+    for body in bodies:
+        assert body["reminders"] == {"useDefault": True}
+
+
+def test_push_keeps_summary_and_times_alongside_reminders(client):
+    tid = _activity(client, "Tango")
+    with _google_body() as g:
+        _push(client, [{"task_id": tid, "estimated_duration": 900.0, "scheduled_time": T9}])
+
+    [body] = _bodies(g["insert"])
+    assert body["summary"] == "Tango"
+    assert body["start"] == {"dateTime": "2026-09-08T09:00:00", "timeZone": "UTC"}
+    assert body["end"] == {"dateTime": "2026-09-08T09:15:00", "timeZone": "UTC"}
+    assert g["insert"].call_args.kwargs["calendarId"] == "primary"
+
+
+def test_description_has_both_links_with_the_items_activity(client, monkeypatch):
+    monkeypatch.delenv("PUBLIC_WEB_URL", raising=False)
+    tid = _activity(client)
+    with _google_body() as g:
+        _push(client, [{"task_id": tid, "estimated_duration": 600.0, "scheduled_time": T9}])
+
+    [body] = _bodies(g["insert"])
+    assert body["description"] == _links(DEFAULT_WEB, tid)
+
+
+def test_description_web_link_follows_public_web_url(client, monkeypatch):
+    monkeypatch.setenv("PUBLIC_WEB_URL", "https://web.example.test")
+    tid = _activity(client)
+    with _google_body() as g:
+        _push(client, [{"task_id": tid, "estimated_duration": 600.0, "scheduled_time": T9}])
+
+    [body] = _bodies(g["insert"])
+    assert body["description"] == _links("https://web.example.test", tid)
+    assert DEFAULT_WEB not in body["description"]
+
+
+def test_each_item_gets_its_own_activity_in_the_links(client):
+    a = _activity(client, "Tango")
+    b = _activity(client, "Salesforce")
+    with _google_body() as g:
+        _push(client, [
+            {"task_id": a, "estimated_duration": 600.0, "scheduled_time": T9},
+            {"task_id": b, "estimated_duration": 600.0, "scheduled_time": T10},
+        ])
+
+    by_summary = {body["summary"]: body["description"] for body in _bodies(g["insert"])}
+    assert f"?start={a}" in by_summary["Tango"]
+    assert f"?start={b}" not in by_summary["Tango"]
+    assert f"?start={b}" in by_summary["Salesforce"]
+
+
+def test_description_with_links_is_there_even_when_reminders_are_off(client, monkeypatch):
+    monkeypatch.delenv("PUBLIC_WEB_URL", raising=False)
+    _set_reminders(client, False, 5)
+    tid = _activity(client)
+    with _google_body() as g:
+        _push(client, [{"task_id": tid, "estimated_duration": 600.0, "scheduled_time": T9}])
+
+    [body] = _bodies(g["insert"])
+    assert body["description"] == _links(DEFAULT_WEB, tid)
+
+
+def test_no_activity_item_gets_text_and_web_root_only(client, monkeypatch):
+    monkeypatch.delenv("PUBLIC_WEB_URL", raising=False)
+    with _google_body() as g:
+        _push(client, [{"custom_name": "Write", "estimated_duration": 600.0, "scheduled_time": T9}])
+
+    [body] = _bodies(g["insert"])
+    description = body["description"]
+    assert "?start=" not in description
+    assert "stopwatchscheduler://" not in description
+    assert description.rstrip("/") == f"{START_TEXT}\nWeb: {DEFAULT_WEB}"
+
+
+def _stale_pushed(client, items):
+    """Push `items`, then move each one to 11:00 so every Item is stale."""
+    with _google_body():
+        sched = _push(client, items)
+    for item in sched["items"]:
+        r = client.put(f"/api/schedules/{sched['id']}/items/{item['id']}", json={"scheduled_time": T11})
+        assert r.json()["calendar_stale"] is True
+    return sched
+
+
+def test_stale_items_patch_carries_times_reminders_and_description(client, monkeypatch):
+    monkeypatch.delenv("PUBLIC_WEB_URL", raising=False)
+    tid = _activity(client)
+    sched = _stale_pushed(client, [{"task_id": tid, "estimated_duration": 600.0, "scheduled_time": T9}])
+    _set_reminders(client, True, 20)
+
+    with _google_body() as g:
+        r = client.post(f"/api/schedules/{sched['id']}/calendar")
+
+    assert r.status_code == 200
+    assert not g["insert"].called
+    g["patch"].assert_called_once()
+    kwargs = g["patch"].call_args.kwargs
+    assert kwargs["calendarId"] == "primary"
+    assert kwargs["eventId"] == "evt-1"
+    body = kwargs["body"]
+    assert body["start"] == {"dateTime": "2026-09-08T11:00:00", "timeZone": "UTC"}
+    assert body["end"] == {"dateTime": "2026-09-08T11:10:00", "timeZone": "UTC"}
+    assert body["reminders"] == {"useDefault": False, "overrides": [{"method": "popup", "minutes": 20}]}
+    assert body["description"] == _links(DEFAULT_WEB, tid)
+    assert r.json()["items"][0]["calendar_stale"] is False
+
+
+def test_stale_items_patch_with_reminders_off_uses_google_defaults(client, monkeypatch):
+    monkeypatch.delenv("PUBLIC_WEB_URL", raising=False)
+    sched = _stale_pushed(client, [{"custom_name": "Write", "estimated_duration": 600.0, "scheduled_time": T9}])
+    _set_reminders(client, False, 5)
+
+    with _google_body() as g:
+        client.post(f"/api/schedules/{sched['id']}/calendar")
+
+    [body] = _bodies(g["patch"])
+    assert body["reminders"] == {"useDefault": True}
+    assert "?start=" not in body["description"]
+    assert body["description"].rstrip("/") == f"{START_TEXT}\nWeb: {DEFAULT_WEB}"
+
+
+def test_changing_the_reminder_setting_alone_makes_no_google_call(client):
+    tid = _activity(client)
+    with _google_body():
+        sched = _push(client, [{"task_id": tid, "estimated_duration": 600.0, "scheduled_time": T9}])
+
+    with _google_body() as g:
+        _set_reminders(client, False, 5)
+        _set_reminders(client, True, 30)
+        r = client.post(f"/api/schedules/{sched['id']}/calendar")
+
+    assert r.status_code == 200
+    assert not g["insert"].called
+    assert not g["patch"].called
+    assert not g["delete"].called
+    assert r.json()["items"][0]["calendar_event_id"] == "evt-1"

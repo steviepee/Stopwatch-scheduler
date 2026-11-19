@@ -2133,3 +2133,17 @@ Each iteration appends its results here so the next session knows what worked, w
   - Reject and rating return the summary row. Start over calls `open_conversation` directly after committing the abandon.
   - Usage cost sums the calls of conversations created in that month, not calls created in it.
   - Bash heredocs with `{"` and multi-line `python3 -c` strings containing `#` are both blocked. Use Edit to append to files.
+
+## B62.tests. Backend: Start reminders on pushed events
+- **Date:** 2026-11-19
+- **Status:** DONE
+- **Summary:** Added a B62 section (12 tests) to the end of `backend/tests/test_item_google_sync.py`. The tests fake only `calendar_service.service` and let the real `create_event`/`update_event` run, so they pin the insert/patch bodies Google receives, not the signatures. They cover the reminder override at the default and stored minutes, `useDefault: true` when off, the exact description with both links, `PUBLIC_WEB_URL`, the no-Activity description, stale patches carrying times + reminders + description, and that a setting change alone makes no Google call.
+- **Files changed:** backend/tests/test_item_google_sync.py, prd.md, progress.md
+- **Verification:** (python3 subprocess) `pytest tests/` from `backend/`: 10 failed, 447 passed. All 10 failures are new B62 tests (`KeyError: 'reminders'` / `'description'`), as expected before impl. 2 new tests already pass: summary/times unchanged, and a setting change alone making no call. The other 445 still pass.
+- **Gotchas:**
+  - Read `PUBLIC_WEB_URL` with `os.getenv` at call time, not at import. The tests use `monkeypatch.setenv`/`delenv`.
+  - With no `reminder_settings` row, use the defaults (on, 5). Off must be exactly `{"useDefault": True}`, with no `overrides` key.
+  - The description with an Activity must match exactly: `Start the stopwatch when you begin.\nWeb: <URL>/?start=<id>\nPhone: stopwatchscheduler://?start=<id>`. With no Activity it is `Start the stopwatch when you begin.\nWeb: <URL>` (a trailing `/` is allowed), with no Phone line.
+  - The description and links go on every pushed event, even when reminders are off.
+  - The existing tests still call `update_event("evt-1", start, 900)` positionally, and `calendar_auth.py` calls `create_event(task_name=, duration_seconds=, start_time=)`. So the new parameters need defaults, or that old route has to pass them. Its bodies aren't tested here.
+  - The full suite takes about 2 minutes, so give the subprocess call a long timeout or run it in the background.
