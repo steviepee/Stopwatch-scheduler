@@ -311,7 +311,7 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [x] All B60.tests pass; full suite passes
 
 ### B61.tests — Backend: accept, reject, start over, rating, history
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D94, D100, D104, D106, D108, D117. Extend `test_coach_conversation.py`.
 - **Contract:**
   - `POST /api/coach/conversations/{id}/accept`: requires `open` and a Proposal (else 409).
@@ -331,11 +331,11 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - `GET /api/coach/usage?month=YYYY-MM` → conversations, accepted, total cost for that month
     (default current UTC month).
 - **Acceptance Criteria:**
-  - [ ] Test: a new Activity from a `you_said` item gets its Intended length; one from a `guess` or `history` item gets null
-  - [ ] Test: accept places timed items, creates the new Activity, keeps an existing Frog, pushes nothing, and stores the snapshot
-  - [ ] Test: accept twice → 409; reject then message → 409
-  - [ ] Test: start over leaves the old one `abandoned` and opens a new one for the date
-  - [ ] Test: list and detail totals equal the sum of the call rows; usage counts only that month
+  - [x] Test: a new Activity from a `you_said` item gets its Intended length; one from a `guess` or `history` item gets null
+  - [x] Test: accept places timed items, creates the new Activity, keeps an existing Frog, pushes nothing, and stores the snapshot
+  - [x] Test: accept twice → 409; reject then message → 409
+  - [x] Test: start over leaves the old one `abandoned` and opens a new one for the date
+  - [x] Test: list and detail totals equal the sum of the call rows; usage counts only that month
 
 ### B61.impl — Backend: accept, reject, start over, rating, history
 - **Status:** PENDING

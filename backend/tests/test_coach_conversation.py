@@ -863,3 +863,448 @@ def test_migration_downgrade_drops_context_and_app_settings(tmp_path):
     insp = sa.inspect(sa.create_engine(db_url))
     assert "app_settings" not in insp.get_table_names()
     assert "context" not in {c["name"] for c in insp.get_columns("coach_conversations")}
+
+
+# === B61: accept, reject, start over, rating, history ========================================
+#
+# Contract: prd.md, B61.tests. Choices this section pins that the PRD leaves open:
+#   - Accept returns the date's Schedule in the `schemas.Schedule` shape (`target_date`, `items`
+#     with `task_id`, `scheduled_time` as UTC with `Z`, `estimated_duration` in seconds, `is_frog`,
+#     `calendar_event_id`). A Proposal item's local `start` becomes UTC through the conversation's
+#     `tz_offset`; its length is `duration_minutes * 60`.
+#   - `accepted_items` is a JSON list of `{id, task_id, scheduled_time, estimated_duration}`, one per
+#     placed item, `scheduled_time` as an ISO UTC string.
+#   - Every 409 has a `detail` string. A clash on accept names the Activity it clashes with, and
+#     nothing is written: no new Activity, no item, the conversation stays `open`.
+#   - Reject and rating return 200. Rating an `open` conversation → 409; a value other than
+#     up, down, or null → 422.
+#   - Start over returns the new conversation in the same shape as open (B60).
+#   - List and detail rows: `id`, `target_date`, `status`, `user_turns`, `revision_turns`,
+#     `call_count`, `input_tokens`, `output_tokens`, `cache_read_input_tokens`,
+#     `cache_creation_input_tokens`, `cost_usd`, `proposed_count`, `accepted_count`, `rating`.
+#     Token totals and cost are 0 for a conversation with no calls. Detail adds `messages`
+#     (visible, as in B60), `proposal`, and `calls` (every `coach_calls` row, oldest first, with
+#     `turn_index`, `model`, `stop_reason`, `latency_ms`, the four token counts, `cost_usd`).
+#   - Usage: `{conversations, accepted, cost_usd}`. A conversation belongs to the month of its
+#     `created_at` (UTC); the cost is the sum of its calls. The default month is read through
+#     `coach_context.now_utc()`. A malformed `month` → 422.
+
+def _proposed(client, fake, items, day=FUTURE):
+    conv = _open(client, day)
+    fake.queue(propose(items), reply("Here is the plan."))
+    after = _say(client, conv["id"], "Plan it")
+    assert after["proposal"] is not None
+    return after
+
+
+def _accept(client, conv_id):
+    r = client.post(f"{CONV_URL}/{conv_id}/accept")
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def _tasks_by_name(client):
+    return {t["name"]: t for t in client.get("/api/tasks/").json()}
+
+
+def _day_task_ids(client, day=FUTURE):
+    schedules = client.get(f"/api/schedules/?start_date={day}&end_date={day}").json()
+    return [i["task_id"] for s in schedules for i in s["items"]]
+
+
+def _conv_row(db, conv_id):
+    db.expire_all()
+    return db.execute(sa.text(
+        "SELECT status, proposed_count, accepted_count, accepted_items, closed_at, rating "
+        "FROM coach_conversations WHERE id = :id"
+    ), {"id": conv_id}).one()
+
+
+@pytest.fixture
+def no_push(monkeypatch):
+    pushed = []
+
+    def record(kind):
+        def fake_call(self, *args, **kwargs):
+            pushed.append(kind)
+            return {"id": "evt-x"}
+        return fake_call
+
+    monkeypatch.setattr(GoogleCalendarService, "create_event", record("create"))
+    monkeypatch.setattr(GoogleCalendarService, "update_event", record("update"))
+    return pushed
+
+
+# --- Accept ---------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("source,expected", [("you_said", 1800), ("guess", None), ("history", None)])
+def test_new_activity_intended_length_only_when_the_user_said_it(client, fake, source, expected):
+    conv = _proposed(client, fake, [item(None, "09:00", 30, new="Tango", source=source, reason="Tango sitting.")])
+    _accept(client, conv["id"])
+    tango = _tasks_by_name(client)["Tango"]
+    assert tango["intended_length"] == expected
+    assert tango["total_recordings"] == 0
+
+
+def test_accept_places_timed_items_and_stores_the_snapshot(client, fake, db, google, no_push):
+    google([])
+    read = _task(client, "Reading")
+    laundry = _task(client, "Laundry")
+    _place(client, laundry["id"], FUTURE, "2026-11-21T14:00:00Z", seconds=1800, is_frog=True)  # 08:00 local
+    conv = _proposed(client, fake, [
+        item(read["id"], "09:00", 45),
+        item(None, "10:00", 30, new="Tango", source="you_said", reason="You asked for 30 minutes."),
+    ])
+
+    schedule = _accept(client, conv["id"])
+    assert schedule["target_date"] == FUTURE
+    tango = _tasks_by_name(client)["Tango"]
+    by_task = {i["task_id"]: i for i in schedule["items"]}
+    assert set(by_task) == {laundry["id"], read["id"], tango["id"]}
+
+    assert by_task[read["id"]]["scheduled_time"].startswith("2026-11-21T15:00:00")
+    assert by_task[read["id"]]["scheduled_time"].endswith("Z")
+    assert by_task[read["id"]]["estimated_duration"] == 2700
+    assert by_task[tango["id"]]["scheduled_time"].startswith("2026-11-21T16:00:00")
+    assert by_task[tango["id"]]["estimated_duration"] == 1800
+
+    assert by_task[laundry["id"]]["is_frog"] is True
+    assert by_task[read["id"]]["is_frog"] is False and by_task[tango["id"]]["is_frog"] is False
+
+    assert no_push == []
+    assert all(i["calendar_event_id"] is None for i in schedule["items"])
+
+    row = _conv_row(db, conv["id"])
+    assert row.status == "accepted"
+    assert row.closed_at is not None
+    assert row.proposed_count == 2
+    assert row.accepted_count == 2
+    snapshot = json.loads(row.accepted_items)
+    placed = [by_task[read["id"]], by_task[tango["id"]]]
+    assert sorted((s["id"], s["task_id"], s["estimated_duration"]) for s in snapshot) == \
+        sorted((p["id"], p["task_id"], p["estimated_duration"]) for p in placed)
+    times = {s["task_id"]: s["scheduled_time"] for s in snapshot}
+    assert times[read["id"]].startswith("2026-11-21T15:00:00")
+    assert times[tango["id"]].startswith("2026-11-21T16:00:00")
+
+
+def test_accept_sets_the_proposed_frog_on_a_day_without_one(client, fake):
+    read = _task(client, "Reading")
+    run = _task(client, "Running")
+    conv = _proposed(client, fake, [item(read["id"], "09:00", 30, is_frog=True), item(run["id"], "10:00", 30)])
+    schedule = _accept(client, conv["id"])
+    frogs = {i["task_id"]: i["is_frog"] for i in schedule["items"]}
+    assert frogs == {read["id"]: True, run["id"]: False}
+
+
+def test_accept_schedule_matches_the_schedule_route(client, fake):
+    read = _task(client, "Reading")
+    conv = _proposed(client, fake, [item(read["id"], "09:00", 30)])
+    schedule = _accept(client, conv["id"])
+    listed = client.get(f"/api/schedules/?start_date={FUTURE}&end_date={FUTURE}").json()
+    assert len(listed) == 1
+    assert listed[0]["id"] == schedule["id"]
+    assert [i["id"] for i in listed[0]["items"]] == [i["id"] for i in schedule["items"]]
+
+
+def test_new_activity_with_an_existing_name_uses_the_existing_one(client, fake):
+    tango = _task(client, "Tango")
+    conv = _proposed(client, fake, [item(None, "09:00", 30, new="tango", source="you_said", reason="Tango.")])
+    schedule = _accept(client, conv["id"])
+    names = [t["name"].lower() for t in client.get("/api/tasks/").json()]
+    assert names.count("tango") == 1
+    assert [i["task_id"] for i in schedule["items"]] == [tango["id"]]
+
+
+def test_accept_rechecks_the_day_and_places_nothing_on_a_clash(client, fake, db):
+    read = _task(client, "Reading")
+    laundry = _task(client, "Laundry")
+    conv = _proposed(client, fake, [
+        item(read["id"], "09:00", 30),
+        item(None, "11:00", 30, new="Tango", source="you_said", reason="Tango."),
+    ])
+    _place(client, laundry["id"], FUTURE, "2026-11-21T15:15:00Z", seconds=1800)  # 09:15 local, after the Proposal
+
+    r = client.post(f"{CONV_URL}/{conv['id']}/accept")
+    assert r.status_code == 409
+    assert "Laundry" in r.json()["detail"]
+
+    assert "Tango" not in _tasks_by_name(client)
+    assert _day_task_ids(client) == [laundry["id"]]
+    row = _conv_row(db, conv["id"])
+    assert row.status == "open"
+    assert row.accepted_items is None
+
+
+def test_accept_without_a_proposal_is_409(client, fake):
+    conv = _open(client)
+    r = client.post(f"{CONV_URL}/{conv['id']}/accept")
+    assert r.status_code == 409
+    assert r.json()["detail"]
+
+
+def test_accept_twice_is_409(client, fake):
+    read = _task(client, "Reading")
+    conv = _proposed(client, fake, [item(read["id"], "09:00", 30)])
+    _accept(client, conv["id"])
+    r = client.post(f"{CONV_URL}/{conv['id']}/accept")
+    assert r.status_code == 409
+    assert r.json()["detail"]
+    assert _day_task_ids(client) == [read["id"]]
+
+
+def test_accept_unknown_conversation_is_404(client, fake):
+    assert client.post(f"{CONV_URL}/9999/accept").status_code == 404
+
+
+# --- Reject and start over ------------------------------------------------------------------
+
+def test_reject_then_message_is_409(client, fake, db):
+    read = _task(client, "Reading")
+    conv = _proposed(client, fake, [item(read["id"], "09:00", 30)])
+    assert client.post(f"{CONV_URL}/{conv['id']}/reject").status_code == 200
+    row = _conv_row(db, conv["id"])
+    assert row.status == "rejected"
+    assert row.closed_at is not None
+    assert _day_task_ids(client) == []
+
+    n = len(fake.calls)
+    r = client.post(f"{CONV_URL}/{conv['id']}/messages", json={"text": "Wait"})
+    assert r.status_code == 409
+    assert len(fake.calls) == n
+
+
+def test_reject_twice_and_accept_after_reject_are_409(client, fake):
+    read = _task(client, "Reading")
+    conv = _proposed(client, fake, [item(read["id"], "09:00", 30)])
+    assert client.post(f"{CONV_URL}/{conv['id']}/reject").status_code == 200
+    assert client.post(f"{CONV_URL}/{conv['id']}/reject").status_code == 409
+    assert client.post(f"{CONV_URL}/{conv['id']}/accept").status_code == 409
+    assert _day_task_ids(client) == []
+
+
+def test_start_over_abandons_and_opens_a_new_one(client, fake, db):
+    first = _open(client)
+    _say(client, first["id"], "Plan my day")
+    fake.queue(reply("Fresh start. What matters?"))
+    n = len(fake.calls)
+
+    r = client.post(f"{CONV_URL}/{first['id']}/start-over")
+    assert r.status_code == 200, r.text
+    fresh = r.json()
+    assert len(fake.calls) == n + 1
+    assert fresh["id"] != first["id"]
+    assert fresh["status"] == "open"
+    assert fresh["target_date"] == FUTURE
+    assert [(m["role"], _visible(m)) for m in fresh["messages"]] == [("assistant", "Fresh start. What matters?")]
+    assert "Plan my day" not in json.dumps(fake.calls[-1])
+
+    row = _conv_row(db, first["id"])
+    assert row.status == "abandoned"
+    assert row.closed_at is not None
+    assert _open(client)["id"] == fresh["id"]
+
+
+def test_start_over_on_a_closed_conversation_is_409(client, fake):
+    read = _task(client, "Reading")
+    conv = _proposed(client, fake, [item(read["id"], "09:00", 30)])
+    _accept(client, conv["id"])
+    n = len(fake.calls)
+    assert client.post(f"{CONV_URL}/{conv['id']}/start-over").status_code == 409
+    assert len(fake.calls) == n
+
+
+# --- Rating ---------------------------------------------------------------------------------
+
+def test_rating_on_an_accepted_conversation(client, fake, db):
+    read = _task(client, "Reading")
+    conv = _proposed(client, fake, [item(read["id"], "09:00", 30)])
+    _accept(client, conv["id"])
+    url = f"{CONV_URL}/{conv['id']}/rating"
+    assert client.put(url, json={"rating": "up"}).status_code == 200
+    assert _conv_row(db, conv["id"]).rating == "up"
+    assert client.put(url, json={"rating": "down"}).status_code == 200
+    assert _conv_row(db, conv["id"]).rating == "down"
+    assert client.put(url, json={"rating": None}).status_code == 200
+    assert _conv_row(db, conv["id"]).rating is None
+
+
+def test_rating_on_rejected_and_abandoned(client, fake, db):
+    rejected = _open(client, FUTURE)
+    client.post(f"{CONV_URL}/{rejected['id']}/reject")
+    assert client.put(f"{CONV_URL}/{rejected['id']}/rating", json={"rating": "down"}).status_code == 200
+    assert _conv_row(db, rejected["id"]).rating == "down"
+    abandoned = _open(client, OTHER_FUTURE)
+    client.post(f"{CONV_URL}/{abandoned['id']}/start-over")
+    assert client.put(f"{CONV_URL}/{abandoned['id']}/rating", json={"rating": "up"}).status_code == 200
+    assert _conv_row(db, abandoned["id"]).rating == "up"
+
+
+def test_rating_an_open_conversation_is_409(client, fake, db):
+    conv = _open(client)
+    assert client.put(f"{CONV_URL}/{conv['id']}/rating", json={"rating": "up"}).status_code == 409
+    assert _conv_row(db, conv["id"]).rating is None
+
+
+def test_rating_value_is_checked(client, fake):
+    conv = _open(client)
+    client.post(f"{CONV_URL}/{conv['id']}/reject")
+    assert client.put(f"{CONV_URL}/{conv['id']}/rating", json={"rating": "meh"}).status_code == 422
+
+
+# --- History and usage ----------------------------------------------------------------------
+
+def _with_usage(response, input_tokens, output_tokens, cache_read, cache_write):
+    response.usage = Usage(input_tokens, output_tokens, cache_read, cache_write)
+    return response
+
+
+def _call_sums(db, conv_id):
+    return db.execute(sa.text(
+        "SELECT COUNT(*) AS n, COALESCE(SUM(input_tokens), 0) AS i, COALESCE(SUM(output_tokens), 0) AS o, "
+        "COALESCE(SUM(cache_read_input_tokens), 0) AS cr, COALESCE(SUM(cache_creation_input_tokens), 0) AS cw, "
+        "COALESCE(SUM(cost_usd), 0) AS c FROM coach_calls WHERE conversation_id = :id"
+    ), {"id": conv_id}).one()
+
+
+def _set_created(db, conv_id, stamp):
+    db.execute(sa.text("UPDATE coach_conversations SET created_at = :t WHERE id = :id"), {"t": stamp, "id": conv_id})
+    db.execute(sa.text("UPDATE coach_calls SET created_at = :t WHERE conversation_id = :id"), {"t": stamp, "id": conv_id})
+    db.commit()
+
+
+@pytest.fixture
+def history(client, fake, db):
+    read = _task(client, "Reading")
+    fake.queue(_with_usage(reply("What matters?"), 1200, 80, 0, 3000))
+    accepted = _open(client, FUTURE)
+    fake.queue(
+        _with_usage(propose([item(read["id"], "09:00", 30)]), 1500, 300, 3000, 0),
+        _with_usage(reply("Here it is."), 1800, 60, 3000, 100),
+    )
+    _say(client, accepted["id"], "Reading")
+    _accept(client, accepted["id"])
+    client.put(f"{CONV_URL}/{accepted['id']}/rating", json={"rating": "up"})
+
+    fake.queue(_with_usage(reply("Hello."), 900, 40, 0, 2500))
+    rejected = _open(client, OTHER_FUTURE)
+    client.post(f"{CONV_URL}/{rejected['id']}/reject")
+
+    fake.queue(_with_usage(reply("Hi again."), 950, 45, 2500, 0))
+    still_open = _open(client, OTHER_FUTURE)
+
+    _set_created(db, accepted["id"], "2026-11-03 10:00:00")
+    _set_created(db, rejected["id"], "2026-11-04 10:00:00")
+    _set_created(db, still_open["id"], "2026-11-05 10:00:00")
+    return {"accepted": accepted["id"], "rejected": rejected["id"], "open": still_open["id"], "read": read}
+
+
+def test_list_is_newest_first_with_totals_from_the_call_rows(client, fake, db, history):
+    r = client.get(CONV_URL)
+    assert r.status_code == 200
+    rows = r.json()
+    assert [row["id"] for row in rows] == [history["open"], history["rejected"], history["accepted"]]
+
+    by_id = {row["id"]: row for row in rows}
+    for conv_id in [history["accepted"], history["rejected"], history["open"]]:
+        sums = _call_sums(db, conv_id)
+        row = by_id[conv_id]
+        assert row["call_count"] == sums.n
+        assert row["input_tokens"] == sums.i
+        assert row["output_tokens"] == sums.o
+        assert row["cache_read_input_tokens"] == sums.cr
+        assert row["cache_creation_input_tokens"] == sums.cw
+        assert row["cost_usd"] == pytest.approx(sums.c)
+
+    acc = by_id[history["accepted"]]
+    assert acc["call_count"] == 3
+    assert acc["input_tokens"] == 1200 + 1500 + 1800
+    assert acc["status"] == "accepted"
+    assert acc["target_date"] == FUTURE
+    assert (acc["proposed_count"], acc["accepted_count"]) == (1, 1)
+    assert acc["rating"] == "up"
+    assert (acc["user_turns"], acc["revision_turns"]) == (1, 0)
+    assert by_id[history["rejected"]]["status"] == "rejected"
+    assert by_id[history["rejected"]]["accepted_count"] is None
+    assert by_id[history["open"]]["status"] == "open"
+
+
+def test_list_counts_a_conversation_with_no_calls_as_zero(client, fake, db):
+    conv = _open(client)
+    db.execute(sa.text("DELETE FROM coach_calls WHERE conversation_id = :id"), {"id": conv["id"]})
+    db.commit()
+    row = client.get(CONV_URL).json()[0]
+    assert row["call_count"] == 0
+    assert row["input_tokens"] == 0
+    assert row["cost_usd"] == pytest.approx(0)
+
+
+def test_detail_has_messages_proposal_and_every_call(client, fake, db, history):
+    r = client.get(f"{CONV_URL}/{history['accepted']}")
+    assert r.status_code == 200
+    detail = r.json()
+    sums = _call_sums(db, history["accepted"])
+    assert detail["call_count"] == sums.n
+    assert detail["input_tokens"] == sums.i
+    assert detail["cost_usd"] == pytest.approx(sums.c)
+    assert detail["status"] == "accepted"
+
+    assert [(m["role"], _visible(m)) for m in detail["messages"]] == [
+        ("assistant", "What matters?"), ("user", "Reading"), ("assistant", "Here it is."),
+    ]
+    assert [i["task_id"] for i in detail["proposal"]["items"]] == [history["read"]["id"]]
+
+    calls = detail["calls"]
+    assert [c["input_tokens"] for c in calls] == [1200, 1500, 1800]
+    assert [c["stop_reason"] for c in calls] == ["end_turn", "tool_use", "end_turn"]
+    assert sum(c["cost_usd"] for c in calls) == pytest.approx(detail["cost_usd"])
+    for c in calls:
+        assert {"turn_index", "model", "latency_ms", "output_tokens", "cache_read_input_tokens",
+                "cache_creation_input_tokens"} <= set(c)
+
+
+def test_detail_unknown_id_is_404(client, fake):
+    assert client.get(f"{CONV_URL}/9999").status_code == 404
+
+
+def test_usage_counts_only_that_month(client, fake, db, history):
+    _set_created(db, history["rejected"], "2026-10-31 23:30:00")
+
+    r = client.get("/api/coach/usage?month=2026-11")
+    assert r.status_code == 200
+    nov = r.json()
+    assert nov["conversations"] == 2
+    assert nov["accepted"] == 1
+    assert nov["cost_usd"] == pytest.approx(_call_sums(db, history["accepted"]).c + _call_sums(db, history["open"]).c)
+
+    oct_ = client.get("/api/coach/usage?month=2026-10").json()
+    assert (oct_["conversations"], oct_["accepted"]) == (1, 0)
+    assert oct_["cost_usd"] == pytest.approx(_call_sums(db, history["rejected"]).c)
+
+    dec = client.get("/api/coach/usage?month=2026-12").json()
+    assert (dec["conversations"], dec["accepted"]) == (0, 0)
+    assert dec["cost_usd"] == pytest.approx(0)
+
+
+def test_usage_defaults_to_the_current_utc_month(client, fake, db, history, monkeypatch):
+    assert client.get("/api/coach/usage").json()["conversations"] == 3
+    monkeypatch.setattr("app.services.coach_context.now_utc", lambda: datetime(2026, 12, 2, 12, 0))
+    assert client.get("/api/coach/usage").json()["conversations"] == 0
+
+
+@pytest.mark.parametrize("month", ["2026-13", "Nov", "2026-11-01"])
+def test_usage_month_is_checked(client, month):
+    assert client.get(f"/api/coach/usage?month={month}").status_code == 422
+
+
+@pytest.mark.parametrize("method,url", [
+    ("get", CONV_URL),
+    ("get", f"{CONV_URL}/1"),
+    ("post", f"{CONV_URL}/1/accept"),
+    ("post", f"{CONV_URL}/1/reject"),
+    ("post", f"{CONV_URL}/1/start-over"),
+    ("put", f"{CONV_URL}/1/rating"),
+    ("get", "/api/coach/usage"),
+])
+def test_b61_routes_behind_gate(method, url):
+    assert getattr(TestClient(app), method)(url).status_code == 401
