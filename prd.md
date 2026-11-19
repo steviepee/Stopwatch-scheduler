@@ -189,7 +189,7 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [x] All B59.tests pass; full suite passes
 
 ### U17. USER — Coach rehearsal (before B60)
-- **Status:** USER
+- **Status:** USER-DONE
 - **Description:** D122. In a Claude Code session in this repo, on the subscription; no API key
   used. Claude:
   1. Pulls a snapshot of real data from the live API with the production token (the Container
@@ -209,12 +209,12 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
      size of system prompt plus context in `progress.md`.
   Then set B60–B67, B69 and B70 from `HOLD (until U17)` to `PENDING`, commit, and run the loop.
 - **Acceptance Criteria:**
-  - [ ] `backend/app/prompts/coach_system.md` exists and the user has signed it off
-  - [ ] All six cases rehearsed; prompt size recorded
-  - [ ] B60–B67, B69 and B70 set to PENDING
+  - [x] `backend/app/prompts/coach_system.md` exists and the user has signed it off
+  - [x] All six cases rehearsed; prompt size recorded
+  - [x] B60–B67, B69 and B70 set to PENDING
 
 ### B60.tests — Backend: the Coaching conversation engine
-- **Status:** HOLD (until U17)
+- **Status:** PENDING
 - **Description:** D93, D95, D99, D100, D102, D105, D115, D116, D118, D119, D121. Add
   `backend/tests/test_coach_conversation.py`; `call_model` is monkeypatched throughout.
 - **Contract:**
@@ -301,7 +301,7 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [ ] Test: stored `content` replays byte-for-byte as the next call's earlier messages (append-only)
 
 ### B60.impl — Backend: the Coaching conversation engine
-- **Status:** HOLD (until U17)
+- **Status:** PENDING
 - **Description:** Implement to the contract: `services/coach_model.py` (the only `anthropic`
   import; load the `claude-api` skill first), `services/coach_context.py`,
   `services/coach_plan.py`, and the routes in `routers/coach.py`. Reuse the peak-hours
@@ -311,7 +311,7 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [ ] All B60.tests pass; full suite passes
 
 ### B61.tests — Backend: accept, reject, start over, rating, history
-- **Status:** HOLD (until U17)
+- **Status:** PENDING
 - **Description:** D94, D100, D104, D106, D108, D117. Extend `test_coach_conversation.py`.
 - **Contract:**
   - `POST /api/coach/conversations/{id}/accept`: requires `open` and a Proposal (else 409).
@@ -338,14 +338,14 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [ ] Test: list and detail totals equal the sum of the call rows; usage counts only that month
 
 ### B61.impl — Backend: accept, reject, start over, rating, history
-- **Status:** HOLD (until U17)
+- **Status:** PENDING
 - **Description:** Implement to the contract. Factor the placement code in `routers/schedules.py`
   into a function both routes call, without changing its behaviour.
 - **Acceptance Criteria:**
   - [ ] All B61.tests pass; full suite passes
 
 ### B62.tests — Backend: Start reminders on pushed events
-- **Status:** HOLD (until U17)
+- **Status:** PENDING
 - **Description:** D109, D110, D112, D113, D114. Extend the Google push tests with the calendar
   service faked as they already are.
 - **Contract:**
@@ -365,13 +365,13 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [ ] Test: a stale item's patch body includes reminders and description; changing the setting alone makes no Google call
 
 ### B62.impl — Backend: Start reminders on pushed events
-- **Status:** HOLD (until U17)
+- **Status:** PENDING
 - **Description:** Implement to the contract in `services/google_calendar.py` and the push route.
 - **Acceptance Criteria:**
   - [ ] All B62.tests pass; full suite passes
 
 ### B63.tests — Backend: the metrics script
-- **Status:** HOLD (until U17)
+- **Status:** PENDING
 - **Description:** D106. Add `backend/tests/test_coach_metrics_script.py` for
   `backend/scripts/coach_metrics.py`, a script run as
   `./venv/bin/python scripts/coach_metrics.py [--since YYYY-MM-DD] [--csv PATH]`. It reads the
@@ -391,7 +391,7 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [ ] Test: `--csv` writes both files with a header and one row per record
 
 ### B63.impl — Backend: the metrics script
-- **Status:** HOLD (until U17)
+- **Status:** PENDING
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
   - [ ] All B63.tests pass; full suite passes
@@ -422,7 +422,7 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [ ] Link check recorded in `progress.md`. If **Phone:** was not tappable, B68 goes from HOLD to PENDING before the client tasks run
 
 ### B64.tests — Mobile: Start links, Intended length, Coach settings and usage
-- **Status:** HOLD (until U17)
+- **Status:** PENDING
 - **Description:** D101, D104, D106–D110, D113, D121.
 - **Contract:**
   - **Start link:** opening the app with `?start=<task_id>` (Expo Router search param on the
@@ -446,13 +446,13 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [ ] Test: usage shows the month's totals; detail renders the call rows
 
 ### B64.impl — Mobile: Start links, Intended length, Coach settings and usage
-- **Status:** HOLD (until U17)
+- **Status:** PENDING
 - **Description:** Implement to the contract; add the API methods to `src/services/api.ts`.
 - **Acceptance Criteria:**
   - [ ] All B64.tests pass; mobile suite, tsc, and export pass
 
 ### B69.tests — Mobile: app-wide clock, Save as Recording
-- **Status:** HOLD (until U17)
+- **Status:** PENDING
 - **Description:** D128, D132.
 - **Contract:**
   - **Clock:** `src/utils/formatClock.ts` exports `formatClock(date, clock24h)`: `5:00 PM` or
@@ -473,13 +473,13 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [ ] Test: Save as Recording opens the form filled from the Block; an edited duration is what gets posted
 
 ### B69.impl — Mobile: app-wide clock, Save as Recording
-- **Status:** HOLD (until U17)
+- **Status:** PENDING
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
   - [ ] All B69.tests pass; mobile suite, tsc, and export pass
 
 ### B65.tests — Mobile: the Coach screen
-- **Status:** HOLD (until U17)
+- **Status:** PENDING
 - **Description:** D94, D100, D101, D103, D111, D117, D118, D121.
 - **Contract:**
   - The calendar day view (`(tabs)/calendar.tsx`) shows **Plan with Coach** for today and future
@@ -507,13 +507,13 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [ ] Test: a 409 shows its message
 
 ### B65.impl — Mobile: the Coach screen
-- **Status:** HOLD (until U17)
+- **Status:** PENDING
 - **Description:** Implement to the contract as a new route (`src/app/coach/[date].tsx`).
 - **Acceptance Criteria:**
   - [ ] All B65.tests pass; mobile suite, tsc, and export pass
 
 ### B66.tests — Web: Start links, Intended length, Coach settings and usage
-- **Status:** HOLD (until U17)
+- **Status:** PENDING
 - **Description:** B64's contract on the web: `?start=<task_id>` on page load selects the
   Activity in `Stopwatch.tsx` without starting it and removes the param from the URL; Intended
   length on the Activity edit form (`TaskDetailModal.tsx`); the three Settings sections in
@@ -523,13 +523,13 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [ ] Web suite, tsc, and build pass
 
 ### B66.impl — Web: Start links, Intended length, Coach settings and usage
-- **Status:** HOLD (until U17)
+- **Status:** PENDING
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
   - [ ] All B66.tests pass; web suite, tsc, and build pass
 
 ### B70.tests — Web: app-wide clock, Save as Recording
-- **Status:** HOLD (until U17)
+- **Status:** PENDING
 - **Description:** B69's contract on the web: `src/utils/formatClock.ts`, used by
   `ScheduleTimeline.tsx`, `src/utils/calendarUtils.ts`, and every other time of day the web app
   shows; the **Clock** switch in `OptionsPage.tsx`; **Save as Recording** on each Block in
@@ -540,13 +540,13 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [ ] Web suite, tsc, and build pass
 
 ### B70.impl — Web: app-wide clock, Save as Recording
-- **Status:** HOLD (until U17)
+- **Status:** PENDING
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
   - [ ] All B70.tests pass; web suite, tsc, and build pass
 
 ### B67.tests — Web: the Coach screen
-- **Status:** HOLD (until U17)
+- **Status:** PENDING
 - **Description:** B65's contract on the web: **Plan with Coach** in `CalendarView.tsx`'s day
   view opens a full-screen Coach panel for that date, with the same states and actions.
 - **Acceptance Criteria:**
@@ -554,7 +554,7 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [ ] Web suite, tsc, and build pass
 
 ### B67.impl — Web: the Coach screen
-- **Status:** HOLD (until U17)
+- **Status:** PENDING
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
   - [ ] All B67.tests pass; web suite, tsc, and build pass

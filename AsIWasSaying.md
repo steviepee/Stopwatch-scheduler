@@ -26,9 +26,11 @@ Start reminders. Committed and pushed as 3355c6c. **U14 (2026-11-06):** steps 1�
 $10 limit, key, `anthropic==2.6.0` pinned); step 4 done in the portal (secret `anthropic-api-key`,
 env `ANTHROPIC_API_KEY`, revision 0000010 healthy). U14 DONE. **D122 added:** a Coach rehearsal (U17) on the user's subscription before B60,
 producing `backend/app/prompts/coach_system.md`. B60–B67 are `HOLD (until U17)`.
-**Next:** run the loop for B59 only (`--max 2`), then U17 in a Claude Code session, then flip
-B60–B67 to PENDING and run the loop. U15 after B63. Start reminders go through Google
-Calendar, so no APK build is expected.
+**U17 done (2026-11-18):** the user signed off on `coach_system.md`; findings and prompt size
+are in `progress.md`. U17 added D123–D132 and task pairs B69/B70 (app-wide clock, Save as
+Recording), placed before B65 and B67. **Next:** B60–B67, B69 and B70 are PENDING (20 loop
+tasks); run the loop. U15 after B63. Start reminders go through Google Calendar, so no APK
+build is expected.
 
 **Build 2b is complete (2026-10-25)**: U9 and U10 passed; PRD archived at
 `docs/prd-build2b-completed.md`. **Build 2c is designed (2026-10-29)** and written as `prd.md`

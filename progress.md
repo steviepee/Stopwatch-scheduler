@@ -2061,3 +2061,15 @@ Each iteration appends its results here so the next session knows what worked, w
   - The settings helper is now `_get_or_create(db, model)`, with `_update(db, model, settings)` shared by the three PUT routes.
   - The seed is `average_duration or intended_length or 600`, so an Activity whose Recordings average exactly 0 also falls through to Intended length.
   - Next is U17 (USER). B60-B67 stay HOLD, so the loop has no PENDING task until U17 is done.
+
+## U17. USER: Coach rehearsal
+- **Date:** 2026-11-07 to 2026-11-18
+- **Status:** DONE
+- **Summary:** Rehearsed the Coach in Claude Code on the subscription against snapshots of live data (2026-11-07 and 2026-11-15, both in the session scratchpad, not the repo). All six cases were covered: an ordinary day, a packed day, tango as a new Activity, a request far over history, a day worth a Coach note, and the 6-message cap. The user signed off on `backend/app/prompts/coach_system.md` on 2026-11-18. From case 5 onward the Coach was played by a fresh agent given only the prompt file and a context file, after the user noticed the stand-in had used facts from an earlier session's transcript.
+- **Prompt size:** system prompt 8.9 KB; a typical context (27 Activities, 14 days of Recordings, one event) 3.0 KB; together about 11.9 KB, roughly 3,000 tokens. Well under the 64 KB `Text` limit B59 flagged.
+- **Decisions added:** D123-D132 in `prd.md` (whole-day Proposal view, all-day events, current time, what the Coach can see, item sources behind "Where this came from", app-wide clock, fixed commitments, guessed lengths not saved, context fixed at open, Save as Recording). D101, D102, D108 revised. New task pairs B69 (mobile) and B70 (web), placed before B65 and B67.
+- **Findings for the loop:**
+  - The 6-message cap almost never fires: three clean Coaches proposed by message 3 or 4 even when stonewalled, because the prompt tells it to make a visible guess and propose. The must-propose line is pinned word for word in B60.
+  - The Coach often asks two questions in one message although the file says one. The user likes it and asked that the line stay as written for now (future-work.md, "Coach: the one-question rule").
+  - The prompt is range-neutral ("the planned dates") so Build 3b needs no rewrite; see future-work.md under week planning.
+  - The last prompt edits (small chat panel, start over in the same message as a calendar change, range-neutral wording) were signed off without a rehearsal round. Watch reply length at U15.
