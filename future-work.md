@@ -340,6 +340,11 @@ Proposal whose items carry a date, validation per date, accept writing to severa
 - Does it overlap with the per-week list of needed Activities above, or replace it?
 - Streaming replies (D118 deferred it), if 3a's latency feels slow.
 
+When this is built: `coach_system.md` was written range-neutral in U17 (2026-11-18). It talks
+about "the planned dates" from the context's `Planned dates:` line, never "one date", so a week
+needs that line to list the range, not a prompt rewrite. Check the Opening (asks what has to
+happen across the planned dates) and the Frog rule (one per date) still read right.
+
 ## Coach: Goals and user-set horizons
 
 **Raised:** 2026-11-05, Build 3a design (D92, D99). After week planning.
@@ -362,6 +367,13 @@ stored.
 **Raised:** 2026-11-05, Build 3a design (D103). The user wants both entry points eventually;
 3a has only "Plan with Coach" on the day view. A tab fits week and Goal planning, which are
 not tied to one date. Changes D29's four tabs.
+
+## Coach: the one-question rule
+
+`coach_system.md` says "Ask one question at a time", but in the U17 rehearsal the Coach often
+asked two in one message, and the user liked how those turns moved toward a Proposal within
+the message limit. Left as written on purpose (2026-11-17): changing the line changes the
+Coach's behaviour, so it waits until the user can recheck the Coach after each change.
 
 ## Coach notes: "is this still accurate?"
 

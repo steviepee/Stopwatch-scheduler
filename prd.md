@@ -15,8 +15,9 @@ tests it. Designed with the user on 2026-11-05. Both clients. Single-user (D51).
 is Build 3b; Goals come after (D98).
 
 **Order:** U14 (key, spend limit, SDK install) before the loop. B59, then U17 (Coach rehearsal,
-D122) before B60; B60–B67 stay HOLD until U17 is done, then go PENDING. Backend B60 → B63, then U15
-(deploy, first real conversation, link check). Phone B64 → B65, web B66 → B67. Then U16 (ship
+D122) before B60; B60–B67, B69 and B70 stay HOLD until U17 is done, then go PENDING. Backend B60 → B63, then U15
+(deploy, first real conversation, link check). Phone B64 → B69 → B65, web B66 → B70 → B67 (the Coach screens use B69/B70's
+clock formatter). Then U16 (ship
 and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
 
 **Statuses:** `PENDING` is the loop's. `USER` is the user's, by hand; the loop never picks it.
@@ -35,14 +36,14 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
 | D98 | Build sequence | Build 3a plans a day; Build 3b plans a week; both before multi-user (D51). Goals come after |
 | D99 | Goal | Term defined now, nothing stored in 3a. A Goal mentioned in conversation only shapes that day's Proposal |
 | D100 | New Activities in a Proposal | Allowed, marked new, created on accept with no history. The user chooses how long one sitting is meant to be (see open items) |
-| D101 | Coach notes | Suggested by the Coach, saved only on the user's approval, listed in Settings for edit and delete, sent with every conversation |
-| D102 | Turn rules | Up to 6 user messages before the Coach must propose; then up to 3 revision messages, each replacing the Proposal; then accept, reject, or start over |
+| D101 | Coach notes (revised in U17) | Suggested by the Coach and saved only on the user's approval, or added by the user in Settings. Listed in Settings for edit and delete, sent with every conversation |
+| D102 | Turn rules (revised in U17) | Up to 6 user messages before the Coach must propose. After the first Proposal, two separate limits: up to 3 changes (only a stored replacement Proposal counts, so questions and answers don't use one) and up to 6 messages in total. Both clients show what is left. Then accept, reject, or start over |
 | D103 | Entry point | "Plan with Coach" on the calendar day view, both clients, opening a full-screen conversation for that date. A Coach tab comes later (future-work) |
 | D104 | Conversation storage | Every Coaching conversation is stored with its messages, per-call usage, cost, and outcome, kept indefinitely while single-user. Per-conversation metrics are viewable by the user |
 | D105 | Coach context | All Activities (average, median, Quadrant, recording count); the date's Schedule Items and Existing events; Peak hours; approved Coach notes; last 14 days of Recordings as Activity, duration, date only |
 | D106 | Metrics capture | Automatic: the backend writes a usage row per model call and an outcome row per Coaching conversation. Read through `backend/scripts/coach_metrics.py` (totals, per-conversation table, `--csv`) and Settings > Coach usage (per-conversation detail) |
 | D107 | Coach notes, scope | Built in 3a with an on/off setting from the start (off: no suggestions, none sent). Each note stores when it was saved and last confirmed, for a later "still accurate?" check (future-work) |
-| D108 | Intended length | New Activity field set by the user; the Coach asks for it for any new Activity in a Proposal, and it is editable on the Activity. Seeds placements until Recordings exist |
+| D108 | Intended length | New Activity field set by the user; the Coach asks for it for a new skill, may suggest and flag one for an everyday Activity (revised in U17), and it is editable on the Activity. Seeds placements until Recordings exist |
 | D109 | Start reminders | Every Scheduled Block gets a reminder N minutes before it starts (default 5), with an on/off setting. Tapping through opens the Stopwatch with that Activity selected, not started. User will judge notification load in practice |
 | D110 | Reminder delivery | Through Google Calendar, not native code: each Exported Block's event gets a popup reminder override at N minutes and a description with two links, web app and phone app, each opening the Stopwatch with the Activity selected. No device detection. Expected to ship over the air with no APK rebuild |
 | D111 | Accept then push | The Proposal's accept confirmation offers a "Push day" button. Pushing stays the user's choice |
@@ -57,6 +58,16 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
 | D120 | Testing | The model client is faked in every loop test; no suite calls Anthropic. Real conversations only in USER steps: one early check after the first route works, and the final gate |
 | D121 | Defaults (confirmed at the end of the design) | The Coach plans today or a future date only. Coach notes are on by default. Without Google authorization the Coach plans with no Existing events and says so in its first reply. Offline, "Plan with Coach" is disabled with a message; nothing is queued. One effort level for the whole conversation (`COACH_EFFORT`, default `medium`), since changing effort mid-conversation throws away the prompt cache. No ADR |
 | D122 | Coach rehearsal | Before B60, the Coach's behaviour is worked out in Claude Code on the user's subscription (U17): a draft system prompt played against a snapshot of real data, revised until the user is satisfied. The result is `backend/app/prompts/coach_system.md`, which B60 uses as the system prompt word for word. No API spend until U15 |
+| D123 | Proposal shows the whole day (U17) | The Proposal view lists the day in time order. Items already on Google Calendar (Existing events and pushed Blocks) share one colour, other existing Blocks are grey, and new Blocks are highlighted. Existing items are read-only; all-day events sit in a line above the list |
+| D124 | All-day events (U17) | An all-day Existing event is context, not busy time: it never clashes with a Proposal item |
+| D125 | The Coach knows the time (U17) | Every model call tells the Coach the user's current local date and time. When the target date is today, a Proposal item that starts before now is refused |
+| D126 | What the Coach can see (U17) | The Coach's only inputs are the context (D105), the current time (D125), and the messages of the one Coaching conversation in progress. Nothing from earlier Coaching conversations reaches it except approved Coach notes. It has no tool that reads, searches, or fetches anything |
+| D127 | Where a Proposal came from (U17) | Every Proposal item carries its source: something the user said, the user's history, or the Coach's guess, with a one-sentence reason. A link above the Proposal, `Where this came from`, opens the list on a click or press. For an existing Activity the app adds the Recording count and typical time from its own data, not from the model |
+| D128 | Clock setting (U17) | One app-wide setting, `clock_24h` (default off), picks the 12- or 24-hour clock for every time of day both clients show, the Coach's chat, and the Proposal view |
+| D129 | Fixed commitments (U17) | Commitments the user mentions that aren't on the calendar, such as work hours, are planned around, never added as Blocks. The Coach suggests putting them on the calendar |
+| D130 | Guessed lengths aren't saved (U17) | On accept, a new Activity gets its item's length as its Intended length only when that item's `source` is `you_said`. Otherwise its Intended length stays empty |
+| D131 | Context is fixed at open (U17) | The context is built once, when the conversation opens, and reused for every call. After a calendar or Schedule change, the Coach tells the user to start over to see it |
+| D132 | Save a Block as a Recording (U17) | Every Block on the calendar day view, on both clients, has **Save as Recording**: the hand-entered Recording form opens filled from the Block (Activity, start, length), editable, and saves through the existing path. Turns a guessed or Intended length into real history in one step |
 
 ## Rules for this PRD
 
@@ -181,10 +192,11 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
 - **Status:** USER
 - **Description:** D122. In a Claude Code session in this repo, on the subscription; no API key
   used. Claude:
-  1. Pulls a snapshot of real data from the live API with the bearer token in `backend/.env`:
+  1. Pulls a snapshot of real data from the live API with the production token (the Container
+     Apps secret `api-token`, D57; the `backend/.env` token is dev-only and gets a 401):
      Activities with averages, medians, Quadrants and Intended lengths; tomorrow's Schedule;
-     Peak hours; the last 14 days of Recordings as Activity, duration, date only. Into the
-     scratchpad, not the repo.
+     Existing events; Peak hours; the last 14 days of Recordings as Activity, duration, date
+     only. Into the scratchpad, not the repo.
   2. Drafts `backend/app/prompts/coach_system.md`: what the Coach asks first, how it reads a
      chaotic day, its tone, when it pushes back (D119), when it suggests a Coach note, how it
      fits a new skill's sittings (D99, D100), the turn rules (D102), and when to call
@@ -195,11 +207,11 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
      saving; reaching the 6-message cap.
   4. Revises the file after each round until the user is satisfied, and records the rough
      size of system prompt plus context in `progress.md`.
-  Then set B60–B67 from `HOLD (until U17)` to `PENDING`, commit, and run the loop.
+  Then set B60–B67, B69 and B70 from `HOLD (until U17)` to `PENDING`, commit, and run the loop.
 - **Acceptance Criteria:**
   - [ ] `backend/app/prompts/coach_system.md` exists and the user has signed it off
   - [ ] All six cases rehearsed; prompt size recorded
-  - [ ] B60–B67 set to PENDING
+  - [ ] B60–B67, B69 and B70 set to PENDING
 
 ### B60.tests — Backend: the Coaching conversation engine
 - **Status:** HOLD (until U17)
@@ -211,23 +223,35 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
     unchanged (no model call). Otherwise create one and make the first model call, whose reply
     is the Coach's opening question. Response: the conversation with its visible messages,
     current Proposal, and status.
-  - **Context** (D105), built server-side into the system prompt or the first user content,
-    never from the client: every Activity (id, name, average, median, Quadrant, recording count,
+  - **Context** (D105), built server-side, never from the client, once when the conversation
+    opens (D131), stored in a new `coach_conversations.context` column (`Text`, nullable for
+    rows from before it), and reused unchanged for every later call. It starts with a line
+    `Planned dates: YYYY-MM-DD` (the prompt never says "one date", so Build 3b can list a
+    range here), then a line naming the clock, `Clock: 12-hour` or `Clock: 24-hour`, from `app_settings.clock_24h` (D128). It holds: every Activity (id, name, average, median, Quadrant, recording count,
     Intended length); the date's Schedule Items (name, start, duration, Frog); Existing events
     for the date if Google is authorized (else a line saying it is not, which the Coach mentions
     in its opening); Peak hours; Coach notes if `notes_enabled`; and the last 14 days of
     Recordings as `(Activity name, duration, local date)` only, never Recording names or notes.
     A test captures the `call_model` arguments and asserts these are present and that a
     Recording's `notes` and `name` strings are absent.
+  - **Current time** (D125): the content sent for each user message, and for the opening call,
+    starts with a line giving the current local date and time (from the conversation's
+    `tz_offset`); `visible_text` omits it. It goes on the message, not in the context, so
+    earlier content still replays byte-for-byte.
   - **Tools** offered to the model (`strict: true`):
     - `propose_plan {items: [{task_id | null, new_activity_name | null, start (local HH:MM),
-      duration_minutes, is_frog}], summary}`. Exactly one of `task_id` / `new_activity_name`.
+      duration_minutes, is_frog, source (you_said | history | guess), reason (one sentence,
+      1–200 chars)}], summary}`. Exactly one of `task_id` / `new_activity_name`. `source` and
+      `reason` say why the item and its length are there (D127). The stored Proposal adds, for
+      each item with a `task_id`, `recording_count` and `typical_seconds` from the database.
+    - No other tool is offered (D126). Each call's messages come only from this conversation's
+      `coach_messages` rows.
     - `suggest_note {text}`, offered only when `notes_enabled`.
   - **Proposal validation** (D115, D116), deterministic, in `app/services/coach_plan.py`: every
-    item lies inside the target date in local time; no two items overlap; none overlaps an
-    existing Scheduled Item or Existing event; `task_id` exists; a new Activity has an
-    `intended_length` given by the user (the Coach asks; the tool carries it as
-    `duration_minutes`); at most one `is_frog`, and none if the day already has a Frog. Clashes
+    item lies inside the target date in local time, and when that date is today none starts
+    before the current local time (D125); no two items overlap; none overlaps an
+    existing Scheduled Item or timed Existing event (all-day events never clash, D124); `task_id` exists; a new Activity's
+    Intended length is the tool's `duration_minutes`, asked for or flagged by the Coach; at most one `is_frog`, and none if the day already has a Frog. Clashes
     go back as an `is_error` tool result listing each problem, and the model tries again, up to
     2 retries; after that the reply says it could not fit the plan and no Proposal is stored.
   - **Messages:** `POST /api/coach/conversations/{id}/messages {text}` (1–2000 chars). Runs the
@@ -236,9 +260,23 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
     suggestion on the response (`note_suggestion`), not saved (the client posts it to
     `/api/coach/notes` if the user approves).
   - **Turn rules** (D102): `user_turns` counts user messages before the first Proposal; at 6 the
-    call includes an instruction that it must propose now. After a Proposal, each message counts
-    as a `revision_turn`; a 4th revision → 409 `revision limit reached`. A message to a
-    conversation that is not `open` → 409.
+    content sent for that message ends with the line
+    `[App: This is the user's 6th message. You must call propose_plan now.]`, word for word;
+    `visible_text` omits it. After a Proposal, `revision_turns`
+    counts only valid `propose_plan` calls that replace the stored Proposal; failed validation
+    does not count. A `propose_plan` when 3 are used gets an `is_error` tool result saying the
+    change limit is reached, and the Proposal stays. The 7th user message after the first
+    Proposal → 409 `message limit reached` (messages after it are derived from `coach_messages`
+    rows with role `user` and non-null `visible_text`, minus `user_turns`; no new column). The
+    conversation response gains `changes_left` and `messages_left`, both null before the first
+    Proposal. A message to a conversation that is not `open` → 409.
+  - **Whole day** (D123): the conversation response gains `day_items`, the date's existing items in
+    time order: `{kind: event | block, name, start, end, all_day, on_google}`. `on_google` is true
+    for Existing events and for Blocks with a `calendar_event_id`.
+  - **Migration:** one Alembic revision adds `coach_conversations.context` and a one-row
+    `app_settings` table with `clock_24h` (`Boolean`, default false, `TINYINT(1) NOT NULL
+    DEFAULT 0` on MySQL). `GET`/`PUT /api/settings/display` returns and sets `{clock_24h}`, same
+    pattern as `/api/settings/pomodoro`.
   - **System prompt** (D122): read from `backend/app/prompts/coach_system.md` (written in U17),
     unchanged; the context follows it. Pushback (D119) and the Goal behaviour (D99) live in that
     file; a test asserts the system sent equals the file's text followed by the context.
@@ -252,7 +290,13 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [ ] Test: an overlapping Proposal gets an `is_error` tool result naming the clash, and the corrected one is stored
   - [ ] Test: three bad Proposals in a row → no Proposal stored, reply says it could not fit
   - [ ] Test: Frog refused on a day that has one; two Frogs refused
-  - [ ] Test: the 6th user message carries the must-propose instruction; a 4th revision → 409
+  - [ ] Test: each user message's content starts with the current local date and time and its `visible_text` does not; for today's date an item starting before now gets an `is_error`, and the same item on a future date is stored
+  - [ ] Test: with an earlier conversation stored for the same date and for another date, none of its message text appears in the `call_model` arguments, and the tools offered are exactly `propose_plan` and `suggest_note` (only `propose_plan` when notes are off)
+  - [ ] Test: a stored Proposal item keeps `source` and `reason`, and an existing Activity's item gains `recording_count` and `typical_seconds` from the database
+  - [ ] Test: the context is stored at open; after a Schedule Item is added to the date, the next call's system is byte-for-byte the same as the first; `clock_24h` true puts `Clock: 24-hour` in it and round-trips through `/api/settings/display`
+  - [ ] Test: an all-day event never clashes; `day_items` lists events and Blocks in time order with `on_google` set correctly
+  - [ ] Test: the 6th user message carries the must-propose instruction; `changes_left` and `messages_left` are null before the first Proposal and count down after it
+  - [ ] Test: a question after a Proposal leaves `changes_left` unchanged; a 4th change gets an `is_error` and keeps the Proposal; the 7th message after a Proposal → 409
   - [ ] Test: each call writes one `coach_calls` row with tokens and cost; an SDK exception → 502 and an error row
   - [ ] Test: stored `content` replays byte-for-byte as the next call's earlier messages (append-only)
 
@@ -271,7 +315,8 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
 - **Description:** D94, D100, D104, D106, D108, D117. Extend `test_coach_conversation.py`.
 - **Contract:**
   - `POST /api/coach/conversations/{id}/accept`: requires `open` and a Proposal (else 409).
-    In one transaction: create each new Activity with its `intended_length`; place every item on
+    In one transaction: create each new Activity, with its item's duration as `intended_length`
+    only if the item's `source` is `you_said`, else null (D130); place every item on
     the date's Schedule through the same code as `POST /api/schedules/days/{date}/items` with its
     start time, duration and Frog, after re-running the B60 validation against the day as it
     is now (a clash → 409 naming it, nothing placed); set `status = accepted`, `accepted_count`, `accepted_items`
@@ -286,7 +331,8 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - `GET /api/coach/usage?month=YYYY-MM` → conversations, accepted, total cost for that month
     (default current UTC month).
 - **Acceptance Criteria:**
-  - [ ] Test: accept places timed items, creates the new Activity with its Intended length, keeps an existing Frog, pushes nothing, and stores the snapshot
+  - [ ] Test: a new Activity from a `you_said` item gets its Intended length; one from a `guess` or `history` item gets null
+  - [ ] Test: accept places timed items, creates the new Activity, keeps an existing Frog, pushes nothing, and stores the snapshot
   - [ ] Test: accept twice → 409; reject then message → 409
   - [ ] Test: start over leaves the old one `abandoned` and opens a new one for the date
   - [ ] Test: list and detail totals equal the sum of the call rows; usage counts only that month
@@ -386,8 +432,8 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
     none), saved with `intended_length` in seconds. Any client-side seeding of a placement
     duration follows average → Intended length → 10 min.
   - **Settings** gains three sections:
-    - **Coach notes:** a switch bound to `notes_enabled`, then the note list with edit and
-      delete (delete asks first, like Recording delete).
+    - **Coach notes:** a switch bound to `notes_enabled`, then the note list with **Add note**,
+      edit and delete (delete asks first, like Recording delete).
     - **Start reminders:** a switch bound to `enabled` and a minutes field (1–120), with the
       text `Applies to Blocks pushed or changed from now on.`
     - **Coach usage:** this month's conversations and cost from `/api/coach/usage`, and a list
@@ -396,7 +442,7 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
 - **Acceptance Criteria:**
   - [ ] Test: the `start` param selects the Activity without starting; ignored while running or for an unknown id
   - [ ] Test: Intended length saves in seconds and clears to null
-  - [ ] Test: each setting round-trips through its API mock; note delete confirms first
+  - [ ] Test: each setting round-trips through its API mock; Add note posts the text; note delete confirms first
   - [ ] Test: usage shows the month's totals; detail renders the call rows
 
 ### B64.impl — Mobile: Start links, Intended length, Coach settings and usage
@@ -404,6 +450,33 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
 - **Description:** Implement to the contract; add the API methods to `src/services/api.ts`.
 - **Acceptance Criteria:**
   - [ ] All B64.tests pass; mobile suite, tsc, and export pass
+
+### B69.tests — Mobile: app-wide clock, Save as Recording
+- **Status:** HOLD (until U17)
+- **Description:** D128, D132.
+- **Contract:**
+  - **Clock:** `src/utils/formatClock.ts` exports `formatClock(date, clock24h)`: `5:00 PM` or
+    `17:00`. A hook reads `clock_24h` from `GET /api/settings/display` (12-hour until it
+    loads). Every time of day the app shows goes through it: the calendar day view
+    (`(tabs)/calendar.tsx`), the Schedule (`(tabs)/schedule.tsx` `formatTime`), Recordings
+    (`(tabs)/recordings.tsx`), and the time slots in `src/utils/calendarUtils.ts`. Durations
+    and the Stopwatch display are not times of day and stay as they are.
+  - **Settings** gains **Clock**: a switch `Use 24-hour clock`, bound to `clock_24h`.
+  - **Save as Recording:** each Block in the calendar day view gets a **Save as Recording**
+    action. It opens the existing Add Recording form (`ManualForm` in `(tabs)/recordings.tsx`,
+    taking initial values) filled with the Block's Activity, start time, and length, and the
+    Activity's name as the Recording name. Everything stays editable; Save posts through the
+    same path as a hand-entered Recording.
+- **Acceptance Criteria:**
+  - [ ] Test: `formatClock` gives `5:00 PM` and `17:00` for the same time; midnight and noon in both
+  - [ ] Test: with the setting mocked on, the day view, Schedule, and Recordings show 24-hour times; the switch round-trips through its API mock
+  - [ ] Test: Save as Recording opens the form filled from the Block; an edited duration is what gets posted
+
+### B69.impl — Mobile: app-wide clock, Save as Recording
+- **Status:** HOLD (until U17)
+- **Description:** Implement to the contract.
+- **Acceptance Criteria:**
+  - [ ] All B69.tests pass; mobile suite, tsc, and export pass
 
 ### B65.tests — Mobile: the Coach screen
 - **Status:** HOLD (until U17)
@@ -413,17 +486,23 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
     dates only; offline it is disabled with `You're offline — the Coach needs a connection.`
   - It opens a full-screen Coach screen for that date, which calls open-or-resume and shows the
     messages. While a reply is pending: `Coach is thinking…` and the input disabled.
-  - A Proposal shows as a list of items (time, name, length, Frog, a **New** tag on new
-    Activities) with **Accept** and **Reject**. A note suggestion shows `Save this note?` with
+  - A Proposal shows as the whole day in time order (D123): its items (time through B69's `formatClock`, name, length, Frog,
+    a **New** tag on new Activities) highlighted, `day_items` with `on_google` in one calendar
+    colour, other Blocks grey, all read-only, and all-day events in a line above. **Accept** and
+    **Reject** sit below. Above the Proposal, a `Where this came from` link opens a list on
+    press (D127): each item's name, its source (`You said`, `Your history`, `Coach's guess`),
+    its `reason`, and for an existing Activity `N Recordings, typical M min`. A note suggestion shows `Save this note?` with
     the text and Yes / No; Yes posts it.
   - **Accept** → the date's Blocks refresh, and a confirmation offers **Push day** (the existing
     push) and thumbs up / down (rating). **Start over** in the header asks first, then calls
-    start-over. A 409 revision-limit response shows its message and leaves Accept / Reject /
-    Start over usable.
+    start-over. From the first Proposal on, a line by the input shows `changes_left` and
+    `messages_left` (`2 plan changes left, 4 messages left`). A 409 message-limit response shows
+    its message and leaves Accept / Reject / Start over usable.
 - **Acceptance Criteria:**
   - [ ] Test: button hidden for past dates; disabled offline with the message
   - [ ] Test: open-or-resume on mount; thinking state disables input
-  - [ ] Test: Proposal renders with the New tag; Accept refreshes the day and shows Push day and rating
+  - [ ] Test: Proposal renders the whole day with each kind of item styled, the New tag, and the changes and messages left; Accept refreshes the day and shows Push day and rating
+  - [ ] Test: pressing `Where this came from` lists each item's source and reason, with the Recording count and typical time on existing Activities only
   - [ ] Test: note suggestion Yes posts it, No posts nothing; Start over confirms first
   - [ ] Test: a 409 shows its message
 
@@ -449,12 +528,29 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
 - **Acceptance Criteria:**
   - [ ] All B66.tests pass; web suite, tsc, and build pass
 
+### B70.tests — Web: app-wide clock, Save as Recording
+- **Status:** HOLD (until U17)
+- **Description:** B69's contract on the web: `src/utils/formatClock.ts`, used by
+  `ScheduleTimeline.tsx`, `src/utils/calendarUtils.ts`, and every other time of day the web app
+  shows; the **Clock** switch in `OptionsPage.tsx`; **Save as Recording** on each Block in
+  `CalendarView.tsx`'s day view, opening `ManualForm` from `SessionList.tsx` filled from the
+  Block.
+- **Acceptance Criteria:**
+  - [ ] Tests mirroring B69's three
+  - [ ] Web suite, tsc, and build pass
+
+### B70.impl — Web: app-wide clock, Save as Recording
+- **Status:** HOLD (until U17)
+- **Description:** Implement to the contract.
+- **Acceptance Criteria:**
+  - [ ] All B70.tests pass; web suite, tsc, and build pass
+
 ### B67.tests — Web: the Coach screen
 - **Status:** HOLD (until U17)
 - **Description:** B65's contract on the web: **Plan with Coach** in `CalendarView.tsx`'s day
   view opens a full-screen Coach panel for that date, with the same states and actions.
 - **Acceptance Criteria:**
-  - [ ] Tests mirroring B65's five
+  - [ ] Tests mirroring B65's six (`Where this came from` opens on click)
   - [ ] Web suite, tsc, and build pass
 
 ### B67.impl — Web: the Coach screen
@@ -490,11 +586,14 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
      confirmation; rate it.
   5. When the Start reminder fires, tap each link: the Stopwatch opens with that Activity
      selected and not started, on each client.
-  6. Start over on another date; the old conversation shows `abandoned` in Coach usage.
-  7. Coach usage in the app agrees with the Anthropic console's usage page within a few
+  6. Turn on the 24-hour clock in Settings: the calendar, Schedule, Recordings, and the
+     Coach all show 24-hour times. On a Block, **Save as Recording**, edit the length, save:
+     the Activity's average changes.
+  7. Start over on another date; the old conversation shows `abandoned` in Coach usage.
+  8. Coach usage in the app agrees with the Anthropic console's usage page within a few
      cents. Run `scripts/coach_metrics.py --csv` once against local MySQL to see the report
      shape (the real data is on Azure; pointing `DB_*` there needs your IP on the server's
      firewall).
   Record results in `progress.md`.
 - **Acceptance Criteria:**
-  - [ ] All seven pass on both clients where they apply; any failure recorded with the task it reopens
+  - [ ] All eight pass on both clients where they apply; any failure recorded with the task it reopens

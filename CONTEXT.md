@@ -90,7 +90,7 @@ The Coach's suggested Schedule Items for a date, each with a start time that fit
 _Avoid_: Draft, plan, suggestion
 
 **Coach note**:
-A short fact about the user that the Coach suggested and the user approved, carried into every later Coaching conversation. Visible, editable, and deletable by the user; never saved without approval.
+A short fact about the user, either suggested by the Coach and approved by the user or added by the user directly, carried into every later Coaching conversation. Visible, editable, and deletable by the user; a Coach suggestion is never saved without approval.
 _Avoid_: Memory, profile, preference
 
 **Goal**:
