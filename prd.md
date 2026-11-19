@@ -446,10 +446,10 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [x] Test: usage shows the month's totals; detail renders the call rows
 
 ### B64.impl — Mobile: Start links, Intended length, Coach settings and usage
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract; add the API methods to `src/services/api.ts`.
 - **Acceptance Criteria:**
-  - [ ] All B64.tests pass; mobile suite, tsc, and export pass
+  - [x] All B64.tests pass; mobile suite, tsc, and export pass
 
 ### B69.tests — Mobile: app-wide clock, Save as Recording
 - **Status:** PENDING

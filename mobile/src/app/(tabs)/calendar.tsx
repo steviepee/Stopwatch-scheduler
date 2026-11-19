@@ -728,7 +728,7 @@ function BankChip({
   const payload: DragPayload = {
     key: `task-${task.id}`,
     name: task.name,
-    seconds: noHistory ? NO_HISTORY_SECONDS : task.average_duration,
+    seconds: noHistory ? task.intended_length || NO_HISTORY_SECONDS : task.average_duration,
   };
 
   const gesture = Gesture.Pan()

@@ -2198,3 +2198,14 @@ Each iteration appends its results here so the next session knows what worked, w
   - Intended length: `taskAPI.update(id, { intended_length })`, so `TaskUpdate` needs the field; `Task` needs `intended_length?: number | null` too (tests cast through `as Task` for now). Whole minutes 1–720.
   - Seeding: the Schedule test covers average → Intended length → 10. The calendar Bank drag ghost (`calendar.tsx` `NO_HISTORY_SECONDS`) also seeds a length client-side; no test pins it, but per the contract it should use `intended_length` before 600 too. The server already seeds the real placement.
   - A single-file `npx jest` run can hang after finishing ("Jest did not exit"); use `--forceExit` or run in the background.
+
+## B64.impl. Mobile: Start links, Intended length, Coach settings and usage
+- **Date:** 2026-11-19
+- **Status:** DONE
+- **Summary:** Added `settingsAPI.getCoach/updateCoach/getReminders/updateReminders` and a `coachAPI` (notes CRUD, usage, conversations) with their types. Settings gained Coach notes (switch, list with edit/delete-with-confirm, Add note), Start reminders (switch, 1–120 minutes field, the "applies from now on" text) and Coach usage (month totals, conversation rows, inline read-only detail with call rows). The Stopwatch tab reads `?start=` and selects the Activity when idle, then clears the param; the Activity detail screen has an Intended length field; Schedule and the calendar Bank drag seed from Intended length when there is no history.
+- **Files changed:** mobile/src/types/index.ts, mobile/src/services/api.ts, mobile/src/app/settings.tsx, mobile/src/app/(tabs)/index.tsx, mobile/src/app/activity/[id].tsx, mobile/src/app/(tabs)/schedule.tsx, mobile/src/app/(tabs)/calendar.tsx, prd.md, progress.md
+- **Verification:** from `mobile/`: `npx jest --ci --forceExit` 374 passed (19 suites); `npx tsc --noEmit` clean; `npx expo export --platform android` succeeded.
+- **Gotchas:**
+  - The start-link effect clears the param in every case (selected, running, unknown id) once `tasks` has loaded, so a stale `start` never fires later. `selected-activity` shows only in Stopwatch mode while the save sheet is closed.
+  - The backend's `PUT /tasks/{id}` clears `intended_length` only when the key is present (`model_fields_set`), so the client sends `{ intended_length: null }` explicitly.
+  - Long Python heredocs in Bash hit "Parser aborted"; use Edit for big insertions.

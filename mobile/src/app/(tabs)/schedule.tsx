@@ -15,9 +15,13 @@ import type { GenerateActivity, GenerateEvent, GenerateRequest, Schedule, Schedu
 // keeps the block on a minute boundary.
 const toMinutes = (seconds: number) => String(Math.ceil(seconds / 60));
 
-// D40: an Activity with no history plans at 10 minutes.
+// D40, D108: average, then Intended length, then 10 minutes.
 const defaultMinutes = (task: Task) =>
-  task.average_duration > 0 && task.total_recordings > 0 ? toMinutes(task.average_duration) : '10';
+  task.average_duration > 0 && task.total_recordings > 0
+    ? toMinutes(task.average_duration)
+    : task.intended_length
+      ? toMinutes(task.intended_length)
+      : '10';
 
 function statText(value: number | null): string {
   return value === null ? '—' : formatElapsed(value * 1000);

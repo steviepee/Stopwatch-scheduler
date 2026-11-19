@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { GlassView } from 'expo-glass-effect';
+import { router, useLocalSearchParams } from 'expo-router';
 
 import { colors, radii, spacing, touchTarget, typography } from '@/theme/tokens';
 import { settingsAPI, taskAPI } from '@/services/api';
@@ -152,6 +153,14 @@ export default function StopwatchScreen() {
     setSelectedNewActivity(false);
   };
 
+  const { start } = useLocalSearchParams<{ start?: string }>();
+  useEffect(() => {
+    if (!start || !tasks) return;
+    const task = tasks.find((t) => String(t.id) === start);
+    if (task && timer.status === 'idle' && run.status === 'idle') selectTask(task);
+    router.setParams({ start: undefined });
+  }, [start, tasks, timer.status, run.status]);
+
   const selectNewActivity = () => {
     setSelectedTask(undefined);
     setSelectedNewActivity(true);
@@ -238,6 +247,12 @@ export default function StopwatchScreen() {
         <Text style={styles.elapsed}>{formatElapsed(pomodoroConfig.workMinutes * 60_000)}</Text>
       ) : (
         <Text style={styles.elapsed}>{formatElapsed(timer.elapsedMs)}</Text>
+      )}
+
+      {!sheetOpen && mode === 'stopwatch' && selectedTask && (
+        <Text testID="selected-activity" style={styles.textMuted}>
+          {selectedTask.name}
+        </Text>
       )}
 
       {!sheetOpen && !pickerOpen && mode === 'pomodoro' && run.status !== 'idle' && (

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import axios from 'axios';
 import Constants from 'expo-constants';
 import * as WebBrowser from 'expo-web-browser';
@@ -10,8 +10,8 @@ import { getApiUrl, getToken, setApiUrl, setToken } from '@/services/auth';
 import { CREATE_SESSION_KEY } from '@/services/queryClient';
 import { DEFAULT_USER_OPTIONS, getUserOptions, setUserOptions, type UserOptions } from '@/services/options';
 import { isNativeAvailable } from '@/timer/native';
-import { settingsAPI } from '@/services/api';
-import type { PomodoroSettings } from '@/types';
+import { coachAPI, settingsAPI } from '@/services/api';
+import type { CoachSettings, PomodoroSettings, ReminderSettings } from '@/types';
 
 type PomodoroKey = keyof PomodoroSettings;
 
@@ -40,6 +40,10 @@ function toFields(settings: PomodoroSettings): Record<PomodoroKey, string> {
 
 function inRange(value: string, max: number) {
   return /^\d+$/.test(value) && Number(value) >= 1 && Number(value) <= max;
+}
+
+function dollars(value: number, places: number) {
+  return `$${value.toFixed(places)}`;
 }
 
 type ConnectionStatus = 'idle' | 'checking' | 'unreachable' | 'rejected' | 'ok';
@@ -92,6 +96,65 @@ export default function SettingsScreen() {
       long_break_every: Number(pomodoro.long_break_every),
     });
   };
+
+  const coachQuery = useQuery({ queryKey: ['settings', 'coach'], queryFn: () => settingsAPI.getCoach() });
+  const coachMutation = useMutation({
+    mutationFn: (settings: CoachSettings) => settingsAPI.updateCoach(settings),
+    onSuccess: (data) => queryClient.setQueryData(['settings', 'coach'], data),
+  });
+
+  const notesQuery = useQuery({ queryKey: ['coach', 'notes'], queryFn: () => coachAPI.getNotes() });
+  const invalidateNotes = () => queryClient.invalidateQueries({ queryKey: ['coach', 'notes'] });
+  const [newNote, setNewNote] = useState('');
+  const [editingNote, setEditingNote] = useState<{ id: number; text: string } | null>(null);
+  const createNoteMutation = useMutation({
+    mutationFn: (text: string) => coachAPI.createNote({ text }),
+    onSuccess: () => {
+      setNewNote('');
+      invalidateNotes();
+    },
+  });
+  const updateNoteMutation = useMutation({
+    mutationFn: ({ id, text }: { id: number; text: string }) => coachAPI.updateNote(id, { text }),
+    onSuccess: () => {
+      setEditingNote(null);
+      invalidateNotes();
+    },
+  });
+  const deleteNoteMutation = useMutation({
+    mutationFn: (id: number) => coachAPI.deleteNote(id),
+    onSuccess: invalidateNotes,
+  });
+
+  const confirmDeleteNote = (id: number) => {
+    Alert.alert('Delete Coach note', 'This cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => deleteNoteMutation.mutate(id) },
+    ]);
+  };
+
+  const remindersQuery = useQuery({ queryKey: ['settings', 'reminders'], queryFn: () => settingsAPI.getReminders() });
+  const remindersMutation = useMutation({
+    mutationFn: (settings: ReminderSettings) => settingsAPI.updateReminders(settings),
+    onSuccess: (data) => queryClient.setQueryData(['settings', 'reminders'], data),
+  });
+  const [reminderMinutes, setReminderMinutes] = useState('');
+
+  useEffect(() => {
+    if (remindersQuery.data) setReminderMinutes(String(remindersQuery.data.minutes_before));
+  }, [remindersQuery.data]);
+
+  const reminderMinutesValid = inRange(reminderMinutes, 120);
+  const remindersSaveDisabled = !remindersQuery.data || !reminderMinutesValid || remindersMutation.isPending;
+
+  const usageQuery = useQuery({ queryKey: ['coach', 'usage'], queryFn: () => coachAPI.getUsage() });
+  const conversationsQuery = useQuery({ queryKey: ['coach', 'conversations'], queryFn: () => coachAPI.getConversations() });
+  const [openConversationId, setOpenConversationId] = useState<number | null>(null);
+  const conversationQuery = useQuery({
+    queryKey: ['coach', 'conversations', openConversationId],
+    queryFn: () => coachAPI.getConversation(openConversationId as number),
+    enabled: openConversationId !== null,
+  });
 
   useEffect(() => {
     (async () => {
@@ -249,6 +312,147 @@ export default function SettingsScreen() {
         <Text style={styles.buttonText}>Save</Text>
       </Pressable>
 
+      <Text style={styles.label}>Coach notes</Text>
+      <View style={styles.infoRow}>
+        <Text style={styles.infoLabel}>Coach notes</Text>
+        <Switch
+          testID="toggle-coach-notes"
+          value={coachQuery.data?.notes_enabled ?? false}
+          disabled={!coachQuery.data || coachMutation.isPending}
+          onValueChange={(value) => coachMutation.mutate({ notes_enabled: value })}
+        />
+      </View>
+      {(notesQuery.data ?? []).map((note) =>
+        editingNote?.id === note.id ? (
+          <View key={note.id} style={styles.noteRow}>
+            <TextInput
+              testID={`input-note-${note.id}`}
+              style={[styles.input, styles.noteText]}
+              value={editingNote.text}
+              onChangeText={(text) => setEditingNote({ id: note.id, text })}
+              multiline
+              placeholderTextColor={colors.placeholder}
+            />
+            <Pressable
+              testID={`btn-note-save-${note.id}`}
+              accessibilityRole="button"
+              style={[styles.smallButton, !editingNote.text.trim() && styles.buttonDisabled]}
+              disabled={!editingNote.text.trim() || updateNoteMutation.isPending}
+              onPress={() => updateNoteMutation.mutate({ id: note.id, text: editingNote.text.trim() })}>
+              <Text style={styles.buttonText}>Save</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <View key={note.id} testID={`coach-note-${note.id}`} style={styles.noteRow}>
+            <Text style={[styles.infoValue, styles.noteText]}>{note.text}</Text>
+            <Pressable
+              testID={`coach-note-edit-${note.id}`}
+              accessibilityRole="button"
+              style={styles.smallButton}
+              onPress={() => setEditingNote({ id: note.id, text: note.text })}>
+              <Text style={styles.buttonText}>Edit</Text>
+            </Pressable>
+            <Pressable
+              testID={`coach-note-delete-${note.id}`}
+              accessibilityRole="button"
+              style={styles.smallButton}
+              onPress={() => confirmDeleteNote(note.id)}>
+              <Text style={styles.buttonText}>Delete</Text>
+            </Pressable>
+          </View>
+        )
+      )}
+      <TextInput
+        testID="input-new-note"
+        style={styles.input}
+        value={newNote}
+        onChangeText={setNewNote}
+        placeholder="New note"
+        multiline
+        placeholderTextColor={colors.placeholder}
+      />
+      <Pressable
+        testID="btn-add-note"
+        accessibilityRole="button"
+        style={[styles.button, !newNote.trim() && styles.buttonDisabled]}
+        disabled={!newNote.trim() || createNoteMutation.isPending}
+        onPress={() => createNoteMutation.mutate(newNote.trim())}>
+        <Text style={styles.buttonText}>Add note</Text>
+      </Pressable>
+
+      <Text style={styles.label}>Start reminders</Text>
+      <View style={styles.infoRow}>
+        <Text style={styles.infoLabel}>Start reminders</Text>
+        <Switch
+          testID="toggle-start-reminders"
+          value={remindersQuery.data?.enabled ?? false}
+          disabled={!remindersQuery.data || remindersMutation.isPending}
+          onValueChange={(value) =>
+            remindersQuery.data &&
+            remindersMutation.mutate({ enabled: value, minutes_before: remindersQuery.data.minutes_before })
+          }
+        />
+      </View>
+      <Text style={styles.infoLabel}>Minutes before</Text>
+      <TextInput
+        testID="input-reminder-minutes"
+        style={styles.input}
+        value={reminderMinutes}
+        onChangeText={setReminderMinutes}
+        keyboardType="number-pad"
+        placeholderTextColor={colors.placeholder}
+      />
+      {remindersQuery.data && !reminderMinutesValid && <Text style={styles.statusText}>1–120</Text>}
+      <Text style={styles.statusText}>Applies to Blocks pushed or changed from now on.</Text>
+      <Pressable
+        testID="reminders-save"
+        accessibilityRole="button"
+        style={[styles.button, remindersSaveDisabled && styles.buttonDisabled]}
+        disabled={remindersSaveDisabled}
+        onPress={() =>
+          remindersQuery.data &&
+          remindersMutation.mutate({ enabled: remindersQuery.data.enabled, minutes_before: Number(reminderMinutes) })
+        }>
+        <Text style={styles.buttonText}>Save</Text>
+      </Pressable>
+
+      <Text style={styles.label}>Coach usage</Text>
+      {usageQuery.data && (
+        <Text testID="usage-month" style={styles.infoValue}>
+          {`${usageQuery.data.month}: ${usageQuery.data.conversations} conversations, ${dollars(usageQuery.data.cost_usd, 2)}`}
+        </Text>
+      )}
+      {(conversationsQuery.data ?? []).map((c) => (
+        <Pressable
+          key={c.id}
+          testID={`usage-conversation-${c.id}`}
+          accessibilityRole="button"
+          style={styles.infoRow}
+          onPress={() => setOpenConversationId(openConversationId === c.id ? null : c.id)}>
+          <Text style={styles.infoValue}>{`${c.target_date}  ${c.status}`}</Text>
+          <Text style={styles.infoValue}>{dollars(c.cost_usd, 2)}</Text>
+        </Pressable>
+      ))}
+      {openConversationId !== null && conversationQuery.data && (
+        <View testID="usage-detail" style={styles.detail}>
+          {conversationQuery.data.messages.map((m, i) => (
+            <View key={i}>
+              <Text style={styles.infoLabel}>{m.role === 'user' ? 'You' : 'Coach'}</Text>
+              <Text style={styles.infoValue}>{m.visible_text}</Text>
+            </View>
+          ))}
+          {conversationQuery.data.proposal?.summary && (
+            <Text style={styles.infoValue}>{`Proposal: ${conversationQuery.data.proposal.summary}`}</Text>
+          )}
+          <Text style={styles.infoLabel}>Calls (input / output / cache read / cache write)</Text>
+          {conversationQuery.data.calls.map((call, i) => (
+            <Text key={i} testID={`usage-call-${i}`} style={styles.callRow}>
+              {`${call.input_tokens} / ${call.output_tokens} / ${call.cache_read_input_tokens ?? 0} / ${call.cache_creation_input_tokens ?? 0}  ${call.latency_ms} ms  ${dollars(call.cost_usd, 4)}`}
+            </Text>
+          ))}
+        </View>
+      )}
+
       <Text style={styles.label}>Export</Text>
       <View style={styles.exportRow}>
         <Pressable
@@ -352,6 +556,37 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textMuted,
     textAlign: 'center',
+  },
+  noteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    minHeight: touchTarget,
+  },
+  noteText: {
+    flex: 1,
+  },
+  smallButton: {
+    minHeight: touchTarget,
+    minWidth: touchTarget,
+    borderRadius: radii.md,
+    backgroundColor: colors.glass,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.sm,
+  },
+  detail: {
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+  },
+  callRow: {
+    ...typography.caption,
+    color: colors.text,
   },
   exportRow: {
     flexDirection: 'row',

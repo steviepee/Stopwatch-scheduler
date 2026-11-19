@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { GlassView } from 'expo-glass-effect';
@@ -55,6 +55,23 @@ export default function ActivityDetailScreen() {
     },
   });
 
+  const [intendedMinutes, setIntendedMinutes] = useState('');
+  useEffect(() => {
+    if (task) setIntendedMinutes(task.intended_length ? String(Math.round(task.intended_length / 60)) : '');
+  }, [task]);
+  const intendedValid =
+    intendedMinutes === '' ||
+    (/^\d+$/.test(intendedMinutes) && Number(intendedMinutes) >= 1 && Number(intendedMinutes) <= 720);
+
+  const updateIntendedLength = useMutation({
+    mutationFn: (intended_length: number | null) => taskAPI.update(taskId, { intended_length }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task', taskId] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+  });
+  const intendedSaveDisabled = !task || !intendedValid || updateIntendedLength.isPending;
+
   const recentLogs = useMemo(() => {
     const list = logs ?? [];
     return [...list]
@@ -109,6 +126,28 @@ export default function ActivityDetailScreen() {
           )}
         </View>
       )}
+
+      <Text style={styles.sectionTitle}>Intended length (minutes)</Text>
+      <View style={styles.intendedRow}>
+        <TextInput
+          testID="input-intended-length"
+          style={styles.input}
+          value={intendedMinutes}
+          onChangeText={setIntendedMinutes}
+          keyboardType="number-pad"
+          placeholder="None"
+          placeholderTextColor={colors.placeholder}
+        />
+        <Pressable
+          testID="btn-save-intended-length"
+          accessibilityRole="button"
+          style={[styles.saveButton, intendedSaveDisabled && styles.buttonDisabled]}
+          disabled={intendedSaveDisabled}
+          onPress={() => updateIntendedLength.mutate(intendedMinutes === '' ? null : Number(intendedMinutes) * 60)}>
+          <Text style={styles.quadrantLabel}>Save</Text>
+        </Pressable>
+      </View>
+      {!intendedValid && <Text style={styles.statLabel}>1–720</Text>}
 
       <Text style={styles.sectionTitle}>Recent Recordings</Text>
       {recentLogs.map((log) => (
@@ -183,6 +222,33 @@ const styles = StyleSheet.create({
     ...typography.label,
     color: colors.textMuted,
     marginTop: spacing.md,
+  },
+  intendedRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  input: {
+    flex: 1,
+    minHeight: touchTarget,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    paddingHorizontal: spacing.md,
+    color: colors.text,
+  },
+  saveButton: {
+    minHeight: touchTarget,
+    minWidth: touchTarget,
+    borderRadius: radii.md,
+    backgroundColor: colors.glass,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+  },
+  buttonDisabled: {
+    opacity: 0.5,
   },
   logRow: {
     flexDirection: 'row',
