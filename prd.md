@@ -479,7 +479,7 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [x] All B69.tests pass; mobile suite, tsc, and export pass
 
 ### B65.tests — Mobile: the Coach screen
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D94, D100, D101, D103, D111, D117, D118, D121.
 - **Contract:**
   - The calendar day view (`(tabs)/calendar.tsx`) shows **Plan with Coach** for today and future
@@ -499,12 +499,12 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
     `messages_left` (`2 plan changes left, 4 messages left`). A 409 message-limit response shows
     its message and leaves Accept / Reject / Start over usable.
 - **Acceptance Criteria:**
-  - [ ] Test: button hidden for past dates; disabled offline with the message
-  - [ ] Test: open-or-resume on mount; thinking state disables input
-  - [ ] Test: Proposal renders the whole day with each kind of item styled, the New tag, and the changes and messages left; Accept refreshes the day and shows Push day and rating
-  - [ ] Test: pressing `Where this came from` lists each item's source and reason, with the Recording count and typical time on existing Activities only
-  - [ ] Test: note suggestion Yes posts it, No posts nothing; Start over confirms first
-  - [ ] Test: a 409 shows its message
+  - [x] Test: button hidden for past dates; disabled offline with the message
+  - [x] Test: open-or-resume on mount; thinking state disables input
+  - [x] Test: Proposal renders the whole day with each kind of item styled, the New tag, and the changes and messages left; Accept refreshes the day and shows Push day and rating
+  - [x] Test: pressing `Where this came from` lists each item's source and reason, with the Recording count and typical time on existing Activities only
+  - [x] Test: note suggestion Yes posts it, No posts nothing; Start over confirms first
+  - [x] Test: a 409 shows its message
 
 ### B65.impl — Mobile: the Coach screen
 - **Status:** PENDING
