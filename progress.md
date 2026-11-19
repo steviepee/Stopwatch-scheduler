@@ -2158,3 +2158,17 @@ Each iteration appends its results here so the next session knows what worked, w
   - A previous iteration left this implementation uncommitted in the working tree; it was reviewed, an unused settings lookup in the remove route was dropped, and it was finished here.
   - Two pre-B62 tests in `test_schedule_calendar.py` used `assert_called_once_with` on `create_event` with the old signature. They now also expect `reminder_settings=ANY, task_id=None`. Any future change to `create_event`'s call in the push route must update them too.
   - The new params default to `None`, so `calendar_auth.py`'s `create_event` call (no reminders/description) is unchanged.
+
+## B63.tests. Backend: the metrics script
+- **Date:** 2026-11-19
+- **Status:** DONE
+- **Summary:** Added `backend/tests/test_coach_metrics_script.py` (11 tests) for `backend/scripts/coach_metrics.py`. It seeds an accepted, a rejected and an abandoned conversation with calls, Blocks and Recordings directly through the ORM, and covers the totals, the kept/edited/deleted/recorded counts (including after live edits), `since`, an empty database, both CSV files, printing without `--csv`, and running the file as a script with `--help`. The docstring at the top lists the choices it pins that the PRD leaves open.
+- **Files changed:** backend/tests/test_coach_metrics_script.py, prd.md, progress.md
+- **Verification:** (python3 subprocess) `pytest tests/` from `backend/`: 1 failed, 10 errors, 457 passed. All 11 are the new tests, failing because `scripts/coach_metrics.py` does not exist yet, as expected before impl. Against a throwaway reference at `/tmp/b63ref/coach_metrics.py` (removed from the repo after): 11/11 pass.
+- **Gotchas:**
+  - The test loads the script by file path with `importlib`, so importing it must not parse args or touch the DB; keep that in `main(argv)` under `if __name__ == "__main__"`. The script must put `backend/` on `sys.path` itself (`--help` runs as a subprocess from `backend/`).
+  - `main` must open its session via `app.database.SessionLocal()` (looked up on the module, e.g. `from app import database` then `database.SessionLocal()`). The test patches `app.database.SessionLocal` and, if present, a `SessionLocal` name on the script module.
+  - `build_report` returns `{"totals", "conversations", "calls"}`. Totals keys: `conversations`, `by_status` (all four statuses, 0 when none), `calls`, four token sums (null cache = 0), `cost_usd`, `avg_cost_per_conversation`, `avg_cost_per_accepted` (total cost / accepted count, NOT the mean cost of accepted conversations), `avg_turns_to_first_proposal` (mean `user_turns` over conversations whose `proposal` is non-null), `avg_latency_ms` (mean over calls).
+  - Snapshot `scheduled_time` is `isoformat() + "Z"` (see `routers/coach.py` accept); compare it with the live item's `scheduled_time.isoformat() + "Z"` and `estimated_duration` as floats. A snapshot id with no item is deleted.
+  - `recorded` counts accepted items whose Activity has a `StopwatchSession` (`start_time`, else `created_at`) on `target_date` in local time, local = UTC - `tz_offset` minutes; it ignores whether the item still exists. Non-accepted conversations may give 0 or None.
+  - `since` filters on conversation `created_at.date() >= since`, and calls follow their conversation. The CSV columns are each table's columns in model order, plus the four derived counts on conversations.

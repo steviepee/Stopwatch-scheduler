@@ -371,7 +371,7 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [x] All B62.tests pass; full suite passes
 
 ### B63.tests — Backend: the metrics script
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D106. Add `backend/tests/test_coach_metrics_script.py` for
   `backend/scripts/coach_metrics.py`, a script run as
   `./venv/bin/python scripts/coach_metrics.py [--since YYYY-MM-DD] [--csv PATH]`. It reads the
@@ -387,8 +387,8 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
     of both tables plus the derived counts.
   - The core is a function `build_report(db, since) -> dict` the test calls directly.
 - **Acceptance Criteria:**
-  - [ ] Test: fixtures with an accepted, a rejected, and an abandoned conversation give the right totals and per-conversation derived counts
-  - [ ] Test: `--csv` writes both files with a header and one row per record
+  - [x] Test: fixtures with an accepted, a rejected, and an abandoned conversation give the right totals and per-conversation derived counts
+  - [x] Test: `--csv` writes both files with a header and one row per record
 
 ### B63.impl — Backend: the metrics script
 - **Status:** PENDING
