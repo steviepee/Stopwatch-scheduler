@@ -29,7 +29,9 @@ producing `backend/app/prompts/coach_system.md`. B60–B67 are `HOLD (until U17)
 **U17 done (2026-11-18):** the user signed off on `coach_system.md`; findings and prompt size
 are in `progress.md`. U17 added D123–D132 and task pairs B69/B70 (app-wide clock, Save as
 Recording), placed before B65 and B67. **Next:** B60–B67, B69 and B70 are PENDING (20 loop
-tasks); run the loop. U15 after B63. Start reminders go through Google Calendar, so no APK
+tasks). Run the loop for the 8 backend tasks only (`--max 8`, B60–B63), then U15 (deploy,
+first real conversation, link check) before the remaining 12 client tasks, so a Coach problem
+found at U15 isn't built on. Start reminders go through Google Calendar, so no APK
 build is expected.
 
 **Build 2b is complete (2026-10-25)**: U9 and U10 passed; PRD archived at
