@@ -2209,3 +2209,20 @@ Each iteration appends its results here so the next session knows what worked, w
   - The start-link effect clears the param in every case (selected, running, unknown id) once `tasks` has loaded, so a stale `start` never fires later. `selected-activity` shows only in Stopwatch mode while the save sheet is closed.
   - The backend's `PUT /tasks/{id}` clears `intended_length` only when the key is present (`model_fields_set`), so the client sends `{ intended_length: null }` explicitly.
   - Long Python heredocs in Bash hit "Parser aborted"; use Edit for big insertions.
+
+## B69.tests. Mobile: app-wide clock, Save as Recording
+- **Date:** 2026-11-19
+- **Status:** DONE
+- **Summary:** Added `mobile/src/__tests__/formatClock.test.ts` (4 tests) and `mobile/src/__tests__/ClockAndSaveAsRecording.test.tsx` (12 tests). They cover `formatClock` in both clocks (midnight, noon, padding); 24-hour times on the calendar's hour gutter and week agenda, the Schedule's Start time and Day end pickers, and the Recordings hand-entered start time; 12-hour until the setting loads; the Settings `toggle-clock-24h` switch round-trip; and Save as Recording from a selected Block (prefill, edited duration posted from the Block's start, Cancel). The header comment of the second file pins the testIDs and API names.
+- **Files changed:** mobile/src/__tests__/formatClock.test.ts, mobile/src/__tests__/ClockAndSaveAsRecording.test.tsx, prd.md, progress.md
+- **Verification:** from `mobile/`: `npx jest --ci --forceExit` 12 failed, 374 passed; both new suites fail as expected before impl (`formatClock` module missing; no `getDisplay` call or `btn-save-recording-1`). `npx tsc --noEmit` clean. `npx expo export --platform android` succeeded. A throwaway reference implementation (reverted, not committed) passed all 16 new tests and the full suite (390 passed).
+- **Gotchas:**
+  - Pinned names: `settingsAPI.getDisplay()` / `updateDisplay({ clock_24h })` (add a `DisplaySettings` type), Settings switch `toggle-clock-24h` with the label `Use 24-hour clock`, day view button `btn-save-recording-{itemId}` reading `Save as Recording` in the selected Block's action row.
+  - `formatClock`: 12-hour is `h:mm AM` with a plain space (not the U+202F that `toLocaleTimeString` gives), 24-hour is `HH:mm` padded (`00:00`, `09:05`). It uses local hours.
+  - The other screen test files mock `../services/api` without `settingsAPI`. The clock hook must call `settingsAPI.getDisplay()` inside its `queryFn` (a missing mock then becomes a query error, i.e. 12-hour), not reference `settingsAPI.getDisplay` at render. The reference used `['settings', 'display']` as the query key, shared by Settings and the hook, so the switch updates every screen.
+  - Calendar hour gutter: the test wants `17:00` with the setting on and no `5 PM`. The reference fed `formatClock(new Date(2000, 0, 1, hour), clock24h)`, which makes 12-hour labels `5:00 PM`; no existing test pins the gutter's 12-hour text. The Schedule peak-hour hint (`2 PM`) is pinned 12-hour by ScheduleScreen.test.tsx and is not touched here.
+  - The calendar day view and Schedule must read the setting themselves (the tests wait for `getDisplay` to be called). Recordings only needs it once the form is open.
+  - Save as Recording: export `ManualForm` from `recordings.tsx` and give it optional initial values (name, Activity, seconds, start). The start must be treated as already picked (`editedStart`), so editing the duration does not move it. 4500 s fills `manual-hours` `1` and `manual-minutes` `15`. The reference rendered the form in place of the calendar screen (an early return, like Recordings does) while open.
+  - `formatClock.test.ts` uses `require` with a type cast so tsc passes before the module exists. B69.impl may leave it as is.
+  - RNTL `render` is async in this version: `await render(...)`, or `screen` is unset ("render function has not been called").
+  - `git checkout`/`git restore` need approval in this sandbox; revert throwaway edits with Edit instead.

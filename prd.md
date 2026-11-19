@@ -452,7 +452,7 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [x] All B64.tests pass; mobile suite, tsc, and export pass
 
 ### B69.tests — Mobile: app-wide clock, Save as Recording
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D128, D132.
 - **Contract:**
   - **Clock:** `src/utils/formatClock.ts` exports `formatClock(date, clock24h)`: `5:00 PM` or
@@ -468,9 +468,9 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
     Activity's name as the Recording name. Everything stays editable; Save posts through the
     same path as a hand-entered Recording.
 - **Acceptance Criteria:**
-  - [ ] Test: `formatClock` gives `5:00 PM` and `17:00` for the same time; midnight and noon in both
-  - [ ] Test: with the setting mocked on, the day view, Schedule, and Recordings show 24-hour times; the switch round-trips through its API mock
-  - [ ] Test: Save as Recording opens the form filled from the Block; an edited duration is what gets posted
+  - [x] Test: `formatClock` gives `5:00 PM` and `17:00` for the same time; midnight and noon in both
+  - [x] Test: with the setting mocked on, the day view, Schedule, and Recordings show 24-hour times; the switch round-trips through its API mock
+  - [x] Test: Save as Recording opens the form filled from the Block; an edited duration is what gets posted
 
 ### B69.impl — Mobile: app-wide clock, Save as Recording
 - **Status:** PENDING
