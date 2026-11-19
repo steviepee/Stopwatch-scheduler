@@ -347,3 +347,63 @@ describe('quadrant picker (B39, D70)', () => {
     expect(screen.queryByText('Neither (current)')).toBeNull();
   });
 });
+
+// B64 (D100, D108, D130): the detail screen gains an "Intended length" field in whole minutes,
+// testID `input-intended-length`, prefilled from the Activity's `intended_length` (seconds / 60,
+// empty when null), and a Save button `btn-save-intended-length` that calls
+// `taskAPI.update(id, { intended_length: minutes * 60 })`, or `{ intended_length: null }` when
+// the field is empty. The backend accepts 1 s – 43200 s, so the field takes whole minutes 1–720;
+// anything else (0, 721, text) disables Save.
+describe('intended length (B64, D108)', () => {
+  const WITH_LENGTH = { ...GYM, intended_length: 1500 } as Task;
+  const WITHOUT_LENGTH = { ...GYM, intended_length: null } as unknown as Task;
+
+  beforeEach(() => {
+    mockedGetStats.mockResolvedValue({ average: 1800, median: null, previous: null });
+    mockedLogsGetAll.mockResolvedValue([]);
+  });
+
+  it('shows the stored length in minutes, or empty when there is none', async () => {
+    mockedGetById.mockResolvedValue(WITH_LENGTH);
+    await renderDetail();
+    await waitFor(() => expect(screen.getByTestId('input-intended-length')).toHaveProp('value', '25'));
+  });
+
+  it('saves the typed minutes in seconds', async () => {
+    mockedGetById.mockResolvedValue(WITHOUT_LENGTH);
+    mockedUpdate.mockResolvedValue({ ...GYM, intended_length: 1800 });
+    await renderDetail();
+
+    await screen.findByTestId('input-intended-length');
+    expect(screen.getByTestId('input-intended-length')).toHaveProp('value', '');
+    await fireEvent.changeText(screen.getByTestId('input-intended-length'), '30');
+    await fireEvent.press(screen.getByTestId('btn-save-intended-length'));
+
+    await waitFor(() => expect(mockedUpdate).toHaveBeenCalledWith(7, { intended_length: 1800 }));
+  });
+
+  it('clearing the field saves null', async () => {
+    mockedGetById.mockResolvedValue(WITH_LENGTH);
+    mockedUpdate.mockResolvedValue(WITHOUT_LENGTH);
+    await renderDetail();
+
+    await waitFor(() => expect(screen.getByTestId('input-intended-length')).toHaveProp('value', '25'));
+    await fireEvent.changeText(screen.getByTestId('input-intended-length'), '');
+    await fireEvent.press(screen.getByTestId('btn-save-intended-length'));
+
+    await waitFor(() => expect(mockedUpdate).toHaveBeenCalledWith(7, { intended_length: null }));
+  });
+
+  it('0 or 721 minutes disables Save', async () => {
+    mockedGetById.mockResolvedValue(WITH_LENGTH);
+    await renderDetail();
+
+    await waitFor(() => expect(screen.getByTestId('input-intended-length')).toHaveProp('value', '25'));
+    await fireEvent.changeText(screen.getByTestId('input-intended-length'), '0');
+    expect(screen.getByTestId('btn-save-intended-length')).toBeDisabled();
+    await fireEvent.changeText(screen.getByTestId('input-intended-length'), '721');
+    expect(screen.getByTestId('btn-save-intended-length')).toBeDisabled();
+    await fireEvent.press(screen.getByTestId('btn-save-intended-length'));
+    expect(mockedUpdate).not.toHaveBeenCalled();
+  });
+});

@@ -367,6 +367,29 @@ describe('setup step', () => {
     ]);
   });
 
+  // B64 (D108): the seed is average → Intended length → 10 min.
+  it('a no-history Activity with an Intended length seeds from it; history still wins', async () => {
+    const INTENDED = { ...GYM, id: 9, name: 'Tango', average_duration: 0, total_recordings: 0, intended_length: 1500 } as Task;
+    const BOTH = { ...GYM, id: 10, name: 'Run', average_duration: 1530, total_recordings: 2, intended_length: 3600 } as Task;
+    mockedTasksGetAll.mockResolvedValue([INTENDED, BOTH]);
+    mockedGenerate.mockResolvedValue({ options: [] } as GenerateResponse);
+    await renderScreen();
+
+    await screen.findByTestId('activity-row-9');
+    await selectActivity(9);
+    await selectActivity(10);
+    expect(screen.getByTestId('input-duration-9')).toHaveProp('value', '25');
+    expect(screen.getByTestId('input-duration-10')).toHaveProp('value', '26');
+
+    await fireEvent.press(screen.getByTestId('btn-generate'));
+
+    await waitFor(() => expect(mockedGenerate).toHaveBeenCalledTimes(1));
+    expect(mockedGenerate.mock.calls[0][0].activities).toEqual([
+      expect.objectContaining({ task_id: 9, estimated_duration: 1500 }),
+      expect.objectContaining({ task_id: 10, estimated_duration: 1560 }),
+    ]);
+  });
+
   it('calls generate with no strategies field, and UTC Z datetimes', async () => {
     mockedGenerate.mockResolvedValue({ options: [] } as GenerateResponse);
     await renderScreen();

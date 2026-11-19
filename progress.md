@@ -2183,3 +2183,18 @@ Each iteration appends its results here so the next session knows what worked, w
   - Started from the B63.tests session's throwaway reference in `/tmp/b63ref/` and reviewed and tidied it. That file is not part of the repo.
   - Conversation rows carry an extra `cost_usd` (the sum of their calls) for the printed table. The conversations CSV uses `extrasaction="ignore"`, so it keeps exactly the model columns plus the four derived counts.
   - Conversations with no `accepted_items` get `None` for the four derived counts, which shows as empty cells in the CSV.
+
+## B64.tests. Mobile: Start links, Intended length, Coach settings and usage
+- **Date:** 2026-11-19
+- **Status:** DONE
+- **Summary:** Added `mobile/src/__tests__/CoachSettings.test.tsx` (Coach notes switch and list, Start reminders, Coach usage list and detail), a start-link section in `StopwatchScreen.test.tsx`, an Intended length section in `ActivitiesScreen.test.tsx`, and an Intended length seed test in `ScheduleScreen.test.tsx`. The comment headers pin the testIDs, API method names, and the choices the PRD leaves open.
+- **Files changed:** mobile/src/__tests__/CoachSettings.test.tsx, mobile/src/__tests__/StopwatchScreen.test.tsx, mobile/src/__tests__/ActivitiesScreen.test.tsx, mobile/src/__tests__/ScheduleScreen.test.tsx, prd.md, progress.md
+- **Verification:** from `mobile/`: `npx jest --ci --forceExit` 18 failed, 356 passed; all 18 are the new tests, failing on missing testIDs as expected before impl. The two "ignored" start-link tests pass vacuously. `npx tsc --noEmit` clean. `npx expo export --platform android` succeeded. A throwaway start-link implementation in `(tabs)/index.tsx` (reverted, not committed) passed all 55 Stopwatch tests.
+- **Gotchas:**
+  - API names the tests pin: `settingsAPI.getCoach/updateCoach/getReminders/updateReminders`, `coachAPI.getNotes/createNote({text})/updateNote(id,{text})/deleteNote(id)/getUsage()/getConversations()/getConversation(id)`. The CoachSettings mock also has `settingsAPI.getDisplay/updateDisplay` for B69.
+  - Start link: read `start` with `useLocalSearchParams`, clear with `router.setParams({ start: undefined })` (the mock provides both the `router` export and `useRouter().setParams`). Ignore it unless the stopwatch is idle AND no Pomodoro run is in progress: paused counts as running. Set the existing `selectedTask` state so the save sheet opens with it chosen, and show `selected-activity` with the name. Wait for `tasks` to load before deciding.
+  - The Reminders switch saves at once with the stored `minutes_before`; the minutes field has its own `reminders-save`. Costs: 2 decimals for the month and list rows, 4 for call rows.
+  - Usage detail is inline on the Settings screen (`usage-detail`), not a new route.
+  - Intended length: `taskAPI.update(id, { intended_length })`, so `TaskUpdate` needs the field; `Task` needs `intended_length?: number | null` too (tests cast through `as Task` for now). Whole minutes 1–720.
+  - Seeding: the Schedule test covers average → Intended length → 10. The calendar Bank drag ghost (`calendar.tsx` `NO_HISTORY_SECONDS`) also seeds a length client-side; no test pins it, but per the contract it should use `intended_length` before 600 too. The server already seeds the real placement.
+  - A single-file `npx jest` run can hang after finishing ("Jest did not exit"); use `--forceExit` or run in the background.

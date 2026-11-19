@@ -27,6 +27,17 @@ jest.mock('../services/api', () => ({
   settingsAPI: { getPomodoro: jest.fn() },
 }));
 
+// B64 (D109, D110): the Stopwatch tab reads `start` from `useLocalSearchParams` and clears it
+// with `router.setParams({ start: undefined })` (either the `router` export or `useRouter()`).
+let mockSearchParams: { start?: string } = {};
+const mockSetParams = jest.fn();
+jest.mock('expo-router', () => ({
+  useLocalSearchParams: () => mockSearchParams,
+  useGlobalSearchParams: () => mockSearchParams,
+  useRouter: () => ({ setParams: mockSetParams }),
+  router: { setParams: (params: unknown) => mockSetParams(params) },
+}));
+
 const mockedUseTimer = useTimer as jest.Mock;
 const mockedUsePomodoro = usePomodoro as jest.Mock;
 const mockedGetPomodoro = settingsAPI.getPomodoro as jest.Mock;
@@ -167,6 +178,8 @@ function minDimension(style: unknown): number {
 }
 
 beforeEach(() => {
+  mockSearchParams = {};
+  mockSetParams.mockReset();
   mockedGetAll.mockReset();
   mockedGetAll.mockResolvedValue([GYM]);
   mockedGetPomodoro.mockReset();
@@ -914,5 +927,96 @@ describe('Pomodoro reset (B51, D85)', () => {
 
     expect(alertSpy).not.toHaveBeenCalled();
     expect(pomodoro.reset).toHaveBeenCalledTimes(1);
+  });
+});
+
+// B64 (D109, D110): a Start link opens the Stopwatch tab with `?start=<task_id>`.
+// Contract pinned here (choices the PRD leaves open):
+//   - Once the Activities have loaded, if the stopwatch is idle (and no Pomodoro run is in
+//     progress) and the id matches an Activity, that Activity becomes the selected Activity for
+//     the next Recording: the save sheet opens with it chosen, so Save with no picker change
+//     sends its `task_id` and name. Nothing is started.
+//   - The screen shows the choice as `selected-activity`, text containing the Activity's name.
+//   - The param is then cleared with `setParams({ start: undefined })`.
+//   - "Running" means the stopwatch is not idle (running or paused): a paused Recording is still
+//     in progress, so the link is ignored then too. An unknown id is ignored.
+describe('start link (B64, D109, D110)', () => {
+  const READING_LINK = { start: String(READING.id) };
+
+  async function renderWithClient() {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const element = () => (
+      <QueryClientProvider client={client}>
+        <StopwatchScreen />
+      </QueryClientProvider>
+    );
+    const view = await render(element());
+    return { rerender: () => view.rerender(element()) };
+  }
+
+  beforeEach(() => {
+    mockedGetAll.mockResolvedValue([GYM, READING]);
+    mockSetParams.mockImplementation(() => {
+      mockSearchParams = {};
+    });
+  });
+
+  async function saveAfterPausing(rerender: () => unknown) {
+    const mutate = jest.fn();
+    mockedUseCreateSession.mockReturnValue({ mutate, isPending: false });
+    mockedUseTimer.mockReturnValue(timerMock({ status: 'paused', elapsedMs: 1_000 }));
+    await act(async () => {
+      rerender();
+    });
+    await fireEvent.press(screen.getByTestId('btn-save-open'));
+    await fireEvent.press(screen.getByTestId('btn-save-confirm'));
+    expect(mutate).toHaveBeenCalledTimes(1);
+    return mutate.mock.calls[0][0];
+  }
+
+  it('selects the Activity without starting, and clears the param', async () => {
+    mockSearchParams = { ...READING_LINK };
+    const timer = timerMock({ status: 'idle' });
+    mockedUseTimer.mockReturnValue(timer);
+    const pomodoro = pomodoroMock();
+    mockedUsePomodoro.mockReturnValue(pomodoro);
+    const { rerender } = await renderWithClient();
+
+    await waitFor(() => expect(screen.getByTestId('selected-activity')).toHaveTextContent(/Reading/));
+    await waitFor(() => expect(mockSetParams).toHaveBeenCalledWith({ start: undefined }));
+    expect(timer.start).not.toHaveBeenCalled();
+    expect(pomodoro.start).not.toHaveBeenCalled();
+    expect(screen.getByTestId('btn-start')).toBeTruthy();
+
+    const body = await saveAfterPausing(rerender);
+    expect(body).toMatchObject({ name: 'Reading', task_id: READING.id });
+  });
+
+  it('is ignored while the stopwatch is running', async () => {
+    mockSearchParams = { ...READING_LINK };
+    const timer = timerMock({ status: 'running', elapsedMs: 5_000 });
+    mockedUseTimer.mockReturnValue(timer);
+    const { rerender } = await renderWithClient();
+
+    await waitFor(() => expect(mockedGetAll).toHaveBeenCalled());
+    await act(async () => {});
+    expect(screen.queryByTestId('selected-activity')).toBeNull();
+    expect(timer.start).not.toHaveBeenCalled();
+
+    const body = await saveAfterPausing(rerender);
+    expect(body.task_id).toBeUndefined();
+  });
+
+  it('is ignored for an unknown id', async () => {
+    mockSearchParams = { start: '999' };
+    mockedUseTimer.mockReturnValue(timerMock({ status: 'idle' }));
+    const { rerender } = await renderWithClient();
+
+    await waitFor(() => expect(mockedGetAll).toHaveBeenCalled());
+    await act(async () => {});
+    expect(screen.queryByTestId('selected-activity')).toBeNull();
+
+    const body = await saveAfterPausing(rerender);
+    expect(body.task_id).toBeUndefined();
   });
 });

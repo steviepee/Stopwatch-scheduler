@@ -422,7 +422,7 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [ ] Link check recorded in `progress.md`. If **Phone:** was not tappable, B68 goes from HOLD to PENDING before the client tasks run
 
 ### B64.tests — Mobile: Start links, Intended length, Coach settings and usage
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D101, D104, D106–D110, D113, D121.
 - **Contract:**
   - **Start link:** opening the app with `?start=<task_id>` (Expo Router search param on the
@@ -440,10 +440,10 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
       of conversations (date, status, cost) opening a read-only detail: messages, Proposal,
       and a table of calls (tokens of each kind, latency, cost).
 - **Acceptance Criteria:**
-  - [ ] Test: the `start` param selects the Activity without starting; ignored while running or for an unknown id
-  - [ ] Test: Intended length saves in seconds and clears to null
-  - [ ] Test: each setting round-trips through its API mock; Add note posts the text; note delete confirms first
-  - [ ] Test: usage shows the month's totals; detail renders the call rows
+  - [x] Test: the `start` param selects the Activity without starting; ignored while running or for an unknown id
+  - [x] Test: Intended length saves in seconds and clears to null
+  - [x] Test: each setting round-trips through its API mock; Add note posts the text; note delete confirms first
+  - [x] Test: usage shows the month's totals; detail renders the call rows
 
 ### B64.impl — Mobile: Start links, Intended length, Coach settings and usage
 - **Status:** PENDING
