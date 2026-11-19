@@ -391,10 +391,10 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [x] Test: `--csv` writes both files with a header and one row per record
 
 ### B63.impl — Backend: the metrics script
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
-  - [ ] All B63.tests pass; full suite passes
+  - [x] All B63.tests pass; full suite passes
 
 ### U15. USER — Deploy the backend, first real conversation, link check
 - **Status:** USER

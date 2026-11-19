@@ -2172,3 +2172,14 @@ Each iteration appends its results here so the next session knows what worked, w
   - Snapshot `scheduled_time` is `isoformat() + "Z"` (see `routers/coach.py` accept); compare it with the live item's `scheduled_time.isoformat() + "Z"` and `estimated_duration` as floats. A snapshot id with no item is deleted.
   - `recorded` counts accepted items whose Activity has a `StopwatchSession` (`start_time`, else `created_at`) on `target_date` in local time, local = UTC - `tz_offset` minutes; it ignores whether the item still exists. Non-accepted conversations may give 0 or None.
   - `since` filters on conversation `created_at.date() >= since`, and calls follow their conversation. The CSV columns are each table's columns in model order, plus the four derived counts on conversations.
+
+## B63.impl. Backend: the metrics script
+- **Date:** 2026-11-19
+- **Status:** DONE
+- **Summary:** Added `backend/scripts/coach_metrics.py`: `build_report(db, since)` filters conversations by `created_at` in SQL, loads only their calls, computes the totals, and derives kept/edited/deleted/recorded per conversation from `accepted_items` against the live Blocks and Recordings. `main(argv)` prints the totals and a tab-separated per-conversation table (with each conversation's cost) and, with `--csv PATH`, writes `PATH-conversations.csv` and `PATH-calls.csv`.
+- **Files changed:** backend/scripts/coach_metrics.py, prd.md, progress.md
+- **Verification:** (python3 subprocess) `pytest tests/` from `backend/`: 468 passed.
+- **Gotchas:**
+  - Started from the B63.tests session's throwaway reference in `/tmp/b63ref/` and reviewed and tidied it. That file is not part of the repo.
+  - Conversation rows carry an extra `cost_usd` (the sum of their calls) for the printed table. The conversations CSV uses `extrasaction="ignore"`, so it keeps exactly the model columns plus the four derived counts.
+  - Conversations with no `accepted_items` get `None` for the four derived counts, which shows as empty cells in the CSV.
