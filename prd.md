@@ -301,14 +301,14 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [x] Test: stored `content` replays byte-for-byte as the next call's earlier messages (append-only)
 
 ### B60.impl — Backend: the Coaching conversation engine
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract: `services/coach_model.py` (the only `anthropic`
   import; load the `claude-api` skill first), `services/coach_context.py`,
   `services/coach_plan.py`, and the routes in `routers/coach.py`. Reuse the peak-hours
   computation from `routers/insights.py` and the median from the existing Activity stats rather
   than re-deriving them; move a helper into a service if needed.
 - **Acceptance Criteria:**
-  - [ ] All B60.tests pass; full suite passes
+  - [x] All B60.tests pass; full suite passes
 
 ### B61.tests — Backend: accept, reject, start over, rating, history
 - **Status:** PENDING

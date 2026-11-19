@@ -21,11 +21,12 @@ import app.models.schedule  # noqa: F401
 import app.models.google_credential  # noqa: F401
 import app.models.pomodoro_settings  # noqa: F401
 import app.models.coach  # noqa: F401
+import app.models.app_settings  # noqa: F401
 
 config = context.config
 
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = Base.metadata
 

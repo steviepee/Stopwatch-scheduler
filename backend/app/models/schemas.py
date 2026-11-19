@@ -170,6 +170,14 @@ class ReminderSettings(ReminderSettingsBase):
         from_attributes = True
 
 
+class DisplaySettingsBase(BaseModel):
+    clock_24h: bool
+
+class DisplaySettings(DisplaySettingsBase):
+    class Config:
+        from_attributes = True
+
+
 class CoachNoteBase(BaseModel):
     text: str = Field(min_length=1, max_length=300)
 
@@ -180,6 +188,39 @@ class CoachNote(CoachNoteBase):
 
     class Config:
         from_attributes = True
+
+
+# Coaching conversation schemas
+class CoachConversationOpen(BaseModel):
+    target_date: date
+    tz_offset: int
+
+class CoachMessageCreate(BaseModel):
+    text: str = Field(min_length=1, max_length=2000)
+
+class CoachVisibleMessage(BaseModel):
+    role: str
+    visible_text: str
+    created_at: UTCDateTime
+
+class CoachDayItem(BaseModel):
+    kind: Literal["event", "block"]
+    name: str
+    start: str
+    end: str
+    all_day: bool
+    on_google: bool
+
+class CoachConversation(BaseModel):
+    id: int
+    target_date: date
+    status: str
+    messages: List[CoachVisibleMessage]
+    proposal: Optional[dict] = None
+    changes_left: Optional[int] = None
+    messages_left: Optional[int] = None
+    day_items: List[CoachDayItem]
+    note_suggestion: Optional[str] = None
 
 
 # TaskStats schema

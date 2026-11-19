@@ -18,6 +18,7 @@ class CoachConversation(Base):
     proposed_count = Column(Integer, nullable=True)
     accepted_count = Column(Integer, nullable=True)
     accepted_items = Column(Text, nullable=True)
+    context = Column(Text, nullable=True)
     rating = Column(String(10), nullable=True)
     created_at = Column(DateTime, default=utcnow)
     updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)

@@ -6,6 +6,7 @@ from app.database import get_db
 from app.models import task as task_model
 from app.models import schemas
 from app.models.time_log import TimeLog
+from app.services.task_stats import median
 
 router = APIRouter()
 
@@ -93,15 +94,8 @@ def get_task_stats(task_id: int, db: Session = Depends(get_db)):
 
     previous = logs[0].duration
 
-    durations = sorted(l.duration for l in logs)
-    n = len(durations)
-    if n % 2 == 1:
-        median = durations[n // 2]
-    else:
-        median = (durations[n // 2 - 1] + durations[n // 2]) / 2
-
     return schemas.TaskStats(
         average=task.average_duration,
-        median=median,
+        median=median(l.duration for l in logs),
         previous=previous,
     )

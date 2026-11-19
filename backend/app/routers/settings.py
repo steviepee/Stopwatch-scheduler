@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import schemas
+from app.models.app_settings import AppSettings
 from app.models.coach import CoachSettings, ReminderSettings
 from app.models.pomodoro_settings import PomodoroSettings
 
@@ -56,3 +57,13 @@ def get_reminder_settings(db: Session = Depends(get_db)):
 @router.put("/reminders", response_model=schemas.ReminderSettings)
 def update_reminder_settings(settings: schemas.ReminderSettingsBase, db: Session = Depends(get_db)):
     return _update(db, ReminderSettings, settings)
+
+
+@router.get("/display", response_model=schemas.DisplaySettings)
+def get_display_settings(db: Session = Depends(get_db)):
+    return _get_or_create(db, AppSettings)
+
+
+@router.put("/display", response_model=schemas.DisplaySettings)
+def update_display_settings(settings: schemas.DisplaySettingsBase, db: Session = Depends(get_db)):
+    return _update(db, AppSettings, settings)
