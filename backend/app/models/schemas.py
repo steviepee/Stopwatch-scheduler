@@ -222,6 +222,54 @@ class CoachConversation(BaseModel):
     day_items: List[CoachDayItem]
     note_suggestion: Optional[str] = None
 
+class CoachRating(BaseModel):
+    rating: Optional[Literal["up", "down"]]
+
+class CoachCallRow(BaseModel):
+    turn_index: int
+    model: str
+    effort: str
+    input_tokens: int
+    output_tokens: int
+    cache_read_input_tokens: Optional[int] = None
+    cache_creation_input_tokens: Optional[int] = None
+    stop_reason: Optional[str] = None
+    latency_ms: int
+    cost_usd: float
+    created_at: UTCDateTime
+
+    class Config:
+        from_attributes = True
+
+class CoachConversationSummary(BaseModel):
+    id: int
+    target_date: date
+    status: str
+    user_turns: int
+    revision_turns: int
+    call_count: int
+    input_tokens: int
+    output_tokens: int
+    cache_read_input_tokens: int
+    cache_creation_input_tokens: int
+    cost_usd: float
+    proposed_count: Optional[int] = None
+    accepted_count: Optional[int] = None
+    rating: Optional[str] = None
+    created_at: UTCDateTime
+    closed_at: Optional[UTCDateTime] = None
+
+class CoachConversationDetail(CoachConversationSummary):
+    messages: List[CoachVisibleMessage]
+    proposal: Optional[dict] = None
+    calls: List[CoachCallRow]
+
+class CoachUsage(BaseModel):
+    month: str
+    conversations: int
+    accepted: int
+    cost_usd: float
+
 
 # TaskStats schema
 class TaskStats(BaseModel):

@@ -202,25 +202,30 @@ def place_item(
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    estimated_duration = item.estimated_duration
+    db_item = place_on_day(db, target_date, task, item.scheduled_time, item.estimated_duration, item.is_frog)
+    db.commit()
+    db.refresh(db_item)
+    return db_item
+
+
+def place_on_day(db: Session, target_date: date, task: Task, scheduled_time: datetime,
+                 estimated_duration: Optional[float], is_frog: bool) -> ScheduleItem:
+    """Append one Activity to a date's Schedule. The caller commits."""
     if estimated_duration is None:
         estimated_duration = task.average_duration or task.intended_length or 600
 
     db_schedule = _day_schedule(db, target_date)
     db_item = ScheduleItem(
-        schedule_id=db_schedule.id,
-        task_id=item.task_id,
+        task_id=task.id,
         estimated_duration=estimated_duration,
         position=len(db_schedule.items),
-        scheduled_time=item.scheduled_time,
-        is_frog=item.is_frog,
+        scheduled_time=scheduled_time,
+        is_frog=is_frog,
     )
-    db.add(db_item)
+    db_schedule.items.append(db_item)
     db.flush()
     if db_item.is_frog:
         _clear_other_frogs(db, db_item)
-    db.commit()
-    db.refresh(db_item)
     return db_item
 
 

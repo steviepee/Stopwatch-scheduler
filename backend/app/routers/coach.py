@@ -1,10 +1,12 @@
 import json
 import time
 from collections import defaultdict
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db, utcnow
@@ -12,6 +14,7 @@ from app.models import schemas
 from app.models.coach import CoachCall, CoachConversation, CoachMessage, CoachNote
 from app.models.task import Task
 from app.models.time_log import TimeLog
+from app.routers.schedules import place_on_day
 from app.services import coach_context, coach_model, coach_plan
 from app.services.coach_cost import cost_usd
 from app.services.task_stats import median
@@ -315,3 +318,173 @@ def send_message(conversation_id: int, body: schemas.CoachMessageCreate, db: Ses
     _add_message(db, conv, "user", [{"type": "text", "text": text}], body.text)
     _run_or_502(db, turn, _visible_user_count(db, conv))
     return _response(db, turn)
+
+
+def _get_conversation(db: Session, conversation_id: int) -> CoachConversation:
+    conv = db.query(CoachConversation).filter(CoachConversation.id == conversation_id).first()
+    if not conv:
+        raise HTTPException(status_code=404, detail="Coaching conversation not found")
+    return conv
+
+
+def _require_open(conv: CoachConversation):
+    if conv.status != "open":
+        raise HTTPException(status_code=409, detail="conversation is not open")
+
+
+def _close(conv: CoachConversation, status: str):
+    conv.status = status
+    conv.closed_at = utcnow()
+
+
+def _calls(db: Session, conv: CoachConversation) -> list:
+    return db.query(CoachCall).filter(CoachCall.conversation_id == conv.id).order_by(CoachCall.id).all()
+
+
+def _summary(conv: CoachConversation, calls: list) -> dict:
+    return dict(
+        id=conv.id,
+        target_date=conv.target_date,
+        status=conv.status,
+        user_turns=conv.user_turns,
+        revision_turns=conv.revision_turns,
+        call_count=len(calls),
+        input_tokens=sum(c.input_tokens for c in calls),
+        output_tokens=sum(c.output_tokens for c in calls),
+        cache_read_input_tokens=sum(c.cache_read_input_tokens or 0 for c in calls),
+        cache_creation_input_tokens=sum(c.cache_creation_input_tokens or 0 for c in calls),
+        cost_usd=sum(c.cost_usd for c in calls),
+        proposed_count=conv.proposed_count,
+        accepted_count=conv.accepted_count,
+        rating=conv.rating,
+        created_at=conv.created_at,
+        closed_at=conv.closed_at,
+    )
+
+
+@router.get("/conversations", response_model=List[schemas.CoachConversationSummary])
+def list_conversations(db: Session = Depends(get_db)):
+    calls = defaultdict(list)
+    for call in db.query(CoachCall).all():
+        calls[call.conversation_id].append(call)
+    convs = db.query(CoachConversation).order_by(
+        CoachConversation.created_at.desc(), CoachConversation.id.desc()
+    ).all()
+    return [_summary(conv, calls[conv.id]) for conv in convs]
+
+
+@router.get("/conversations/{conversation_id}", response_model=schemas.CoachConversationDetail)
+def get_conversation(conversation_id: int, db: Session = Depends(get_db)):
+    conv = _get_conversation(db, conversation_id)
+    calls = _calls(db, conv)
+    return schemas.CoachConversationDetail(
+        **_summary(conv, calls),
+        messages=[
+            schemas.CoachVisibleMessage(role=r.role, visible_text=r.visible_text, created_at=r.created_at)
+            for r in _rows(db, conv) if r.visible_text is not None
+        ],
+        proposal=json.loads(conv.proposal) if conv.proposal else None,
+        calls=calls,
+    )
+
+
+@router.post("/conversations/{conversation_id}/accept", response_model=schemas.Schedule)
+def accept_proposal(conversation_id: int, db: Session = Depends(get_db)):
+    conv = _get_conversation(db, conversation_id)
+    _require_open(conv)
+    if conv.proposal is None:
+        raise HTTPException(status_code=409, detail="there is no Proposal to accept")
+
+    items = json.loads(conv.proposal)["items"]
+    turn = _Turn(db, conv)
+    now = coach_context.local_now(conv.tz_offset)
+    problems = coach_plan.validate(
+        items, conv.target_date,
+        not_before=now if conv.target_date == now.date() else None,
+        busy=turn.busy(),
+        day_has_frog=any(b["is_frog"] for b in turn.blocks),
+        task_names={t.id: t.name for t in db.query(Task).all()},
+    )
+    if problems:
+        raise HTTPException(status_code=409, detail="The Proposal no longer fits the day: " + " ".join(problems))
+
+    offset = timedelta(minutes=conv.tz_offset)
+    placed = []
+    for item in items:
+        seconds = item["duration_minutes"] * 60
+        if item["task_id"] is not None:
+            task = db.query(Task).filter(Task.id == item["task_id"]).first()
+        else:
+            name = item["new_activity_name"].strip()
+            task = db.query(Task).filter(func.lower(Task.name) == name.lower()).first()
+            if not task:
+                task = Task(name=name, intended_length=seconds if item["source"] == "you_said" else None)
+                db.add(task)
+                db.flush()
+        start = datetime.combine(conv.target_date, datetime.strptime(item["start"], "%H:%M").time()) + offset
+        placed.append(place_on_day(db, conv.target_date, task, start, seconds, item["is_frog"]))
+
+    _close(conv, "accepted")
+    conv.accepted_count = len(placed)
+    conv.accepted_items = json.dumps([
+        {"id": p.id, "task_id": p.task_id, "scheduled_time": p.scheduled_time.isoformat() + "Z",
+         "estimated_duration": p.estimated_duration}
+        for p in placed
+    ])
+    db.commit()
+    schedule = placed[0].schedule
+    db.refresh(schedule)
+    return schedule
+
+
+@router.post("/conversations/{conversation_id}/reject", response_model=schemas.CoachConversationSummary)
+def reject_proposal(conversation_id: int, db: Session = Depends(get_db)):
+    conv = _get_conversation(db, conversation_id)
+    _require_open(conv)
+    _close(conv, "rejected")
+    db.commit()
+    return _summary(conv, _calls(db, conv))
+
+
+@router.post("/conversations/{conversation_id}/start-over", response_model=schemas.CoachConversation)
+def start_over(conversation_id: int, db: Session = Depends(get_db)):
+    conv = _get_conversation(db, conversation_id)
+    _require_open(conv)
+    _close(conv, "abandoned")
+    db.commit()
+    body = schemas.CoachConversationOpen(target_date=conv.target_date, tz_offset=conv.tz_offset)
+    return open_conversation(body, db)
+
+
+@router.put("/conversations/{conversation_id}/rating", response_model=schemas.CoachConversationSummary)
+def rate_conversation(conversation_id: int, body: schemas.CoachRating, db: Session = Depends(get_db)):
+    conv = _get_conversation(db, conversation_id)
+    if conv.status == "open":
+        raise HTTPException(status_code=409, detail="only a closed conversation can be rated")
+    conv.rating = body.rating
+    db.commit()
+    return _summary(conv, _calls(db, conv))
+
+
+@router.get("/usage", response_model=schemas.CoachUsage)
+def get_usage(
+    month: Optional[str] = Query(None, pattern=r"^\d{4}-(0[1-9]|1[0-2])$"),
+    db: Session = Depends(get_db),
+):
+    if month is None:
+        month = f"{coach_context.now_utc():%Y-%m}"
+    year, mon = int(month[:4]), int(month[5:])
+    start = datetime(year, mon, 1)
+    end = datetime(year + mon // 12, mon % 12 + 1, 1)
+    convs = db.query(CoachConversation).filter(
+        CoachConversation.created_at >= start,
+        CoachConversation.created_at < end,
+    ).all()
+    ids = [c.id for c in convs]
+    cost = db.query(func.sum(CoachCall.cost_usd)).filter(CoachCall.conversation_id.in_(ids)).scalar() if ids else None
+    return schemas.CoachUsage(
+        month=month,
+        conversations=len(convs),
+        accepted=sum(1 for c in convs if c.status == "accepted"),
+        cost_usd=cost or 0.0,
+    )

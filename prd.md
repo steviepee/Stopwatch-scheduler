@@ -338,11 +338,11 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [x] Test: list and detail totals equal the sum of the call rows; usage counts only that month
 
 ### B61.impl — Backend: accept, reject, start over, rating, history
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract. Factor the placement code in `routers/schedules.py`
   into a function both routes call, without changing its behaviour.
 - **Acceptance Criteria:**
-  - [ ] All B61.tests pass; full suite passes
+  - [x] All B61.tests pass; full suite passes
 
 ### B62.tests — Backend: Start reminders on pushed events
 - **Status:** PENDING
