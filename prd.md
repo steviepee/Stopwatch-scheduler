@@ -214,7 +214,7 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [x] B60–B67, B69 and B70 set to PENDING
 
 ### B60.tests — Backend: the Coaching conversation engine
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** D93, D95, D99, D100, D102, D105, D115, D116, D118, D119, D121. Add
   `backend/tests/test_coach_conversation.py`; `call_model` is monkeypatched throughout.
 - **Contract:**
@@ -285,20 +285,20 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
     a short message, a `coach_calls` row with `stop_reason = "error"`, and no stored assistant
     message.
 - **Acceptance Criteria:**
-  - [ ] Test: open creates and calls once; reopening the same date returns the same id with no call; a past date → 422
-  - [ ] Test: the context contains each listed piece and no Recording notes or names; notes absent when `notes_enabled` is false, and so is `suggest_note`
-  - [ ] Test: an overlapping Proposal gets an `is_error` tool result naming the clash, and the corrected one is stored
-  - [ ] Test: three bad Proposals in a row → no Proposal stored, reply says it could not fit
-  - [ ] Test: Frog refused on a day that has one; two Frogs refused
-  - [ ] Test: each user message's content starts with the current local date and time and its `visible_text` does not; for today's date an item starting before now gets an `is_error`, and the same item on a future date is stored
-  - [ ] Test: with an earlier conversation stored for the same date and for another date, none of its message text appears in the `call_model` arguments, and the tools offered are exactly `propose_plan` and `suggest_note` (only `propose_plan` when notes are off)
-  - [ ] Test: a stored Proposal item keeps `source` and `reason`, and an existing Activity's item gains `recording_count` and `typical_seconds` from the database
-  - [ ] Test: the context is stored at open; after a Schedule Item is added to the date, the next call's system is byte-for-byte the same as the first; `clock_24h` true puts `Clock: 24-hour` in it and round-trips through `/api/settings/display`
-  - [ ] Test: an all-day event never clashes; `day_items` lists events and Blocks in time order with `on_google` set correctly
-  - [ ] Test: the 6th user message carries the must-propose instruction; `changes_left` and `messages_left` are null before the first Proposal and count down after it
-  - [ ] Test: a question after a Proposal leaves `changes_left` unchanged; a 4th change gets an `is_error` and keeps the Proposal; the 7th message after a Proposal → 409
-  - [ ] Test: each call writes one `coach_calls` row with tokens and cost; an SDK exception → 502 and an error row
-  - [ ] Test: stored `content` replays byte-for-byte as the next call's earlier messages (append-only)
+  - [x] Test: open creates and calls once; reopening the same date returns the same id with no call; a past date → 422
+  - [x] Test: the context contains each listed piece and no Recording notes or names; notes absent when `notes_enabled` is false, and so is `suggest_note`
+  - [x] Test: an overlapping Proposal gets an `is_error` tool result naming the clash, and the corrected one is stored
+  - [x] Test: three bad Proposals in a row → no Proposal stored, reply says it could not fit
+  - [x] Test: Frog refused on a day that has one; two Frogs refused
+  - [x] Test: each user message's content starts with the current local date and time and its `visible_text` does not; for today's date an item starting before now gets an `is_error`, and the same item on a future date is stored
+  - [x] Test: with an earlier conversation stored for the same date and for another date, none of its message text appears in the `call_model` arguments, and the tools offered are exactly `propose_plan` and `suggest_note` (only `propose_plan` when notes are off)
+  - [x] Test: a stored Proposal item keeps `source` and `reason`, and an existing Activity's item gains `recording_count` and `typical_seconds` from the database
+  - [x] Test: the context is stored at open; after a Schedule Item is added to the date, the next call's system is byte-for-byte the same as the first; `clock_24h` true puts `Clock: 24-hour` in it and round-trips through `/api/settings/display`
+  - [x] Test: an all-day event never clashes; `day_items` lists events and Blocks in time order with `on_google` set correctly
+  - [x] Test: the 6th user message carries the must-propose instruction; `changes_left` and `messages_left` are null before the first Proposal and count down after it
+  - [x] Test: a question after a Proposal leaves `changes_left` unchanged; a 4th change gets an `is_error` and keeps the Proposal; the 7th message after a Proposal → 409
+  - [x] Test: each call writes one `coach_calls` row with tokens and cost; an SDK exception → 502 and an error row
+  - [x] Test: stored `content` replays byte-for-byte as the next call's earlier messages (append-only)
 
 ### B60.impl — Backend: the Coaching conversation engine
 - **Status:** PENDING
