@@ -1,4 +1,5 @@
 // Calendar utility functions
+import { formatClock } from './formatClock';
 
 /**
  * Get an array of 7 days for the week containing the given date
@@ -69,14 +70,8 @@ export function snapToSlot(time: Date, intervalMin: number): Date {
   return result;
 }
 
-/**
- * Format hour as "9 AM", "2 PM", etc.
- */
-export function formatHour(hour: number): string {
-  if (hour === 0) return '12 AM';
-  if (hour === 12) return '12 PM';
-  if (hour < 12) return `${hour} AM`;
-  return `${hour - 12} PM`;
+export function formatHour(hour: number, clock24h: boolean): string {
+  return formatClock(new Date(2000, 0, 1, hour), clock24h);
 }
 
 /**

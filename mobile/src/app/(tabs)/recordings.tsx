@@ -8,6 +8,7 @@ import { sessionAPI, taskAPI } from '@/services/api';
 import { CREATE_SESSION_KEY } from '@/services/queryClient';
 import { PickerField } from '@/components/PickerField';
 import { formatElapsed } from '@/timer/format';
+import { formatClock, useClock24h } from '@/utils/formatClock';
 import type { StopwatchSession, StopwatchSessionCreate, StopwatchSessionUpdate, Task } from '@/types';
 
 function dayOf(iso: string): string {
@@ -66,16 +67,27 @@ function ActivityPicker({
   );
 }
 
-function ManualForm({ tasks, onClose }: { tasks: Task[]; onClose: () => void }) {
+export type ManualFormInitial = { name: string; task?: Task; seconds: number; start: Date };
+
+export function ManualForm({
+  tasks,
+  onClose,
+  initial,
+}: {
+  tasks: Task[];
+  onClose: () => void;
+  initial?: ManualFormInitial;
+}) {
   const queryClient = useQueryClient();
+  const clock24h = useClock24h();
   const [openedAt] = useState(() => Math.floor(Date.now() / 60_000) * 60_000);
-  const [name, setName] = useState('');
+  const [name, setName] = useState(initial?.name ?? '');
   const [searchText, setSearchText] = useState('');
-  const [selectedTask, setSelectedTask] = useState<Task | undefined>(undefined);
+  const [selectedTask, setSelectedTask] = useState<Task | undefined>(initial?.task);
   const [selectedNewActivity, setSelectedNewActivity] = useState(false);
-  const [hours, setHours] = useState('');
-  const [minutes, setMinutes] = useState('');
-  const [editedStart, setEditedStart] = useState<Date | null>(null);
+  const [hours, setHours] = useState(initial ? String(Math.floor(initial.seconds / 3600)) : '');
+  const [minutes, setMinutes] = useState(initial ? String(Math.floor((initial.seconds % 3600) / 60)) : '');
+  const [editedStart, setEditedStart] = useState<Date | null>(initial?.start ?? null);
 
   const durationSeconds = (parseInt(hours, 10) || 0) * 3600 + (parseInt(minutes, 10) || 0) * 60;
   const start = editedStart ?? new Date(openedAt - durationSeconds * 1000);
@@ -229,7 +241,7 @@ function ManualForm({ tasks, onClose }: { tasks: Task[]; onClose: () => void }) 
           <Text style={styles.dateLabel}>Start time</Text>
           <PickerField
             testID="manual-start-time"
-            label={start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            label={formatClock(start, clock24h)}
             value={start}
             mode="time"
             onChange={pickTime}

@@ -11,7 +11,7 @@ import { CREATE_SESSION_KEY } from '@/services/queryClient';
 import { DEFAULT_USER_OPTIONS, getUserOptions, setUserOptions, type UserOptions } from '@/services/options';
 import { isNativeAvailable } from '@/timer/native';
 import { coachAPI, settingsAPI } from '@/services/api';
-import type { CoachSettings, PomodoroSettings, ReminderSettings } from '@/types';
+import type { CoachSettings, DisplaySettings, PomodoroSettings, ReminderSettings } from '@/types';
 
 type PomodoroKey = keyof PomodoroSettings;
 
@@ -147,6 +147,12 @@ export default function SettingsScreen() {
   const reminderMinutesValid = inRange(reminderMinutes, 120);
   const remindersSaveDisabled = !remindersQuery.data || !reminderMinutesValid || remindersMutation.isPending;
 
+  const displayQuery = useQuery({ queryKey: ['settings', 'display'], queryFn: () => settingsAPI.getDisplay() });
+  const displayMutation = useMutation({
+    mutationFn: (settings: DisplaySettings) => settingsAPI.updateDisplay(settings),
+    onSuccess: (data) => queryClient.setQueryData(['settings', 'display'], data),
+  });
+
   const usageQuery = useQuery({ queryKey: ['coach', 'usage'], queryFn: () => coachAPI.getUsage() });
   const conversationsQuery = useQuery({ queryKey: ['coach', 'conversations'], queryFn: () => coachAPI.getConversations() });
   const [openConversationId, setOpenConversationId] = useState<number | null>(null);
@@ -281,6 +287,17 @@ export default function SettingsScreen() {
           testID="toggle-show-previous"
           value={options.showPrevious}
           onValueChange={toggleOption('showPrevious')}
+        />
+      </View>
+
+      <Text style={styles.label}>Clock</Text>
+      <View style={styles.infoRow}>
+        <Text style={styles.infoLabel}>Use 24-hour clock</Text>
+        <Switch
+          testID="toggle-clock-24h"
+          value={displayQuery.data?.clock_24h ?? false}
+          disabled={!displayQuery.data || displayMutation.isPending}
+          onValueChange={(value) => displayMutation.mutate({ clock_24h: value })}
         />
       </View>
 

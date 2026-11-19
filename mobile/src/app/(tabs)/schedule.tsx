@@ -9,6 +9,7 @@ import { PickerField } from '@/components/PickerField';
 import { calendarImportAPI, taskAPI, scheduleAPI, insightsAPI } from '@/services/api';
 import { useUserOptions, type UserOptions } from '@/services/options';
 import { formatElapsed } from '@/timer/format';
+import { formatClock, useClock24h } from '@/utils/formatClock';
 import type { GenerateActivity, GenerateEvent, GenerateRequest, Schedule, ScheduleCreate, StrategyOption, Task } from '@/types';
 
 // Rounds up, matching what an untouched row schedules: a cushion, and it
@@ -73,10 +74,6 @@ function onDate(time: Date, date: Date): Date {
   return result;
 }
 
-function formatTime(date: Date): string {
-  return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-}
-
 function formatHour(hour: number): string {
   const period = hour >= 12 ? 'PM' : 'AM';
   return `${hour % 12 || 12} ${period}`;
@@ -117,6 +114,7 @@ async function fetchExistingEvents(
 export default function ScheduleScreen() {
   const queryClient = useQueryClient();
   const userOptions = useUserOptions();
+  const clock24h = useClock24h();
   const { data: tasks } = useQuery({ queryKey: ['tasks'], queryFn: taskAPI.getAll });
   const { data: regimens } = useQuery({ queryKey: ['regimens'], queryFn: () => scheduleAPI.getAll(true) });
   const { data: peakHours } = useQuery({ queryKey: ['peak-hours'], queryFn: insightsAPI.getPeakHours });
@@ -409,7 +407,7 @@ export default function ScheduleScreen() {
         <Text style={styles.rowLabel}>Start time</Text>
         <PickerField
           testID="picker-start-time"
-          label={formatTime(startTime)}
+          label={formatClock(startTime, clock24h)}
           value={startTime}
           mode="time"
           onChange={setStartTime}
@@ -424,7 +422,7 @@ export default function ScheduleScreen() {
         <Text style={styles.rowLabel}>Day end</Text>
         <PickerField
           testID="picker-day-end"
-          label={formatTime(dayEnd)}
+          label={formatClock(dayEnd, clock24h)}
           value={dayEnd}
           mode="time"
           onChange={setDayEnd}

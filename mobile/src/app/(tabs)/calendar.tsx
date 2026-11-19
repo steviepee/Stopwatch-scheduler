@@ -19,7 +19,9 @@ import {
   snapToSlot,
   timeFromPosition,
 } from '@/utils/calendarUtils';
+import { formatClock, useClock24h } from '@/utils/formatClock';
 import type { Schedule, ScheduleItem, Task } from '@/types';
+import { ManualForm, type ManualFormInitial } from './recordings';
 
 type GoogleEvent = { id?: string; summary: string; start: string; end: string };
 type WeekAgendaItem =
@@ -103,6 +105,8 @@ export default function CalendarDayScreen() {
   const [dragItem, setDragItem] = useState<DragPayload | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [recordingFrom, setRecordingFrom] = useState<ManualFormInitial | null>(null);
+  const clock24h = useClock24h();
 
   // Gesture absoluteY is window-relative; these convert it to the grid's content space.
   const containerRef = useRef<View>(null);
@@ -337,6 +341,10 @@ export default function CalendarDayScreen() {
     return [...dayScheduleItems, ...dayGoogle].sort((a, b) => a.start.getTime() - b.start.getTime());
   }
 
+  if (recordingFrom) {
+    return <ManualForm tasks={tasks ?? []} initial={recordingFrom} onClose={() => setRecordingFrom(null)} />;
+  }
+
   return (
     <View
       ref={containerRef}
@@ -400,7 +408,7 @@ export default function CalendarDayScreen() {
                 {items.map((item) => (
                   <View key={`${item.type}-${item.id}`} testID={`week-${item.type}-${item.id}`} style={styles.weekItemRow}>
                     <Text style={styles.weekItemText}>
-                      {item.start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}  {item.name}
+                      {formatClock(item.start, clock24h)}  {item.name}
                     </Text>
                   </View>
                 ))}
@@ -466,6 +474,20 @@ export default function CalendarDayScreen() {
             onPress={() => setEditingId((current) => (current === selectedItem.id ? null : selectedItem.id))}>
             <Text style={styles.buttonLabel}>{editingId === selectedItem.id ? 'Done editing' : 'Edit block'}</Text>
           </Pressable>
+          <Pressable
+            testID={`btn-save-recording-${selectedItem.id}`}
+            accessibilityRole="button"
+            style={styles.actionButton}
+            onPress={() =>
+              setRecordingFrom({
+                name: itemName(selectedItem),
+                task: selectedItem.task,
+                seconds: selectedItem.estimated_duration,
+                start: new Date(selectedItem.scheduled_time!),
+              })
+            }>
+            <Text style={styles.buttonLabel}>Save as Recording</Text>
+          </Pressable>
           {selectedItem.calendar_event_id && (
             <Pressable
               testID={`btn-remove-google-${selectedItem.id}`}
@@ -528,7 +550,7 @@ export default function CalendarDayScreen() {
         }}>
         {Array.from({ length: END_HOUR - START_HOUR }, (_, i) => (
           <View key={i} style={[styles.hourRow, { top: i * HOUR_HEIGHT }]}>
-            <Text style={styles.hourLabel}>{formatHour(START_HOUR + i)}</Text>
+            <Text style={styles.hourLabel}>{formatHour(START_HOUR + i, clock24h)}</Text>
           </View>
         ))}
 

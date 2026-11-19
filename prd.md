@@ -473,10 +473,10 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [x] Test: Save as Recording opens the form filled from the Block; an edited duration is what gets posted
 
 ### B69.impl — Mobile: app-wide clock, Save as Recording
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
-  - [ ] All B69.tests pass; mobile suite, tsc, and export pass
+  - [x] All B69.tests pass; mobile suite, tsc, and export pass
 
 ### B65.tests — Mobile: the Coach screen
 - **Status:** PENDING
