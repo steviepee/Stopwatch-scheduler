@@ -554,10 +554,10 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [x] Web suite, tsc, and build pass
 
 ### B67.impl — Web: the Coach screen
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
-  - [ ] All B67.tests pass; web suite, tsc, and build pass
+  - [x] All B67.tests pass; web suite, tsc, and build pass
 
 ### B68 — Backend: "Open in app" page (only if U15's link check fails)
 - **Status:** HOLD

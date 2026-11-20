@@ -6,6 +6,7 @@ import { CalendarGrid } from './CalendarGrid';
 import { ActivityBank } from './ActivityBank';
 import { ActivityPicker } from './ActivityPicker';
 import { ManualForm } from '../SessionList';
+import { CoachPanel } from '../CoachPanel';
 import { formatClock, useClock24h } from '../../utils/formatClock';
 import { formatDuration, previousWeek, nextWeek, previousDay, nextDay, formatDayLong, getWeekDays, dateKey } from '../../utils/calendarUtils';
 
@@ -53,6 +54,18 @@ export function CalendarView({ tasks, onSessionCreated }: CalendarViewProps) {
   const [removeDay, setRemoveDay] = useState<Schedule | null>(null);
   const [status, setStatus] = useState<Status | null>(null);
   const [recordingFrom, setRecordingFrom] = useState<ScheduleItem | null>(null);
+  const [coachDate, setCoachDate] = useState<string | null>(null);
+  const [online, setOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine);
+    window.addEventListener('online', update);
+    window.addEventListener('offline', update);
+    return () => {
+      window.removeEventListener('online', update);
+      window.removeEventListener('offline', update);
+    };
+  }, []);
 
   const days = viewMode === 'week' ? getWeekDays(currentDate) : [currentDate];
   const rangeStart = dateKey(days[0]);
@@ -261,6 +274,8 @@ export function CalendarView({ tasks, onSessionCreated }: CalendarViewProps) {
   const selectedItem = selectedId === null
     ? null
     : schedules.flatMap((s) => s.items).find((i) => i.id === selectedId) ?? null;
+  const shownKey = dateKey(currentDate);
+  const canPlan = viewMode === 'day' && shownKey >= dateKey(new Date());
 
   return (
     <DndContext
@@ -306,6 +321,24 @@ export function CalendarView({ tasks, onSessionCreated }: CalendarViewProps) {
             </button>
           </div>
         </div>
+
+        {canPlan && (
+          <div className="coach-entry">
+            <button
+              className="glass-button-primary"
+              data-testid="btn-plan-coach"
+              disabled={!online}
+              onClick={() => setCoachDate(shownKey)}
+            >
+              Plan with Coach
+            </button>
+            {!online && (
+              <span className="coach-muted" data-testid="coach-offline">
+                You're offline — the Coach needs a connection.
+              </span>
+            )}
+          </div>
+        )}
 
         {status && (
           <div
@@ -417,6 +450,16 @@ export function CalendarView({ tasks, onSessionCreated }: CalendarViewProps) {
             />
           </div>
         </div>
+      )}
+
+      {/* Plan with Coach (D103) */}
+      {coachDate && (
+        <CoachPanel
+          date={coachDate}
+          tasks={tasks}
+          onClose={() => setCoachDate(null)}
+          onAccepted={load}
+        />
       )}
 
       {/* Exported Block dropped on the Bank (D45) */}

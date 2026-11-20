@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Task, TaskCreate, TaskUpdate, TaskStats, TimeLogCreate, TimeLog, StopwatchSession, StopwatchSessionCreate, StopwatchSessionUpdate, StopwatchSessionWithTask, Schedule, ScheduleCreate, ScheduleUpdate, ScheduleItem, ScheduleItemCreate, ScheduleItemPlace, ScheduleItemUpdate, ApplyRegimen, GenerateRequest, GenerateResponse, PeakHoursResponse, PomodoroSettings, CoachSettings, ReminderSettings, DisplaySettings,CoachNote, CoachUsage, CoachConversationSummary, CoachConversationDetail } from '../types';
+import { Task, TaskCreate, TaskUpdate, TaskStats, TimeLogCreate, TimeLog, StopwatchSession, StopwatchSessionCreate, StopwatchSessionUpdate, StopwatchSessionWithTask, Schedule, ScheduleCreate, ScheduleUpdate, ScheduleItem, ScheduleItemCreate, ScheduleItemPlace, ScheduleItemUpdate, ApplyRegimen, GenerateRequest, GenerateResponse, PeakHoursResponse, PomodoroSettings, CoachSettings, ReminderSettings, DisplaySettings,CoachNote, CoachUsage, CoachConversationSummary, CoachConversationDetail, CoachConversation } from '../types';
 
 const API_BASE_URL = '/api';
 
@@ -312,6 +312,36 @@ export const coachAPI = {
 
   getConversation: async (id: number): Promise<CoachConversationDetail> => {
     const response = await api.get(`/coach/conversations/${id}`);
+    return response.data;
+  },
+
+  openConversation: async (body: { target_date: string; tz_offset: number }): Promise<CoachConversation> => {
+    const response = await api.post('/coach/conversations', body);
+    return response.data;
+  },
+
+  sendMessage: async (id: number, body: { text: string }): Promise<CoachConversation> => {
+    const response = await api.post(`/coach/conversations/${id}/messages`, body);
+    return response.data;
+  },
+
+  accept: async (id: number): Promise<Schedule> => {
+    const response = await api.post(`/coach/conversations/${id}/accept`);
+    return response.data;
+  },
+
+  reject: async (id: number): Promise<CoachConversationSummary> => {
+    const response = await api.post(`/coach/conversations/${id}/reject`);
+    return response.data;
+  },
+
+  startOver: async (id: number): Promise<CoachConversation> => {
+    const response = await api.post(`/coach/conversations/${id}/start-over`);
+    return response.data;
+  },
+
+  rate: async (id: number, body: { rating: 'up' | 'down' | null }): Promise<CoachConversationSummary> => {
+    const response = await api.put(`/coach/conversations/${id}/rating`, body);
     return response.data;
   },
 };

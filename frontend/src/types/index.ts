@@ -308,3 +308,41 @@ export interface CoachConversationDetail extends CoachConversationSummary {
   proposal: { summary?: string } | null;
   calls: CoachCallRow[];
 }
+
+export interface CoachProposalItem {
+  task_id: number | null;
+  new_activity_name: string | null;
+  start: string;
+  duration_minutes: number;
+  is_frog: boolean;
+  source: 'you_said' | 'history' | 'guess';
+  reason: string;
+  recording_count?: number;
+  typical_seconds?: number | null;
+}
+
+export interface CoachProposal {
+  summary: string;
+  items: CoachProposalItem[];
+}
+
+export interface CoachDayItem {
+  kind: 'event' | 'block';
+  name: string;
+  start: string;
+  end: string;
+  all_day: boolean;
+  on_google: boolean;
+}
+
+export interface CoachConversation {
+  id: number;
+  target_date: string;
+  status: string;
+  messages: CoachVisibleMessage[];
+  proposal: CoachProposal | null;
+  changes_left: number | null;
+  messages_left: number | null;
+  day_items: CoachDayItem[];
+  note_suggestion: string | null;
+}

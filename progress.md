@@ -2349,3 +2349,15 @@ Each iteration appends its results here so the next session knows what worked, w
   - Date is frozen at 10:00 on 2026-09-30 in America/Chicago (`toFake: ['Date']` only), so `tz_offset` is 300.
   - The new coachAPI methods are reached through `import * as apiModule`, so tsc passes before they exist; B67.impl adds them to `api.ts` and the conversation and Proposal types to `types/index.ts` (copy mobile's).
   - `cd /root/Stopwatch-scheduler && git ...` in one Bash call is refused whole (any append in the same call is lost too); run git with `-C` or from the current directory.
+
+## B67.impl. Web: the Coach screen
+- **Date:** 2026-11-19
+- **Status:** DONE
+- **Summary:** Added `frontend/src/components/CoachPanel.tsx` (open-or-resume on mount, messages, thinking state, whole-day Proposal with `coach-row-proposal` / `coach-row-google` / `coach-row-block` rows, New tag, Frog, Where this came from, note suggestion, Accept with Push day and rating, Reject closing the panel, Start over via `window.confirm`, limits line, server error detail) and its `coach-*` styles in `index.css`. CalendarView shows **Plan with Coach** in the day view for today and later, disabled offline with the message (listens for `online`/`offline`), and renders the panel as a fixed full-screen overlay with `onAccepted={load}`. Added `coachAPI.openConversation/sendMessage/accept/reject/startOver/rate` and mobile's Coach conversation types.
+- **Files changed:** frontend/src/components/CoachPanel.tsx, frontend/src/components/calendar/CalendarView.tsx, frontend/src/services/api.ts, frontend/src/types/index.ts, frontend/src/index.css, prd.md, progress.md
+- **Verification:** from `frontend/` (python3 subprocess): `npx vitest run` 249 passed (12 files; CoachPanel 15/15 on three runs); `npx tsc --noEmit` clean; `npm run build` succeeded.
+- **Gotchas:**
+  - The panel must render alongside the calendar (overlay), not replace it with an early return: the first test holds the `.nav-btn` elements across open/close, and unmounting the calendar detaches them so later clicks do nothing.
+  - `coachAPI` is read only inside the panel's effect and handlers, so CalendarView's other test files (whose api mocks lack `coachAPI`) still pass.
+  - React act() warnings print from the open effect in the CoachPanel tests; harmless.
+  - A Bash call combining `cat >> file <<'EOF'` with `git add`/`commit` was refused whole ("Parser skipped input"); write the entry to a temp file and append it with python3, then run git separately.
