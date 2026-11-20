@@ -38,6 +38,15 @@ export default function RootLayout() {
             }}
           />
           <Stack.Screen
+            name="coach/[date]"
+            options={{
+              headerShown: true,
+              title: 'Coach',
+              headerStyle: { backgroundColor: colors.background },
+              headerTintColor: colors.text,
+            }}
+          />
+          <Stack.Screen
             name="settings"
             options={{
               headerShown: true,

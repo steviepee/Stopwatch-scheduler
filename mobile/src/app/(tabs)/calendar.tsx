@@ -1,6 +1,7 @@
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { onlineManager, useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { router, type Href } from 'expo-router';
 import { Gesture, GestureDetector, ScrollView } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, type SharedValue } from 'react-native-reanimated';
 
@@ -107,6 +108,10 @@ export default function CalendarDayScreen() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [recordingFrom, setRecordingFrom] = useState<ManualFormInitial | null>(null);
   const clock24h = useClock24h();
+  const isOnline = useSyncExternalStore(
+    (onChange) => onlineManager.subscribe(onChange),
+    () => onlineManager.isOnline()
+  );
 
   // Gesture absoluteY is window-relative; these convert it to the grid's content space.
   const containerRef = useRef<View>(null);
@@ -439,6 +444,24 @@ export default function CalendarDayScreen() {
           <Text style={styles.navLabel}>›</Text>
         </Pressable>
       </View>
+
+      {dayKey(day) >= dayKey(new Date()) && (
+        <View style={styles.actionRow}>
+          <Pressable
+            testID="btn-plan-coach"
+            accessibilityRole="button"
+            disabled={!isOnline}
+            style={[styles.actionButton, !isOnline && styles.dimmed]}
+            onPress={() => router.push(`/coach/${dayKey(day)}` as Href)}>
+            <Text style={styles.buttonLabel}>Plan with Coach</Text>
+          </Pressable>
+        </View>
+      )}
+      {dayKey(day) >= dayKey(new Date()) && !isOnline && (
+        <Text testID="coach-offline" style={styles.statusText}>
+          You're offline — the Coach needs a connection.
+        </Text>
+      )}
 
       {daySchedule && dayItems.length > 0 && (
         <View style={styles.actionRow}>

@@ -507,10 +507,10 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [x] Test: a 409 shows its message
 
 ### B65.impl — Mobile: the Coach screen
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract as a new route (`src/app/coach/[date].tsx`).
 - **Acceptance Criteria:**
-  - [ ] All B65.tests pass; mobile suite, tsc, and export pass
+  - [x] All B65.tests pass; mobile suite, tsc, and export pass
 
 ### B66.tests — Web: Start links, Intended length, Coach settings and usage
 - **Status:** PENDING
