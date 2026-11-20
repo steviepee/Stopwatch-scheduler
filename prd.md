@@ -397,7 +397,7 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [x] All B63.tests pass; full suite passes
 
 ### U15. USER — Deploy the backend, first real conversation, link check
-- **Status:** USER
+- **Status:** USER-DONE
 - **Description:** D114, D120. After B63.
   1. Commit, then `./deploy.sh` (runs the B59 migration).
   2. First real conversation, against production:
@@ -418,8 +418,8 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
      and tap **Phone:**, then **Web:**. Write down whether each link was tappable (opening the
      right screen is checked in U16).
 - **Acceptance Criteria:**
-  - [ ] A real conversation reaches a Proposal; `GET /api/coach/conversations/<id>` lists its calls with tokens and cost
-  - [ ] Link check recorded in `progress.md`. If **Phone:** was not tappable, B68 goes from HOLD to PENDING before the client tasks run
+  - [x] A real conversation reaches a Proposal; `GET /api/coach/conversations/<id>` lists its calls with tokens and cost
+  - [x] Link check recorded in `progress.md`. If **Phone:** was not tappable, B68 goes from HOLD to PENDING before the client tasks run
 
 ### B64.tests — Mobile: Start links, Intended length, Coach settings and usage
 - **Status:** DONE

@@ -2256,3 +2256,15 @@ Each iteration appends its results here so the next session knows what worked, w
   - The 409 error is an axios-shaped rejection `{ response: { status, data: { detail } } }`; show `detail`.
   - Start over is a button in the screen's own header row (`btn-start-over`), not a `Stack.Screen` headerRight, so the test can find it. The expo-router mock gives `Stack.Screen` as a no-op if the impl wants a title.
   - `rm` with `[date]` in the path is refused ("Glob patterns are not allowed"); use `python3 -c "import os; os.remove(...)"`.
+
+## U15. USER: Deploy the backend, first real conversation, link check
+- **Date:** 2026-11-19
+- **Status:** DONE
+- **Summary:** Deployed 20e95b3 (revision 0000011, healthy; migrations to `9c2e5a7d1f30` ran at start; phone OTA on the same runtime, received). Conversation 4 for 2026-11-20 reached a Proposal on the 5th user message: breakfast from history (Coffeemake + prep, Hashbrown wrap), then a new "Grant budget submission" Frog at 9:15 for 95 min (`you_said`). Tango at 7 PM was first left empty as a fixed commitment; one change added it as a new 60 min Activity, recalled from an answer three messages earlier. Rejected; a message after reject → 409. 9 calls, $0.0743; detail lists every call with tokens and cost, and phone Coach usage shows it.
+- **Link check:** **Phone:** tappable, **Web:** tappable. B68 stays HOLD.
+- **Findings:**
+  - The Coach asked two questions per message throughout; no answer was lost (a half left unanswered came back as the next question). Matches U17 and future-work.md "Coach: the one-question rule".
+  - The Coach treats "tango practice at 7" as a fixed commitment (no Block) unless told otherwise. A recurring activity the user times may deserve a Block by default; prompt question for later.
+  - A cache write repeats when more than 5 minutes pass between messages ($0.014 vs $0.004 a message).
+  - The U15 commands were wrong as written: production uses its own `API_TOKEN` (D57, Azure secret `api-token`), and the open URL must not end in `/` (405). `jq` is not installed.
+  - Conversations 1-3 are abandoned opens that failed with 502 because the Anthropic API org had no credit (claude.ai usage credits do not fund the API). The 502 path logs nothing, so the cause was found only by reproducing the call; worth logging the exception.
