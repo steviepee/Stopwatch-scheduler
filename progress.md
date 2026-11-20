@@ -2282,3 +2282,18 @@ Each iteration appends its results here so the next session knows what worked, w
   - Reject calls `router.back()` (the conversation is closed and start-over would 409). After Accept, the input, Accept/Reject and Start over are hidden for the same reason.
   - Safe area: the screen relies on the Stack header for the top inset and plain bottom padding for the input; `useSafeAreaInsets` was avoided because tests render without a provider. Check the input clears the Android nav bar in U16.
   - `git commit` after `cd` in one Bash call needs approval; run git from the repo root without `cd`.
+
+## B66.tests. Web: Start links, Intended length, Coach settings and usage
+- **Date:** 2026-11-19
+- **Status:** DONE
+- **Summary:** Mirrored B64's four on the web. A `start link (B66)` block in `Stopwatch.test.tsx` (6 tests), an `intended length (B66)` block in `TaskDetailModal.test.tsx` (4), and Coach notes, Start reminders and Coach usage blocks in `OptionsPage.test.tsx` (12). Each block's header comment pins the testIDs, API names and the choices the PRD leaves open; mobile's testIDs and fixtures are reused.
+- **Files changed:** frontend/src/__tests__/Stopwatch.test.tsx, frontend/src/__tests__/TaskDetailModal.test.tsx, frontend/src/__tests__/OptionsPage.test.tsx, prd.md, progress.md
+- **Verification:** from `frontend/` (python3 subprocess): `npx vitest run` 22 failed, 187 passed; all 22 are the new tests and fail on missing testIDs, as expected before impl. `npx tsc --noEmit` clean. `npm run build` succeeded. A throwaway start-link implementation in `Stopwatch.tsx` (reverted, not committed) passed all 48 Stopwatch tests.
+- **Gotchas:**
+  - API names are the same as mobile: `settingsAPI.getCoach/updateCoach/getReminders/updateReminders`, `coachAPI.getNotes/createNote({text})/updateNote(id,{text})/deleteNote(id)/getUsage()/getConversations()/getConversation(id)`. `/coach/conversations` has no trailing slash (405, U15). The OptionsPage mock also carries `settingsAPI.getDisplay/updateDisplay` for B70, and every mock method gets a default resolved value in `beforeEach`. Call each one inside the mount effect, as the Pomodoro load does.
+  - The tests reach the new methods through `settingsAPI as unknown as Mocks` and `import * as apiModule`, so tsc passes before they exist. B66.impl adds them to `api.ts` and their types to `types/index.ts`, and adds `intended_length?: number | null` to `Task` and `TaskUpdate`.
+  - Web switches are checkboxes (`.checked`). Note delete uses `window.confirm('Delete this Coach note?')` (stubbed with `vi.stubGlobal`), and the row goes away after the delete.
+  - Start link: Stopwatch is always mounted on HomePage and gets `tasks=[]` first. Decide in an effect on `[tasks]` once it's non-empty, and leave the param alone until then. "Idle" is `!isRunning && time === 0 && run === null`, i.e. the existing `modeLocked` negated. On select, set `sessionName` and `sessionActivityChoice` and show `selected-activity`. Remove only `start` with `history.replaceState` (other params stay), in every case. The throwaway did all of this in about 15 lines.
+  - Intended length is read off the `task` prop, like the quadrant flags, not from `getById`. Clearing sends `{ intended_length: null }` explicitly. On success call `onTaskUpdated(response)`.
+  - Not pinned: the web calendar Bank drag ghost (`CalendarView.tsx` `NO_HISTORY_SECONDS`) seeds 600 s. The contract's average → Intended length → 10 min applies there too. The web ScheduleBuilder has no client-side seed.
+  - `cd <dir> && git ...` in one Bash call needs approval. Run git from the current directory (git works from `frontend/`) or with no `cd`.

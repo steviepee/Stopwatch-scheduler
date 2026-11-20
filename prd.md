@@ -513,14 +513,14 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [x] All B65.tests pass; mobile suite, tsc, and export pass
 
 ### B66.tests — Web: Start links, Intended length, Coach settings and usage
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** B64's contract on the web: `?start=<task_id>` on page load selects the
   Activity in `Stopwatch.tsx` without starting it and removes the param from the URL; Intended
   length on the Activity edit form (`TaskDetailModal.tsx`); the three Settings sections in
   `OptionsPage.tsx`.
 - **Acceptance Criteria:**
-  - [ ] Tests mirroring B64's four
-  - [ ] Web suite, tsc, and build pass
+  - [x] Tests mirroring B64's four
+  - [x] Web suite, tsc, and build pass
 
 ### B66.impl — Web: Start links, Intended length, Coach settings and usage
 - **Status:** PENDING

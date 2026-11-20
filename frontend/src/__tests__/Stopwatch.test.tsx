@@ -886,3 +886,144 @@ describe('Pomodoro on the stopwatch card (B55)', () => {
     });
   });
 });
+
+// B66 (D109, D110), web parity with mobile's B64: a Start link opens the web app at
+// `/?start=<task_id>`. Stopwatch is always mounted on HomePage, so it reads the param itself.
+// Contract pinned here (choices the PRD leaves open):
+//   - Read `start` from `window.location.search`. Decide once the `tasks` prop is non-empty
+//     (HomePage loads Activities after mount, so the first render has `tasks=[]`); until then
+//     leave the param alone.
+//   - If the stopwatch is idle (no `stopwatch.state` run: not running and no time held while
+//     paused), no Pomodoro run is in progress (`pomodoro.state`), and the id matches an Activity:
+//     that Activity is chosen for the next Recording. The card shows
+//     `data-testid="selected-activity"` with text containing its name; nothing starts. When the
+//     save modal opens, the Recording name defaults to the Activity's name and `select-activity`
+//     is preselected to its id, so Save Recording with no changes sends its `task_id` and name.
+//   - Once decided, in every case (selected, running, paused, unknown id), the param is removed
+//     from the URL with `window.history.replaceState`, keeping the path and any other params.
+//   - Running or paused, or an unknown id: ignored (no `selected-activity`; the modal opens with
+//     no Activity linked, as before).
+describe('start link (B66, D109, D110)', () => {
+  const LINK_TASKS = [
+    { id: 1, name: 'Work', average_duration: 3600, total_recordings: 5, created_at: '', updated_at: '' },
+    { id: 2, name: 'Reading', average_duration: 900, total_recordings: 1, created_at: '', updated_at: '' },
+  ];
+
+  beforeEach(() => {
+    localStorage.clear();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    window.history.replaceState(null, '', '/');
+  });
+
+  function renderCard(tasks = LINK_TASKS) {
+    const onSaveSession = vi.fn();
+    const view = render(<Stopwatch tasks={tasks} onSaveTime={vi.fn()} onSaveSession={onSaveSession} />);
+    return { onSaveSession, view };
+  }
+
+  async function startThenStop() {
+    await act(async () => {
+      fireEvent.click(screen.getByText('Start'));
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText('Stop'));
+    });
+  }
+
+  function storeStopwatch(startedAt: number | null, accumulatedMs: number) {
+    localStorage.setItem(
+      'stopwatch.state',
+      JSON.stringify({ startedAt, accumulatedMs, startTime: new Date(Date.now() - 5000).toISOString() }),
+    );
+  }
+
+  it('selects the Activity without starting, clears the param, and the save defaults to it', async () => {
+    window.history.replaceState(null, '', '/?start=2');
+    const { onSaveSession } = renderCard();
+    await act(async () => {});
+
+    expect(screen.getByTestId('selected-activity')).toHaveTextContent('Reading');
+    expect(window.location.search).not.toContain('start');
+    expect(window.location.pathname).toBe('/');
+    expect(screen.getByText('Start')).toBeInTheDocument();
+    expect(screen.queryByText('Stop')).not.toBeInTheDocument();
+    expect(localStorage.getItem('stopwatch.state')).toBeNull();
+
+    await startThenStop();
+    expect((screen.getByTestId('select-activity') as HTMLSelectElement).value).toBe('2');
+    expect((screen.getByPlaceholderText('Name this recording...') as HTMLInputElement).value).toBe('Reading');
+    saveRecording();
+
+    expect(onSaveSession).toHaveBeenCalledTimes(1);
+    const body = (onSaveSession as unknown as Mock).mock.calls[0][0];
+    expect(body).toMatchObject({ name: 'Reading', task_id: 2 });
+  });
+
+  it('waits for the Activities to load before deciding', async () => {
+    window.history.replaceState(null, '', '/?start=2');
+    const { view } = renderCard([]);
+    await act(async () => {});
+    expect(screen.queryByTestId('selected-activity')).not.toBeInTheDocument();
+    expect(window.location.search).toContain('start=2');
+
+    view.rerender(<Stopwatch tasks={LINK_TASKS} onSaveTime={vi.fn()} onSaveSession={vi.fn()} />);
+    await act(async () => {});
+
+    expect(screen.getByTestId('selected-activity')).toHaveTextContent('Reading');
+    expect(window.location.search).not.toContain('start');
+  });
+
+  it('keeps other params when it removes start', async () => {
+    window.history.replaceState(null, '', '/?start=2&tab=calendar');
+    renderCard();
+    await act(async () => {});
+
+    expect(window.location.search).not.toContain('start');
+    expect(window.location.search).toContain('tab=calendar');
+  });
+
+  it('is ignored while the stopwatch is running', async () => {
+    storeStopwatch(Date.now() - 5000, 0);
+    window.history.replaceState(null, '', '/?start=2');
+    renderCard();
+    await act(async () => {});
+
+    expect(screen.queryByTestId('selected-activity')).not.toBeInTheDocument();
+    expect(window.location.search).not.toContain('start');
+    expect(screen.getByText('Stop')).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Stop'));
+    });
+    expect((screen.getByTestId('select-activity') as HTMLSelectElement).value).toBe('');
+  });
+
+  it('is ignored while a Recording is paused with time held', async () => {
+    storeStopwatch(null, 5000);
+    window.history.replaceState(null, '', '/?start=2');
+    renderCard();
+    await act(async () => {});
+
+    expect(screen.queryByTestId('selected-activity')).not.toBeInTheDocument();
+    expect(window.location.search).not.toContain('start');
+  });
+
+  it('is ignored for an unknown id', async () => {
+    window.history.replaceState(null, '', '/?start=999');
+    renderCard();
+    await act(async () => {});
+
+    expect(screen.queryByTestId('selected-activity')).not.toBeInTheDocument();
+    expect(window.location.search).not.toContain('start');
+
+    await startThenStop();
+    expect((screen.getByTestId('select-activity') as HTMLSelectElement).value).toBe('');
+  });
+});

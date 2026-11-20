@@ -3,7 +3,7 @@ import { vi, type Mock } from 'vitest';
 import TaskDetailModal from '../components/TaskDetailModal';
 import TaskList from '../components/TaskList';
 import { taskAPI } from '../services/api';
-import type { TaskWithLogs } from '../types';
+import type { Task, TaskWithLogs } from '../types';
 
 // B40 (D70), web parity with mobile's B39. The PRD gives this in prose only,
 // so this session chose and documents the contract here for B40.impl:
@@ -124,5 +124,81 @@ describe('quadrant badges (B40, D70)', () => {
   it('shows no badge for an Activity with neither flag set (the default)', () => {
     render(<TaskList tasks={[GYM]} onDeleteTask={vi.fn()} onSelectTask={vi.fn()} />);
     expect(screen.queryByTestId('activity-quadrant-7')).not.toBeInTheDocument();
+  });
+});
+
+// B66 (D100, D108, D130), web parity with mobile's B64: the Activity edit form gains an
+// "Intended length" field in whole minutes, `data-testid="input-intended-length"`, prefilled
+// from the `task` prop's `intended_length` (seconds / 60; empty when null or missing), read off
+// the prop like the quadrant flags. A Save button `btn-save-intended-length` calls
+// `taskAPI.update(task.id, { intended_length: minutes * 60 })`, or `{ intended_length: null }`
+// when the field is empty (the backend clears it only when the key is sent), then calls
+// `onTaskUpdated` with the response. Whole minutes 1–720 (the backend takes 1 s – 43200 s);
+// anything else (0, 721, not a whole number) disables Save.
+describe('intended length (B66, D108)', () => {
+  const WITH_LENGTH = { ...GYM, intended_length: 1500 };
+  const WITHOUT_LENGTH = { ...GYM, intended_length: null };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockedGetById.mockResolvedValue(DETAIL);
+  });
+
+  function field() {
+    return screen.getByTestId('input-intended-length') as HTMLInputElement;
+  }
+
+  it('shows the stored length in minutes, or empty when there is none', async () => {
+    const { unmount } = render(
+      <TaskDetailModal task={WITH_LENGTH as unknown as Task} onClose={vi.fn()} onTaskUpdated={vi.fn()} />
+    );
+    await waitFor(() => expect(field().value).toBe('25'));
+    unmount();
+
+    render(<TaskDetailModal task={GYM} onClose={vi.fn()} onTaskUpdated={vi.fn()} />);
+    await waitFor(() => expect(field().value).toBe(''));
+  });
+
+  it('saves the typed minutes in seconds and notifies the parent', async () => {
+    const updated = { ...GYM, intended_length: 1800 };
+    mockedUpdate.mockResolvedValue(updated);
+    const onTaskUpdated = vi.fn();
+    render(
+      <TaskDetailModal task={WITHOUT_LENGTH as unknown as Task} onClose={vi.fn()} onTaskUpdated={onTaskUpdated} />
+    );
+
+    await screen.findByTestId('input-intended-length');
+    expect(field().value).toBe('');
+    fireEvent.change(field(), { target: { value: '30' } });
+    fireEvent.click(screen.getByTestId('btn-save-intended-length'));
+
+    await waitFor(() => expect(mockedUpdate).toHaveBeenCalledWith(7, { intended_length: 1800 }));
+    await waitFor(() => expect(onTaskUpdated).toHaveBeenCalledWith(updated));
+  });
+
+  it('clearing the field saves null', async () => {
+    mockedUpdate.mockResolvedValue(WITHOUT_LENGTH);
+    render(<TaskDetailModal task={WITH_LENGTH as unknown as Task} onClose={vi.fn()} onTaskUpdated={vi.fn()} />);
+
+    await waitFor(() => expect(field().value).toBe('25'));
+    fireEvent.change(field(), { target: { value: '' } });
+    fireEvent.click(screen.getByTestId('btn-save-intended-length'));
+
+    await waitFor(() => expect(mockedUpdate).toHaveBeenCalledWith(7, { intended_length: null }));
+  });
+
+  it('0 or 721 minutes disables Save', async () => {
+    render(<TaskDetailModal task={WITH_LENGTH as unknown as Task} onClose={vi.fn()} onTaskUpdated={vi.fn()} />);
+
+    await waitFor(() => expect(field().value).toBe('25'));
+    fireEvent.change(field(), { target: { value: '0' } });
+    expect(screen.getByTestId('btn-save-intended-length')).toBeDisabled();
+    fireEvent.change(field(), { target: { value: '721' } });
+    expect(screen.getByTestId('btn-save-intended-length')).toBeDisabled();
+    fireEvent.click(screen.getByTestId('btn-save-intended-length'));
+    expect(mockedUpdate).not.toHaveBeenCalled();
+
+    fireEvent.change(field(), { target: { value: '720' } });
+    expect(screen.getByTestId('btn-save-intended-length')).not.toBeDisabled();
   });
 });
