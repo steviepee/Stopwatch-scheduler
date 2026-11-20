@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { PomodoroSettings, UserOptions } from '../types';
-import { settingsAPI } from '../services/api';
+import { CoachConversationDetail, CoachConversationSummary, CoachNote, CoachUsage, PomodoroSettings, ReminderSettings, UserOptions } from '../types';
+import { coachAPI, settingsAPI } from '../services/api';
 
 interface OptionsPageProps {
   options: UserOptions;
@@ -48,6 +48,15 @@ export default function OptionsPage({ options, onChange, onSignOut }: OptionsPag
   const [pomodoroStatus, setPomodoroStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
   const [pomodoroSaving, setPomodoroSaving] = useState(false);
   const [pomodoroSaveFailed, setPomodoroSaveFailed] = useState(false);
+  const [notesEnabled, setNotesEnabled] = useState<boolean | null>(null);
+  const [notes, setNotes] = useState<CoachNote[]>([]);
+  const [newNote, setNewNote] = useState('');
+  const [editingNote, setEditingNote] = useState<{ id: number; text: string } | null>(null);
+  const [reminders, setReminders] = useState<ReminderSettings | null>(null);
+  const [reminderMinutes, setReminderMinutes] = useState('');
+  const [usage, setUsage] = useState<CoachUsage | null>(null);
+  const [conversations, setConversations] = useState<CoachConversationSummary[]>([]);
+  const [detail, setDetail] = useState<CoachConversationDetail | null>(null);
 
   useEffect(() => {
     settingsAPI.getPomodoro()
@@ -56,7 +65,56 @@ export default function OptionsPage({ options, onChange, onSignOut }: OptionsPag
         setPomodoroStatus('loaded');
       })
       .catch(() => setPomodoroStatus('error'));
+    settingsAPI.getCoach().then(data => setNotesEnabled(data.notes_enabled)).catch(() => {});
+    coachAPI.getNotes().then(setNotes).catch(() => {});
+    settingsAPI.getReminders()
+      .then(data => {
+        setReminders(data);
+        setReminderMinutes(String(data.minutes_before));
+      })
+      .catch(() => {});
+    coachAPI.getUsage().then(setUsage).catch(() => {});
+    coachAPI.getConversations().then(setConversations).catch(() => {});
   }, []);
+
+  const toggleNotesEnabled = async () => {
+    if (notesEnabled === null) return;
+    const saved = await settingsAPI.updateCoach({ notes_enabled: !notesEnabled });
+    setNotesEnabled(saved.notes_enabled);
+  };
+
+  const addNote = async () => {
+    const text = newNote.trim();
+    if (!text) return;
+    const created = await coachAPI.createNote({ text });
+    setNotes(prev => [...prev, created]);
+    setNewNote('');
+  };
+
+  const saveNote = async () => {
+    if (!editingNote || !editingNote.text.trim()) return;
+    const saved = await coachAPI.updateNote(editingNote.id, { text: editingNote.text.trim() });
+    setNotes(prev => prev.map(n => (n.id === saved.id ? saved : n)));
+    setEditingNote(null);
+  };
+
+  const deleteNote = async (id: number) => {
+    if (!window.confirm('Delete this Coach note?')) return;
+    await coachAPI.deleteNote(id);
+    setNotes(prev => prev.filter(n => n.id !== id));
+  };
+
+  const reminderMinutesValid = inRange(reminderMinutes, 120);
+
+  const saveReminders = async (body: ReminderSettings) => {
+    const saved = await settingsAPI.updateReminders(body);
+    setReminders(saved);
+    setReminderMinutes(String(saved.minutes_before));
+  };
+
+  const openConversation = async (id: number) => {
+    setDetail(await coachAPI.getConversation(id));
+  };
 
   const pomodoroValid = POMODORO_FIELDS.every(f => inRange(pomodoro[f.key], f.max));
   const pomodoroSaveDisabled = pomodoroStatus !== 'loaded' || !pomodoroValid || pomodoroSaving;
@@ -226,6 +284,201 @@ export default function OptionsPage({ options, onChange, onSignOut }: OptionsPag
         >
           Save
         </button>
+      </section>
+
+      {/* Coach notes */}
+      <section className="space-y-3">
+        <h3 className="text-white/60 text-xs uppercase tracking-wider">Coach notes</h3>
+        <label className="flex items-center gap-3 cursor-pointer glass-inner rounded-xl px-4 py-3">
+          <input
+            type="checkbox"
+            data-testid="toggle-coach-notes"
+            checked={notesEnabled ?? false}
+            disabled={notesEnabled === null}
+            onChange={toggleNotesEnabled}
+            className="w-4 h-4 rounded accent-emerald-400"
+          />
+          <span className="text-white text-sm">Let the Coach suggest and use notes</span>
+        </label>
+        <div className="space-y-2">
+          {notes.map(note => (
+            <div key={note.id} data-testid={`coach-note-${note.id}`} className="glass-inner rounded-xl px-4 py-3 flex items-center gap-3">
+              {editingNote?.id === note.id ? (
+                <>
+                  <input
+                    type="text"
+                    data-testid={`input-note-${note.id}`}
+                    value={editingNote.text}
+                    maxLength={300}
+                    onChange={e => setEditingNote({ id: note.id, text: e.target.value })}
+                    className="flex-1 bg-white/10 text-white rounded-lg px-2 py-1 text-sm"
+                  />
+                  <button
+                    type="button"
+                    data-testid={`btn-note-save-${note.id}`}
+                    onClick={saveNote}
+                    disabled={!editingNote.text.trim()}
+                    className="glass-button px-3 py-1 rounded-lg text-xs disabled:opacity-40"
+                  >
+                    Save
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span className="flex-1 text-white text-sm">{note.text}</span>
+                  <button
+                    type="button"
+                    data-testid={`coach-note-edit-${note.id}`}
+                    onClick={() => setEditingNote({ id: note.id, text: note.text })}
+                    className="glass-button px-3 py-1 rounded-lg text-xs"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    data-testid={`coach-note-delete-${note.id}`}
+                    onClick={() => deleteNote(note.id)}
+                    className="text-red-400 hover:text-red-300 text-xs"
+                  >
+                    Delete
+                  </button>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            data-testid="input-new-note"
+            value={newNote}
+            maxLength={300}
+            onChange={e => setNewNote(e.target.value)}
+            placeholder="A note for the Coach"
+            className="flex-1 bg-white/10 text-white rounded-lg px-3 py-2 text-sm"
+          />
+          <button
+            type="button"
+            data-testid="btn-add-note"
+            onClick={addNote}
+            disabled={!newNote.trim()}
+            className="glass-button px-4 py-2 rounded-xl text-sm disabled:opacity-40"
+          >
+            Add note
+          </button>
+        </div>
+      </section>
+
+      {/* Start reminders */}
+      <section className="space-y-3">
+        <h3 className="text-white/60 text-xs uppercase tracking-wider">Start reminders</h3>
+        <label className="flex items-center gap-3 cursor-pointer glass-inner rounded-xl px-4 py-3">
+          <input
+            type="checkbox"
+            data-testid="toggle-start-reminders"
+            checked={reminders?.enabled ?? false}
+            disabled={reminders === null}
+            onChange={() => reminders && saveReminders({ enabled: !reminders.enabled, minutes_before: reminders.minutes_before })}
+            className="w-4 h-4 rounded accent-emerald-400"
+          />
+          <span className="text-white text-sm">Remind me before each Block starts</span>
+        </label>
+        <label className="block glass-inner rounded-xl px-4 py-3">
+          <div className="flex items-center gap-3">
+            <span className="text-white text-sm flex-1">Minutes before</span>
+            <input
+              data-testid="input-reminder-minutes"
+              type="number"
+              min={1}
+              max={120}
+              value={reminderMinutes}
+              onChange={e => setReminderMinutes(e.target.value)}
+              disabled={reminders === null}
+              className="w-20 bg-white/10 text-white rounded-lg px-2 py-1 text-sm disabled:opacity-40"
+            />
+          </div>
+          {reminders !== null && !reminderMinutesValid && (
+            <div className="text-red-300 text-xs mt-1">1–120</div>
+          )}
+        </label>
+        <p className="text-white/50 text-xs">Applies to Blocks pushed or changed from now on.</p>
+        <button
+          type="button"
+          data-testid="reminders-save"
+          onClick={() => reminders && saveReminders({ enabled: reminders.enabled, minutes_before: Number(reminderMinutes) })}
+          disabled={reminders === null || !reminderMinutesValid}
+          className="glass-button px-4 py-3 rounded-xl text-sm disabled:opacity-40"
+        >
+          Save
+        </button>
+      </section>
+
+      {/* Coach usage */}
+      <section className="space-y-3">
+        <h3 className="text-white/60 text-xs uppercase tracking-wider">Coach usage</h3>
+        {usage && (
+          <p data-testid="usage-month" className="text-white text-sm">
+            {usage.month}: {usage.conversations} conversations, {usage.accepted} accepted, ${usage.cost_usd.toFixed(2)}
+          </p>
+        )}
+        <div className="space-y-2">
+          {conversations.map(c => (
+            <button
+              key={c.id}
+              type="button"
+              data-testid={`usage-conversation-${c.id}`}
+              onClick={() => openConversation(c.id)}
+              className="w-full glass-inner rounded-xl px-4 py-3 flex justify-between text-white text-sm"
+            >
+              <span>{c.target_date}</span>
+              <span className="text-white/70">{c.status}</span>
+              <span>${c.cost_usd.toFixed(2)}</span>
+            </button>
+          ))}
+        </div>
+        {detail && (
+          <div data-testid="usage-detail" className="glass-inner rounded-xl p-4 space-y-3 text-white text-sm">
+            <div className="flex justify-between items-center">
+              <span className="font-medium">{detail.target_date} ({detail.status})</span>
+              <button type="button" onClick={() => setDetail(null)} className="text-white/60 hover:text-white">✕</button>
+            </div>
+            <div className="space-y-2">
+              {detail.messages.map((m, i) => (
+                <div key={i} className={m.role === 'user' ? 'text-right' : ''}>
+                  <span className="text-white/50 text-xs block">{m.role === 'user' ? 'You' : 'Coach'}</span>
+                  <span>{m.visible_text}</span>
+                </div>
+              ))}
+            </div>
+            {detail.proposal?.summary && <p className="text-white/80">Proposal: {detail.proposal.summary}</p>}
+            <table className="w-full text-xs">
+              <thead className="text-white/50">
+                <tr>
+                  <th className="text-left">#</th>
+                  <th className="text-right">In</th>
+                  <th className="text-right">Out</th>
+                  <th className="text-right">Cache read</th>
+                  <th className="text-right">Cache write</th>
+                  <th className="text-right">Latency</th>
+                  <th className="text-right">Cost</th>
+                </tr>
+              </thead>
+              <tbody>
+                {detail.calls.map((call, i) => (
+                  <tr key={i} data-testid={`usage-call-${i}`}>
+                    <td>{call.turn_index}</td>
+                    <td className="text-right">{call.input_tokens}</td>
+                    <td className="text-right">{call.output_tokens}</td>
+                    <td className="text-right">{call.cache_read_input_tokens ?? 0}</td>
+                    <td className="text-right">{call.cache_creation_input_tokens ?? 0}</td>
+                    <td className="text-right">{call.latency_ms} ms</td>
+                    <td className="text-right">${call.cost_usd.toFixed(4)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
       {onSignOut && (

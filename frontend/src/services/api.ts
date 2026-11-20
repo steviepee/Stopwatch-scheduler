@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Task, TaskCreate, TaskUpdate, TaskStats, TimeLogCreate, TimeLog, StopwatchSession, StopwatchSessionCreate, StopwatchSessionUpdate, StopwatchSessionWithTask, Schedule, ScheduleCreate, ScheduleUpdate, ScheduleItem, ScheduleItemCreate, ScheduleItemPlace, ScheduleItemUpdate, ApplyRegimen, GenerateRequest, GenerateResponse, PeakHoursResponse, PomodoroSettings } from '../types';
+import { Task, TaskCreate, TaskUpdate, TaskStats, TimeLogCreate, TimeLog, StopwatchSession, StopwatchSessionCreate, StopwatchSessionUpdate, StopwatchSessionWithTask, Schedule, ScheduleCreate, ScheduleUpdate, ScheduleItem, ScheduleItemCreate, ScheduleItemPlace, ScheduleItemUpdate, ApplyRegimen, GenerateRequest, GenerateResponse, PeakHoursResponse, PomodoroSettings, CoachSettings, ReminderSettings, CoachNote, CoachUsage, CoachConversationSummary, CoachConversationDetail } from '../types';
 
 const API_BASE_URL = '/api';
 
@@ -246,6 +246,62 @@ export const settingsAPI = {
 
   updatePomodoro: async (settings: PomodoroSettings): Promise<PomodoroSettings> => {
     const response = await api.put('/settings/pomodoro', settings);
+    return response.data;
+  },
+
+  getCoach: async (): Promise<CoachSettings> => {
+    const response = await api.get('/settings/coach');
+    return response.data;
+  },
+
+  updateCoach: async (settings: CoachSettings): Promise<CoachSettings> => {
+    const response = await api.put('/settings/coach', settings);
+    return response.data;
+  },
+
+  getReminders: async (): Promise<ReminderSettings> => {
+    const response = await api.get('/settings/reminders');
+    return response.data;
+  },
+
+  updateReminders: async (settings: ReminderSettings): Promise<ReminderSettings> => {
+    const response = await api.put('/settings/reminders', settings);
+    return response.data;
+  },
+};
+
+export const coachAPI = {
+  getNotes: async (): Promise<CoachNote[]> => {
+    const response = await api.get('/coach/notes');
+    return response.data;
+  },
+
+  createNote: async (note: { text: string }): Promise<CoachNote> => {
+    const response = await api.post('/coach/notes', note);
+    return response.data;
+  },
+
+  updateNote: async (id: number, note: { text: string }): Promise<CoachNote> => {
+    const response = await api.put(`/coach/notes/${id}`, note);
+    return response.data;
+  },
+
+  deleteNote: async (id: number): Promise<void> => {
+    await api.delete(`/coach/notes/${id}`);
+  },
+
+  getUsage: async (): Promise<CoachUsage> => {
+    const response = await api.get('/coach/usage');
+    return response.data;
+  },
+
+  getConversations: async (): Promise<CoachConversationSummary[]> => {
+    const response = await api.get('/coach/conversations');
+    return response.data;
+  },
+
+  getConversation: async (id: number): Promise<CoachConversationDetail> => {
+    const response = await api.get(`/coach/conversations/${id}`);
     return response.data;
   },
 };

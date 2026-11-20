@@ -22,6 +22,19 @@ export default function TaskDetailModal({ task, onClose, onTaskUpdated }: TaskDe
     is_urgent: task.is_urgent ?? false,
     is_important: task.is_important ?? false,
   });
+  const [intendedMinutes, setIntendedMinutes] = useState(
+    task.intended_length ? String(Math.round(task.intended_length / 60)) : ''
+  );
+  const intendedValid =
+    intendedMinutes === '' ||
+    (/^\d+$/.test(intendedMinutes) && Number(intendedMinutes) >= 1 && Number(intendedMinutes) <= 720);
+
+  const handleSaveIntendedLength = async () => {
+    const updated = await taskAPI.update(task.id, {
+      intended_length: intendedMinutes === '' ? null : Number(intendedMinutes) * 60,
+    });
+    onTaskUpdated(updated);
+  };
 
   const handleQuadrantClick = async (is_urgent: boolean, is_important: boolean) => {
     const updated = await taskAPI.update(task.id, { is_urgent, is_important });
@@ -92,6 +105,29 @@ export default function TaskDetailModal({ task, onClose, onTaskUpdated }: TaskDe
               </button>
             );
           })}
+        </div>
+
+        <div className="glass-inner rounded-xl px-4 py-3 mb-4 flex items-center gap-3">
+          <label htmlFor="intended-length" className="text-white text-sm flex-1">Intended length (minutes)</label>
+          <input
+            id="intended-length"
+            data-testid="input-intended-length"
+            type="number"
+            min={1}
+            max={720}
+            value={intendedMinutes}
+            onChange={e => setIntendedMinutes(e.target.value)}
+            className="w-20 bg-white/10 text-white rounded-lg px-2 py-1 text-sm"
+          />
+          <button
+            type="button"
+            data-testid="btn-save-intended-length"
+            onClick={handleSaveIntendedLength}
+            disabled={!intendedValid}
+            className="glass-button px-3 py-1 rounded-lg text-sm disabled:opacity-40"
+          >
+            Save
+          </button>
         </div>
 
         {loading ? (

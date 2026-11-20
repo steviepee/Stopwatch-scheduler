@@ -2297,3 +2297,14 @@ Each iteration appends its results here so the next session knows what worked, w
   - Intended length is read off the `task` prop, like the quadrant flags, not from `getById`. Clearing sends `{ intended_length: null }` explicitly. On success call `onTaskUpdated(response)`.
   - Not pinned: the web calendar Bank drag ghost (`CalendarView.tsx` `NO_HISTORY_SECONDS`) seeds 600 s. The contract's average → Intended length → 10 min applies there too. The web ScheduleBuilder has no client-side seed.
   - `cd <dir> && git ...` in one Bash call needs approval. Run git from the current directory (git works from `frontend/`) or with no `cd`.
+
+## B66.impl. Web: Start links, Intended length, Coach settings and usage
+- **Date:** 2026-11-19
+- **Status:** DONE
+- **Summary:** Web Stopwatch reads `?start=<task_id>` once Activities load, selects the Activity (shows `selected-activity`, prefills the save modal) when idle, and always strips the param with `replaceState`. TaskDetailModal gains an Intended length minutes field with its own Save (1–720 or empty = null). OptionsPage gains Coach notes (switch, list, add/edit/delete with confirm), Start reminders (switch, minutes 1–120, note text), and Coach usage (month totals, conversation list, read-only detail with call table). Added `settingsAPI.getCoach/updateCoach/getReminders/updateReminders`, `coachAPI` notes/usage/conversations, the Coach types, and `intended_length` on `Task`/`TaskUpdate`. The calendar Bank drag ghost now seeds average → Intended length → 600 s.
+- **Files changed:** frontend/src/components/Stopwatch.tsx, frontend/src/components/TaskDetailModal.tsx, frontend/src/components/OptionsPage.tsx, frontend/src/components/calendar/CalendarView.tsx, frontend/src/services/api.ts, frontend/src/types/index.ts, prd.md, progress.md
+- **Verification:** from `frontend/` (python3 subprocess): `npx vitest run` 209 passed; `npx tsc --noEmit` clean; `npm run build` succeeded.
+- **Gotchas:**
+  - A very long Bash heredoc (python3 script with a big JSX block) failed with "Parser aborted (timeout, resource limit, or over-length)" and applied nothing; use the Edit tool for large JSX insertions.
+  - `CalendarView.tsx` is at `src/components/calendar/CalendarView.tsx`, not `src/components/`.
+  - `settingsAPI.getDisplay/updateDisplay` and `DisplaySettings` are not on the web yet; B70 adds them.

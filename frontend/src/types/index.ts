@@ -5,6 +5,7 @@ export interface Task {
   total_recordings: number;
   is_urgent?: boolean;
   is_important?: boolean;
+  intended_length?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -12,6 +13,7 @@ export interface Task {
 export interface TaskUpdate {
   is_urgent?: boolean;
   is_important?: boolean;
+  intended_length?: number | null;
 }
 
 export interface TimeLog {
@@ -233,4 +235,72 @@ export interface PomodoroSettings {
   break_minutes: number;
   long_break_minutes: number;
   long_break_every: number;
+}
+
+export interface CoachSettings {
+  notes_enabled: boolean;
+}
+
+export interface ReminderSettings {
+  enabled: boolean;
+  minutes_before: number;
+}
+
+export interface CoachNote {
+  id: number;
+  text: string;
+  created_at: string;
+  confirmed_at: string;
+}
+
+export interface CoachUsage {
+  month: string;
+  conversations: number;
+  accepted: number;
+  cost_usd: number;
+}
+
+export interface CoachConversationSummary {
+  id: number;
+  target_date: string;
+  status: string;
+  user_turns: number;
+  revision_turns: number;
+  call_count: number;
+  input_tokens: number;
+  output_tokens: number;
+  cache_read_input_tokens: number;
+  cache_creation_input_tokens: number;
+  cost_usd: number;
+  proposed_count: number | null;
+  accepted_count: number | null;
+  rating: string | null;
+  created_at: string;
+  closed_at: string | null;
+}
+
+export interface CoachVisibleMessage {
+  role: string;
+  visible_text: string;
+  created_at: string;
+}
+
+export interface CoachCallRow {
+  turn_index: number;
+  model: string;
+  effort: string;
+  input_tokens: number;
+  output_tokens: number;
+  cache_read_input_tokens: number | null;
+  cache_creation_input_tokens: number | null;
+  stop_reason: string | null;
+  latency_ms: number;
+  cost_usd: number;
+  created_at: string;
+}
+
+export interface CoachConversationDetail extends CoachConversationSummary {
+  messages: CoachVisibleMessage[];
+  proposal: { summary?: string } | null;
+  calls: CoachCallRow[];
 }

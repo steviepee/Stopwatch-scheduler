@@ -121,7 +121,7 @@ export function CalendarView({ tasks }: CalendarViewProps) {
     const data = event.active.data.current as { task?: Task; item?: ScheduleItem } | undefined;
     if (data?.task) {
       const t = data.task;
-      setActiveDrag({ name: t.name, seconds: t.total_recordings ? t.average_duration : NO_HISTORY_SECONDS });
+      setActiveDrag({ name: t.name, seconds: t.total_recordings ? t.average_duration : t.intended_length ?? NO_HISTORY_SECONDS });
     } else if (data?.item) {
       const i = data.item;
       setActiveDrag({ name: i.task?.name ?? i.custom_name ?? '', seconds: i.estimated_duration });

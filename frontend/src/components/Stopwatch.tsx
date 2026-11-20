@@ -108,6 +108,24 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession, onModalCha
 
   const modeLocked = isRunning || time > 0 || run !== null;
 
+  const [linkedActivity, setLinkedActivity] = useState<Task | null>(null);
+  const startLinkHandled = useRef(false);
+  useEffect(() => {
+    if (startLinkHandled.current || tasks.length === 0) return;
+    const url = new URL(window.location.href);
+    const start = url.searchParams.get('start');
+    if (start === null) return;
+    startLinkHandled.current = true;
+    const task = tasks.find((t) => String(t.id) === start);
+    if (task && !modeLocked) {
+      setLinkedActivity(task);
+      setSessionName(task.name);
+      setSessionActivityChoice(String(task.id));
+    }
+    url.searchParams.delete('start');
+    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+  }, [tasks]);
+
   const openPicker = () => {
     setPickerOpen(true);
     setPickerChoice('');
@@ -227,6 +245,7 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession, onModalCha
     setSelectedTaskId(null);
     setSessionActivityChoice('');
     setSessionName('');
+    setLinkedActivity(null);
   };
 
   const handleCancel = () => {
@@ -385,6 +404,12 @@ export default function Stopwatch({ tasks, onSaveTime, onSaveSession, onModalCha
           <span className="text-3xl text-white/70">.{timeDisplay.milliseconds}</span>
         </div>
       </div>
+
+      {linkedActivity && (
+        <div data-testid="selected-activity" className="text-center text-white/80 text-sm mb-4">
+          Next Recording: {linkedActivity.name}
+        </div>
+      )}
 
       {/* Controls */}
       <div className="flex gap-3 mb-6">
