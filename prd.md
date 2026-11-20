@@ -546,12 +546,12 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [x] All B70.tests pass; web suite, tsc, and build pass
 
 ### B67.tests — Web: the Coach screen
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** B65's contract on the web: **Plan with Coach** in `CalendarView.tsx`'s day
   view opens a full-screen Coach panel for that date, with the same states and actions.
 - **Acceptance Criteria:**
-  - [ ] Tests mirroring B65's six (`Where this came from` opens on click)
-  - [ ] Web suite, tsc, and build pass
+  - [x] Tests mirroring B65's six (`Where this came from` opens on click)
+  - [x] Web suite, tsc, and build pass
 
 ### B67.impl — Web: the Coach screen
 - **Status:** PENDING

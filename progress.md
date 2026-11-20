@@ -2334,3 +2334,18 @@ Each iteration appends its results here so the next session knows what worked, w
   - `calendarUtils.formatHour(hour, clock24h)` now takes the clock flag (12-hour gutter reads `5:00 PM`); CalendarGrid gets a required `clock24h` prop from CalendarView.
   - Each component calls `useClock24h()` and fetches on its own; toggling the Options checkbox doesn't update already-mounted views until they remount (same as the B70.tests throwaway, not pinned).
   - A Bash call that combined `cd` with a python heredoc was refused whole, so the OptionsPage edit in it silently never ran; check edits landed (grep) after a refused command.
+
+## B67.tests. Web: the Coach screen
+- **Date:** 2026-11-19
+- **Status:** DONE
+- **Summary:** Added `frontend/src/__tests__/CoachPanel.test.tsx` (15 tests) mirroring mobile's B65: Plan with Coach in the day view only (today and later, hidden in the week view and on past days, disabled offline with the message), the panel opening for the shown date and closing, open-or-resume and the thinking state, the whole-day Proposal in time order with three row classes, New tag, Frog, limits line, Accept (calendar reloads, Push day, rating), Reject (closes the panel), Where this came from on click, note suggestion Yes/No, Start over via `window.confirm`, the 409 message, and Activity names taken from CalendarView's `tasks`. The header comment pins every testID, API name and web-specific choice.
+- **Files changed:** frontend/src/__tests__/CoachPanel.test.tsx, prd.md, progress.md
+- **Verification:** from `frontend/` (python3 subprocess with `cwd=`): `npx vitest run` 15 failed, 234 passed; all 15 are the new tests and all fail on the missing `btn-plan-coach`, as expected before impl. `npx tsc --noEmit` clean. `npm run build` succeeded. A throwaway reference (`src/components/CoachPanel.tsx` plus the button and panel in CalendarView; reverted, not committed) passed the whole suite (249 passed).
+- **Gotchas:**
+  - Every test goes through `CalendarView`, so the panel's file and props are free. The throwaway used `CoachPanel({ date, tasks, onClose, onAccepted })` rendered by CalendarView, with `onAccepted={load}` (the test checks `scheduleAPI.getRange` is called again after Accept; the web has no react-query to invalidate).
+  - CalendarView.test.tsx and ClockAndSaveAsRecording.test.tsx mock `../services/api` WITHOUT `coachAPI`, and vitest throws on reading a missing mock export. Read `coachAPI` only inside the panel's functions or render, never at module level (the throwaway's first try did `const c = coachAPI` at module level and broke both files). Don't add `coachAPI` to those mocks instead.
+  - Web-specific pins: row styling is by class (`coach-row-proposal`, `coach-row-google`, `coach-row-block`, exactly one per row); offline is `navigator.onLine === false` (the test stubs `Navigator.prototype.onLine`); Start over asks with `window.confirm`; Reject closes the panel; `btn-coach-close` closes it; the input and Send use `disabled`.
+  - Day navigation in the test uses the existing `.nav-btn` buttons (prev is first, next second) and the "Day" toggle by role and name; don't rename them.
+  - Date is frozen at 10:00 on 2026-09-30 in America/Chicago (`toFake: ['Date']` only), so `tz_offset` is 300.
+  - The new coachAPI methods are reached through `import * as apiModule`, so tsc passes before they exist; B67.impl adds them to `api.ts` and the conversation and Proposal types to `types/index.ts` (copy mobile's).
+  - `cd /root/Stopwatch-scheduler && git ...` in one Bash call is refused whole (any append in the same call is lost too); run git with `-C` or from the current directory.
