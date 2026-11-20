@@ -76,7 +76,8 @@ import type { Task } from '../types';
 // B31 contract: a selected Block's actions live in an action bar, not inside the Block.
 //   - `CalendarView` renders `data-testid="block-action-bar"` above the grid, beside the
 //     day-action status line, only while a Block is selected. It names the Block: the Activity
-//     name and its local start time as `HH:MM` (24-hour, as the Activity picker shows it).
+//     name and its local start time through `formatClock` (B70, D128: 12-hour here, since the
+//     clock setting is off).
 //   - The bar holds `btn-edit-block-{itemId}` ("Edit block" / "Done") and, for an Exported Block
 //     only, `btn-remove-google-{itemId}`, with today's behaviour, plus
 //     `btn-close-block-actions`, which clears the selection (and edit mode).
@@ -107,6 +108,7 @@ vi.mock('../services/api', () => ({
     checkAuthStatus: vi.fn().mockResolvedValue({ authenticated: true }),
   },
   calendarImportAPI: { getEvents: vi.fn().mockResolvedValue([]) },
+  settingsAPI: { getDisplay: vi.fn().mockResolvedValue({ clock_24h: false }) },
 }));
 
 type Rect = { top: number; left: number; width: number; height: number; right: number; bottom: number };
@@ -523,7 +525,7 @@ describe('CalendarView — Block action bar', () => {
 
     await selectBlock(11);
     expect(within(bar()).getByText(/Reading/)).toBeInTheDocument();
-    expect(bar().textContent).toMatch(/(^|\D)08:00(?!\d)/);
+    expect(bar().textContent).toMatch(/(^|\D)8:00 AM/);
     expect(within(bar()).getByTestId('btn-edit-block-11')).toBeInTheDocument();
     const block = screen.getByTestId('item-block-11');
     expect(within(block).queryAllByRole('button')).toHaveLength(0);
@@ -532,7 +534,7 @@ describe('CalendarView — Block action bar', () => {
 
     await selectBlock(21);
     expect(within(bar()).getByText(/Writing/)).toBeInTheDocument();
-    expect(bar().textContent).toMatch(/(^|\D)09:00(?!\d)/);
+    expect(bar().textContent).toMatch(/(^|\D)9:00 AM/);
     expect(within(bar()).queryByTestId('btn-edit-block-11')).not.toBeInTheDocument();
     const exported = screen.getByTestId('item-block-21');
     expect(within(exported).queryAllByRole('button')).toHaveLength(0);

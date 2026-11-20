@@ -529,15 +529,15 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [x] All B66.tests pass; web suite, tsc, and build pass
 
 ### B70.tests — Web: app-wide clock, Save as Recording
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** B69's contract on the web: `src/utils/formatClock.ts`, used by
   `ScheduleTimeline.tsx`, `src/utils/calendarUtils.ts`, and every other time of day the web app
   shows; the **Clock** switch in `OptionsPage.tsx`; **Save as Recording** on each Block in
   `CalendarView.tsx`'s day view, opening `ManualForm` from `SessionList.tsx` filled from the
   Block.
 - **Acceptance Criteria:**
-  - [ ] Tests mirroring B69's three
-  - [ ] Web suite, tsc, and build pass
+  - [x] Tests mirroring B69's three
+  - [x] Web suite, tsc, and build pass
 
 ### B70.impl — Web: app-wide clock, Save as Recording
 - **Status:** PENDING

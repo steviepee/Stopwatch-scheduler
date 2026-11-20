@@ -266,6 +266,32 @@ function checkbox(testId: string) {
   return screen.getByTestId(testId) as HTMLInputElement;
 }
 
+// B70 contract (D128), web parity with mobile's B69: a **Clock** section with a checkbox
+// `toggle-clock-24h` labelled `Use 24-hour clock`, checked = `clock_24h` from
+// `settingsAPI.getDisplay()` (loaded on mount); clicking calls `updateDisplay({ clock_24h })` and
+// the checkbox then shows the server's answer.
+describe('Clock setting (B70, D128)', () => {
+  it('shows the stored value and the checkbox round-trips through updateDisplay', async () => {
+    settings.updateDisplay.mockResolvedValue({ clock_24h: true });
+    renderOptions();
+
+    expect(await screen.findByText('Use 24-hour clock')).toBeInTheDocument();
+    await waitFor(() => expect(settings.getDisplay).toHaveBeenCalled());
+    await waitFor(() => expect(checkbox('toggle-clock-24h').checked).toBe(false));
+    fireEvent.click(checkbox('toggle-clock-24h'));
+
+    await waitFor(() => expect(settings.updateDisplay).toHaveBeenCalledWith({ clock_24h: true }));
+    await waitFor(() => expect(checkbox('toggle-clock-24h').checked).toBe(true));
+  });
+
+  it('a stored 24-hour clock shows checked', async () => {
+    settings.getDisplay.mockResolvedValue({ clock_24h: true });
+    renderOptions();
+
+    await waitFor(() => expect(checkbox('toggle-clock-24h').checked).toBe(true));
+  });
+});
+
 describe('Coach notes setting (B66, D107)', () => {
   it('shows the stored value and the checkbox round-trips through updateCoach', async () => {
     settings.updateCoach.mockResolvedValue({ notes_enabled: false });
