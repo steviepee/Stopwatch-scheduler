@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Task, TaskWithLogs, TimeLog } from '../types';
 import { taskAPI, timeLogAPI } from '../services/api';
+import { formatClock, useClock24h } from '../utils/formatClock';
 
 interface TaskDetailModalProps {
   task: Task;
@@ -16,6 +17,7 @@ const QUADRANTS = [
 ] as const;
 
 export default function TaskDetailModal({ task, onClose, onTaskUpdated }: TaskDetailModalProps) {
+  const clock24h = useClock24h();
   const [detail, setDetail] = useState<TaskWithLogs | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentFlags, setCurrentFlags] = useState({
@@ -59,13 +61,8 @@ export default function TaskDetailModal({ task, onClose, onTaskUpdated }: TaskDe
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    const date = new Date(dateString);
+    return `${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}, ${formatClock(date, clock24h)}`;
   };
 
   const handleDeleteLog = async (log: TimeLog) => {

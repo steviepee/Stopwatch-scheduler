@@ -1,14 +1,17 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { DndContext, DragEndEvent, DragStartEvent, DragOverlay, pointerWithin } from '@dnd-kit/core';
-import { Schedule, ScheduleItem, Task } from '../../types';
+import { Schedule, ScheduleItem, StopwatchSession, Task } from '../../types';
 import { scheduleAPI } from '../../services/api';
 import { CalendarGrid } from './CalendarGrid';
 import { ActivityBank } from './ActivityBank';
 import { ActivityPicker } from './ActivityPicker';
+import { ManualForm } from '../SessionList';
+import { formatClock, useClock24h } from '../../utils/formatClock';
 import { formatDuration, previousWeek, nextWeek, previousDay, nextDay, formatDayLong, getWeekDays, dateKey } from '../../utils/calendarUtils';
 
 interface CalendarViewProps {
   tasks: Task[];
+  onSessionCreated?: (session: StopwatchSession) => void;
 }
 
 const START_HOUR = 6;
@@ -37,11 +40,8 @@ function slotTime(key: string, minutes: number): Date {
   return new Date(y, m - 1, d, START_HOUR, minutes);
 }
 
-function hhmm(date: Date): string {
-  return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
-}
-
-export function CalendarView({ tasks }: CalendarViewProps) {
+export function CalendarView({ tasks, onSessionCreated }: CalendarViewProps) {
+  const clock24h = useClock24h();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'week' | 'day'>('week');
   const [schedules, setSchedules] = useState<Schedule[]>([]);
@@ -52,6 +52,7 @@ export function CalendarView({ tasks }: CalendarViewProps) {
   const [bankDelete, setBankDelete] = useState<ScheduleItem | null>(null);
   const [removeDay, setRemoveDay] = useState<Schedule | null>(null);
   const [status, setStatus] = useState<Status | null>(null);
+  const [recordingFrom, setRecordingFrom] = useState<ScheduleItem | null>(null);
 
   const days = viewMode === 'week' ? getWeekDays(currentDate) : [currentDate];
   const rangeStart = dateKey(days[0]);
@@ -319,7 +320,7 @@ export function CalendarView({ tasks }: CalendarViewProps) {
         {selectedItem && (
           <div className="block-action-bar" data-testid="block-action-bar">
             <span className="block-action-name">
-              {selectedItem.task?.name ?? selectedItem.custom_name} · {hhmm(new Date(selectedItem.scheduled_time!))}
+              {selectedItem.task?.name ?? selectedItem.custom_name} · {formatClock(new Date(selectedItem.scheduled_time!), clock24h)}
             </span>
             <button
               className="action-btn"
@@ -327,6 +328,13 @@ export function CalendarView({ tasks }: CalendarViewProps) {
               onClick={() => handleToggleEdit(selectedItem.id)}
             >
               {editingId === selectedItem.id ? 'Done' : 'Edit block'}
+            </button>
+            <button
+              className="action-btn"
+              data-testid={`btn-save-recording-${selectedItem.id}`}
+              onClick={() => setRecordingFrom(selectedItem)}
+            >
+              Save as Recording
             </button>
             {selectedItem.calendar_event_id && (
               <button
@@ -368,6 +376,7 @@ export function CalendarView({ tasks }: CalendarViewProps) {
             onSlotClick={handleSlotClick}
             onPushDay={handlePushDay}
             onRemoveDay={setRemoveDay}
+            clock24h={clock24h}
           />
         </div>
       </div>
@@ -386,11 +395,28 @@ export function CalendarView({ tasks }: CalendarViewProps) {
       {picker && pickerTime && (
         <ActivityPicker
           date={picker.date}
-          time={hhmm(pickerTime)}
+          time={formatClock(pickerTime, clock24h)}
           tasks={tasks}
           onClose={() => setPicker(null)}
           onPick={handlePick}
         />
+      )}
+
+      {/* Save a Block as a Recording (D132) */}
+      {recordingFrom && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <ManualForm
+              tasks={tasks}
+              initial={recordingFrom}
+              onCreated={(session) => {
+                setRecordingFrom(null);
+                onSessionCreated?.(session);
+              }}
+              onCancel={() => setRecordingFrom(null)}
+            />
+          </div>
+        </div>
       )}
 
       {/* Exported Block dropped on the Bank (D45) */}

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Task, TaskCreate, TaskUpdate, TaskStats, TimeLogCreate, TimeLog, StopwatchSession, StopwatchSessionCreate, StopwatchSessionUpdate, StopwatchSessionWithTask, Schedule, ScheduleCreate, ScheduleUpdate, ScheduleItem, ScheduleItemCreate, ScheduleItemPlace, ScheduleItemUpdate, ApplyRegimen, GenerateRequest, GenerateResponse, PeakHoursResponse, PomodoroSettings, CoachSettings, ReminderSettings, CoachNote, CoachUsage, CoachConversationSummary, CoachConversationDetail } from '../types';
+import { Task, TaskCreate, TaskUpdate, TaskStats, TimeLogCreate, TimeLog, StopwatchSession, StopwatchSessionCreate, StopwatchSessionUpdate, StopwatchSessionWithTask, Schedule, ScheduleCreate, ScheduleUpdate, ScheduleItem, ScheduleItemCreate, ScheduleItemPlace, ScheduleItemUpdate, ApplyRegimen, GenerateRequest, GenerateResponse, PeakHoursResponse, PomodoroSettings, CoachSettings, ReminderSettings, DisplaySettings,CoachNote, CoachUsage, CoachConversationSummary, CoachConversationDetail } from '../types';
 
 const API_BASE_URL = '/api';
 
@@ -266,6 +266,16 @@ export const settingsAPI = {
 
   updateReminders: async (settings: ReminderSettings): Promise<ReminderSettings> => {
     const response = await api.put('/settings/reminders', settings);
+    return response.data;
+  },
+
+  getDisplay: async (): Promise<DisplaySettings> => {
+    const response = await api.get('/settings/display');
+    return response.data;
+  },
+
+  updateDisplay: async (settings: DisplaySettings): Promise<DisplaySettings> => {
+    const response = await api.put('/settings/display', settings);
     return response.data;
   },
 };

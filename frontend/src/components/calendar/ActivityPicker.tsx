@@ -4,7 +4,7 @@ import { Task } from '../../types';
 
 interface ActivityPickerProps {
   date: Date;
-  time: string; // "HH:MM"
+  time: string;
   tasks: Task[];
   onClose: () => void;
   onPick: (task: Task) => void;

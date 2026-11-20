@@ -24,6 +24,7 @@ interface CalendarGridProps {
   onSlotClick: (date: Date, minutesFromStart: number) => void;
   onPushDay: (schedule: Schedule) => void;
   onRemoveDay: (schedule: Schedule) => void;
+  clock24h: boolean;
 }
 
 function DroppableColumn({
@@ -80,6 +81,7 @@ export function CalendarGrid({
   onSlotClick,
   onPushDay,
   onRemoveDay,
+  clock24h,
 }: CalendarGridProps) {
   const today = new Date();
   const hours = Array.from({ length: endHour - startHour + 1 }, (_, i) => startHour + i);
@@ -147,7 +149,7 @@ export function CalendarGrid({
               className="time-label"
               style={{ height: `${slotsPerHour * slotHeight}px` }}
             >
-              {formatHour(hour)}
+              {formatHour(hour, clock24h)}
             </div>
           ))}
         </div>

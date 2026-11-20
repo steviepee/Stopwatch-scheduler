@@ -276,7 +276,7 @@ export default function HomePage({ onSignOut }: HomePageProps) {
         {!isSaveModalOpen && (
           <>
             {activeTab === 'calendar' && (
-              <CalendarView tasks={tasks} />
+              <CalendarView tasks={tasks} onSessionCreated={handleSessionCreated} />
             )}
 
             {activeTab === 'schedule' && (

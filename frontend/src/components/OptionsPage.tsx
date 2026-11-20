@@ -48,6 +48,7 @@ export default function OptionsPage({ options, onChange, onSignOut }: OptionsPag
   const [pomodoroStatus, setPomodoroStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
   const [pomodoroSaving, setPomodoroSaving] = useState(false);
   const [pomodoroSaveFailed, setPomodoroSaveFailed] = useState(false);
+  const [clock24h, setClock24h] = useState<boolean | null>(null);
   const [notesEnabled, setNotesEnabled] = useState<boolean | null>(null);
   const [notes, setNotes] = useState<CoachNote[]>([]);
   const [newNote, setNewNote] = useState('');
@@ -65,6 +66,7 @@ export default function OptionsPage({ options, onChange, onSignOut }: OptionsPag
         setPomodoroStatus('loaded');
       })
       .catch(() => setPomodoroStatus('error'));
+    settingsAPI.getDisplay().then(data => setClock24h(data.clock_24h)).catch(() => {});
     settingsAPI.getCoach().then(data => setNotesEnabled(data.notes_enabled)).catch(() => {});
     coachAPI.getNotes().then(setNotes).catch(() => {});
     settingsAPI.getReminders()
@@ -76,6 +78,12 @@ export default function OptionsPage({ options, onChange, onSignOut }: OptionsPag
     coachAPI.getUsage().then(setUsage).catch(() => {});
     coachAPI.getConversations().then(setConversations).catch(() => {});
   }, []);
+
+  const toggleClock24h = async () => {
+    if (clock24h === null) return;
+    const saved = await settingsAPI.updateDisplay({ clock_24h: !clock24h });
+    setClock24h(saved.clock_24h);
+  };
 
   const toggleNotesEnabled = async () => {
     if (notesEnabled === null) return;
@@ -284,6 +292,22 @@ export default function OptionsPage({ options, onChange, onSignOut }: OptionsPag
         >
           Save
         </button>
+      </section>
+
+      {/* Clock */}
+      <section className="space-y-3">
+        <h3 className="text-white/60 text-xs uppercase tracking-wider">Clock</h3>
+        <label className="flex items-center gap-3 cursor-pointer glass-inner rounded-xl px-4 py-3">
+          <input
+            type="checkbox"
+            data-testid="toggle-clock-24h"
+            checked={clock24h ?? false}
+            disabled={clock24h === null}
+            onChange={toggleClock24h}
+            className="w-4 h-4 rounded accent-emerald-400"
+          />
+          <span className="text-white text-sm">Use 24-hour clock</span>
+        </label>
       </section>
 
       {/* Coach notes */}

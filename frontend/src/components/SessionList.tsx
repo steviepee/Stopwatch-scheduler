@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
-import { StopwatchSession, StopwatchSessionCreate, StopwatchSessionUpdate, Task } from '../types';
+import { ScheduleItem, StopwatchSession, StopwatchSessionCreate, StopwatchSessionUpdate, Task } from '../types';
 import { googleCalendarAPI, sessionAPI } from '../services/api';
+import { formatClock, useClock24h } from '../utils/formatClock';
 
 interface SessionListProps {
   sessions: StopwatchSession[];
@@ -22,12 +23,14 @@ function toLocalInput(date: Date): string {
   return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}T${p(date.getHours())}:${p(date.getMinutes())}`;
 }
 
-function ManualForm({
+export function ManualForm({
   tasks,
+  initial,
   onCreated,
   onCancel,
 }: {
   tasks: Task[];
+  initial?: ScheduleItem;
   onCreated: (session: StopwatchSession) => void;
   onCancel: () => void;
 }) {
@@ -36,11 +39,13 @@ function ManualForm({
     d.setSeconds(0, 0);
     return d;
   });
-  const [name, setName] = useState('');
-  const [activityId, setActivityId] = useState('');
-  const [hours, setHours] = useState('');
-  const [minutes, setMinutes] = useState('');
-  const [editedStart, setEditedStart] = useState<string | null>(null);
+  const [name, setName] = useState(initial ? initial.task?.name ?? initial.custom_name ?? '' : '');
+  const [activityId, setActivityId] = useState(initial?.task_id ? String(initial.task_id) : '');
+  const [hours, setHours] = useState(initial ? String(Math.floor(initial.estimated_duration / 3600)) : '');
+  const [minutes, setMinutes] = useState(initial ? String(Math.floor((initial.estimated_duration % 3600) / 60)) : '');
+  const [editedStart, setEditedStart] = useState<string | null>(
+    initial?.scheduled_time ? toLocalInput(new Date(initial.scheduled_time)) : null,
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
 
@@ -266,6 +271,7 @@ export default function SessionList({
   onSessionCreated,
   onSessionUpdated = () => {},
 }: SessionListProps) {
+  const clock24h = useClock24h();
   const [manualOpen, setManualOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState('');
@@ -328,12 +334,7 @@ export default function SessionList({
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return `${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${formatClock(date, clock24h)}`;
   };
 
   const handleStartEdit = (session: StopwatchSession) => {
@@ -541,7 +542,7 @@ export default function SessionList({
                     </p>
                     <p className="flex items-center gap-2">
                       <span className="text-white/50">Created:</span>
-                      {formatDate(session.created_at)}
+                      <span data-testid={`session-created-${session.id}`}>{formatDate(session.created_at)}</span>
                     </p>
                     {session.notes && (
                       <p className="text-white/60 italic truncate" title={session.notes}>

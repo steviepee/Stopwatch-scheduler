@@ -1,14 +1,11 @@
 import { useState, useCallback } from 'react';
 import { GenerateActivity, ScheduleItemCreate, StrategyOption, TimelineEntry } from '../types';
+import { formatClock, useClock24h } from '../utils/formatClock';
 
 interface ScheduleTimelineProps {
   options: StrategyOption[];
   onSelect: (items: ScheduleItemCreate[]) => void;
   onReorder: (activities: GenerateActivity[]) => void;
-}
-
-function formatTime(date: Date): string {
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 function formatDuration(seconds: number): string {
@@ -24,6 +21,8 @@ function entrySeconds(entry: TimelineEntry): number {
 }
 
 export default function ScheduleTimeline({ options, onSelect, onReorder }: ScheduleTimelineProps) {
+  const clock24h = useClock24h();
+  const formatTime = (date: Date) => formatClock(date, clock24h);
   const [selected, setSelected] = useState('your-order');
   const [dragIdx, setDragIdx] = useState<number | null>(null);
 

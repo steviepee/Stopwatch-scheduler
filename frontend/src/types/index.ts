@@ -246,6 +246,10 @@ export interface ReminderSettings {
   minutes_before: number;
 }
 
+export interface DisplaySettings {
+  clock_24h: boolean;
+}
+
 export interface CoachNote {
   id: number;
   text: string;

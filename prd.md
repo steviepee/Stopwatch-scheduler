@@ -540,10 +540,10 @@ and gate). B68 is HOLD and only becomes PENDING if U15's link check fails.
   - [x] Web suite, tsc, and build pass
 
 ### B70.impl — Web: app-wide clock, Save as Recording
-- **Status:** PENDING
+- **Status:** DONE
 - **Description:** Implement to the contract.
 - **Acceptance Criteria:**
-  - [ ] All B70.tests pass; web suite, tsc, and build pass
+  - [x] All B70.tests pass; web suite, tsc, and build pass
 
 ### B67.tests — Web: the Coach screen
 - **Status:** PENDING
